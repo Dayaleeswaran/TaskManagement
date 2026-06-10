@@ -3,42 +3,40 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: tms_postgres
-    restart: always
-    environment:
-      POSTGRES_USER: tms_user
-      POSTGRES_PASSWORD: tms_password
-      POSTGRES_DB: tms_database
+    container_name: tms_postgres_db
     ports:
       - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: tms_dev_db
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
 
   backend:
-    build:
-      context: ./backend
-    container_name: tms_backend
-    restart: always
+    build: ./backend
+    container_name: tms_backend_api
     ports:
       - "3000:3000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
     environment:
-      - DATABASE_URL=postgresql://tms_user:tms_password@postgres:5432/tms_database?schema=public
-      - JWT_SECRET=super_secret_local_dev_key_123!
-      - FRONTEND_URL=http://localhost:5173
+      DATABASE_URL: "postgresql://postgres:password123@postgres:5432/tms_dev_db?schema=public"
+      JWT_SECRET: "super-secret-key-change-me"
     depends_on:
       - postgres
 
   frontend:
-    build:
-      context: ./frontend
-    container_name: tms_frontend
-    restart: always
+    build: ./frontend
+    container_name: tms_frontend_ui
     ports:
       - "5173:5173"
-    environment:
-      - VITE_API_URL=http://localhost:3000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     depends_on:
       - backend
 
 volumes:
-  postgres_data:
+  pgdata:
