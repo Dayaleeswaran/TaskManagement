@@ -19,15 +19,15 @@ exports.register = async (req, res, next) => {
       });
     }
 
-    const passwordHash = await bcrypt.hash(password, 12);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     const user = await prisma.user.create({
       data: {
         name,
         email,
-        passwordHash,
+        password: hashedPassword,
         role,
-        requiresPasswordReset: true,
+        mustResetPassword: true,
         isActive: true,
       },
     });

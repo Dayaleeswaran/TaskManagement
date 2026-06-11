@@ -13,14 +13,8 @@ enum Role {
   COLLABORATOR
 }
 
-enum ProjectRole {
-  OWNER
-  MANAGER
-  MEMBER
-}
-
-enum TaskStatus {
-  PENDING
+enum Status {
+  TODO
   IN_PROGRESS
   COMPLETED
 }
@@ -31,77 +25,72 @@ enum Priority {
   HIGH
 }
 
-enum NotificationType {
-  TASK
-  PROJECT
-  SYSTEM
-}
-
 model User {
-  id                    String   @id @default(uuid())
-  name                  String
-  email                 String   @unique
-  passwordHash          String
-  role                  Role
-  requiresPasswordReset Boolean  @default(true)
-  isActive              Boolean  @default(true)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                String           @id @default(uuid())
+  name              String
+  email             String           @unique
+  password          String
+  role              Role
+  isActive          Boolean          @default(true)
+  mustResetPassword Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
-  assignedTasks Task[] @relation("AssignedTasks")
-  createdTasks  Task[] @relation("CreatedTasks")
-
-  comments      Comment[]
-  notifications Notification[]
-
-  createdProjects    Project[]       @relation("CreatedProjects")
-  projectMemberships ProjectMember[]
+  ownedProjects     Project[]        @relation("ProjectOwner")
+  createdTasks      Task[]           @relation("TaskCreator")
+  assignments       TaskAssignment[]
+  comments          Comment[]        @relation("CommentAuthor")
+  notifications     Notification[]
 }
 
 model Project {
   id          String   @id @default(uuid())
-  title       String
+  name        String
   description String
   createdAt   DateTime @default(now())
 
-  createdById String
-  createdBy   User   @relation("CreatedProjects", fields: [createdById], references: [id])
+  ownerId     String
+  owner       User     @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
-  tasks   Task[]
-  members ProjectMember[]
-}
+  tasks       Task[]
 
-model ProjectMember {
-  id        String      @id @default(uuid())
-  projectId String
-  userId    String
-  role      ProjectRole
-
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([projectId, userId])
+  @@index([ownerId])
 }
 
 model Task {
-  id          String     @id @default(uuid())
+  id          String           @id @default(uuid())
   title       String
   description String
-  status      TaskStatus
+  status      Status
   priority    Priority
   dueDate     DateTime
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
-  projectId       String
-  assignedToId    String
-  createdByUserId String
+  projectId   String
+  project     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  assignedTo User    @relation("AssignedTasks", fields: [assignedToId], references: [id])
-  createdBy  User    @relation("CreatedTasks", fields: [createdByUserId], references: [id])
+  createdById String
+  createdBy   User             @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
 
-  comments Comment[]
+  assignments TaskAssignment[]
+  comments    Comment[]
+
+  @@index([projectId])
+  @@index([createdById])
+  @@index([status])
+  @@index([priority])
+}
+
+model TaskAssignment {
+  taskId String
+  userId String
+
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, userId])
+  @@index([userId])
 }
 
 model Comment {
@@ -109,21 +98,25 @@ model Comment {
   body      String
   createdAt DateTime @default(now())
 
-  taskId String
-  userId String
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
-  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([authorId])
 }
 
 model Notification {
-  id        String           @id @default(uuid())
-  type      NotificationType
+  id        String   @id @default(uuid())
+  type      String
   message   String
-  isRead    Boolean          @default(false)
-  createdAt DateTime         @default(now())
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
 
-  userId String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
 }

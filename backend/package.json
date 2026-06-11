@@ -33,6 +33,6 @@
     "tsx": "^4.22.4"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "node prisma/seed.js"
   }
 }
