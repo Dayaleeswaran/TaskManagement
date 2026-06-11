@@ -41,3 +41,16 @@ docker-compose up --build
 - **PostgreSQL Database:** Running on port `5432`
 - **Express Backend API:** Running on port `3000`
 - **Vite React UI:** Running on port `5173`
+
+---
+
+## DevOps & CI/CD Strategy
+
+For detailed instructions and strategies regarding the system's CI/CD pipeline, branching strategies, security scanning, container validation, and environment variables, refer to the [DevOps & CI/CD Strategy Documentation](file:///c:/Users/amadi/TaskManagement/docs/devops-ci-cd-strategy.md).
+
+### Continuous Integration (CI) Actions
+A GitHub Actions workflow is defined in [.github/workflows/ci.yml](file:///c:/Users/amadi/TaskManagement/.github/workflows/ci.yml) which performs:
+- **Build Checks**: Installs dependencies and compiles both the backend and frontend.
+- **Docker Validation**: Lints Dockerfiles via Hadolint.
+- **Security Scanning**: Audits dependencies for vulnerability warnings and runs Trivy on container images.
+- **Prisma Schema Verification**: Validates formatting and database integrity mapping.
