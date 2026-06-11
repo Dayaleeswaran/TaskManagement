@@ -13,8 +13,14 @@ enum Role {
   COLLABORATOR
 }
 
+enum ProjectRole {
+  OWNER
+  MANAGER
+  MEMBER
+}
+
 enum TaskStatus {
-  TO_DO
+  PENDING
   IN_PROGRESS
   COMPLETED
 }
@@ -23,6 +29,12 @@ enum Priority {
   LOW
   MEDIUM
   HIGH
+}
+
+enum NotificationType {
+  TASK
+  PROJECT
+  SYSTEM
 }
 
 model User {
@@ -34,12 +46,41 @@ model User {
   requiresPasswordReset Boolean  @default(true)
   isActive              Boolean  @default(true)
   createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   assignedTasks Task[] @relation("AssignedTasks")
   createdTasks  Task[] @relation("CreatedTasks")
 
   comments      Comment[]
   notifications Notification[]
+
+  createdProjects    Project[]       @relation("CreatedProjects")
+  projectMemberships ProjectMember[]
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  createdAt   DateTime @default(now())
+
+  createdById String
+  createdBy   User   @relation("CreatedProjects", fields: [createdById], references: [id])
+
+  tasks   Task[]
+  members ProjectMember[]
+}
+
+model ProjectMember {
+  id        String      @id @default(uuid())
+  projectId String
+  userId    String
+  role      ProjectRole
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
 }
 
 model Task {
@@ -50,34 +91,37 @@ model Task {
   priority    Priority
   dueDate     DateTime
   createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
+  projectId       String
   assignedToId    String
   createdByUserId String
 
-  assignedTo User @relation("AssignedTasks", fields: [assignedToId], references: [id])
-  createdBy  User @relation("CreatedTasks", fields: [createdByUserId], references: [id])
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignedTo User    @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  createdBy  User    @relation("CreatedTasks", fields: [createdByUserId], references: [id])
 
   comments Comment[]
 }
 
 model Comment {
   id        String   @id @default(uuid())
-  content   String
+  body      String
   createdAt DateTime @default(now())
 
   taskId String
   userId String
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Notification {
-  id        String   @id @default(uuid())
-  type      String
+  id        String           @id @default(uuid())
+  type      NotificationType
   message   String
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
 
   userId String
 
