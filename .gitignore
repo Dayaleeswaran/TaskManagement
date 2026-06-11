@@ -51,3 +51,8 @@ Thumbs.db
 *.njsproj
 *.sln
 *.swp
+# Local Architectural & Design Docs
+/docs/database-architecture.md
+/docs/security-design.md
+/docs/frontend-design.md
+/docs/auth-design.md
