@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import MainLayout from './components/MainLayout';
@@ -34,10 +34,6 @@ function DashboardRedirect() {
 
 function AppContent() {
   const { notifications, dismissNotification } = useAuth();
-  const location = useLocation();
-
-  // Show simulated banners only on login/forgot-password screens or global headers
-  const isAuthPage = ['/login', '/forgot-password', '/reset-password'].includes(location.pathname);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col">

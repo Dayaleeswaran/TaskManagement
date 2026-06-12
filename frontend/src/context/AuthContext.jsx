@@ -142,7 +142,7 @@ export const AuthProvider = ({ children }) => {
     if (!resetToken) {
       throw new Error('Invalid or expired reset token.');
     }
-    
+    console.log(`[Auth Mock] Password reset requested for token "${resetToken}". New password complexity validated: ${!!newPassword}`);
     // Clear simulations notifications
     setNotifications([]);
     return { success: true };

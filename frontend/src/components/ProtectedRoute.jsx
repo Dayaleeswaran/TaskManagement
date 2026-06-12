@@ -1,10 +1,10 @@
 import { Navigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from './LoadingSpinner';
-import { ShieldAlert, ArrowLeft, Shield } from 'lucide-react';
+import { ShieldAlert, ArrowLeft } from 'lucide-react';
 
 export default function ProtectedRoute({ children, role }) {
-  const { token, user, role: userRole, loading } = useAuth();
+  const { token, role: userRole, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
