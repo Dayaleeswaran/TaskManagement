@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -8,7 +7,7 @@ import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import Tasks from './pages/Tasks';
-import { LogOut, X, ShieldAlert } from 'lucide-react';
+import { LogOut, X } from 'lucide-react';
 
 function AppContent() {
   const { user, logout, notifications, dismissNotification } = useAuth();
@@ -23,16 +22,16 @@ function AppContent() {
       {notifications.length > 0 && (
         <div className="bg-slate-950 border-b border-violet-900/40 px-6 py-2 space-y-2">
           {notifications.map((notif) => (
-            <div 
-              key={notif.id} 
+            <div
+              key={notif.id}
               className="max-w-7xl mx-auto flex items-center justify-between p-3 rounded-lg bg-violet-950/40 border border-violet-500/30 text-violet-200 text-sm animate-pulse"
             >
               <div className="flex items-center space-x-2">
                 <span className="font-semibold px-2 py-0.5 rounded bg-violet-500/20 text-violet-300 text-xs">Simulated Server</span>
                 <span>{notif.message}</span>
                 {notif.link && (
-                  <Link 
-                    to={notif.link} 
+                  <Link
+                    to={notif.link}
                     onClick={() => dismissNotification(notif.id)}
                     className="font-bold text-white underline hover:text-fuchsia-300 transition-colors ml-2"
                   >
@@ -40,8 +39,8 @@ function AppContent() {
                   </Link>
                 )}
               </div>
-              <button 
-                onClick={() => dismissNotification(notif.id)} 
+              <button
+                onClick={() => dismissNotification(notif.id)}
                 className="text-violet-400 hover:text-white p-1 rounded hover:bg-violet-900/30 transition-colors cursor-pointer"
               >
                 <X className="h-4 w-4" />
@@ -66,27 +65,24 @@ function AppContent() {
         <div className="flex items-center space-x-6">
           {user && (
             <>
-              <Link 
-                to="/dashboard" 
-                className={`transition-colors duration-200 font-medium ${
-                  isActive('/dashboard') ? 'text-violet-400 font-semibold' : 'text-slate-300 hover:text-white'
-                }`}
+              <Link
+                to="/dashboard"
+                className={`transition-colors duration-200 font-medium ${isActive('/dashboard') ? 'text-violet-400 font-semibold' : 'text-slate-300 hover:text-white'
+                  }`}
               >
                 Dashboard
               </Link>
-              <Link 
-                to="/tasks" 
-                className={`transition-colors duration-200 font-medium ${
-                  isActive('/tasks') ? 'text-violet-400 font-semibold' : 'text-slate-300 hover:text-white'
-                }`}
+              <Link
+                to="/tasks"
+                className={`transition-colors duration-200 font-medium ${isActive('/tasks') ? 'text-violet-400 font-semibold' : 'text-slate-300 hover:text-white'
+                  }`}
               >
                 Tasks
               </Link>
-              <Link 
-                to="/users" 
-                className={`transition-colors duration-200 font-medium ${
-                  isActive('/users') ? 'text-violet-400 font-semibold' : 'text-slate-300 hover:text-white'
-                }`}
+              <Link
+                to="/users"
+                className={`transition-colors duration-200 font-medium ${isActive('/users') ? 'text-violet-400 font-semibold' : 'text-slate-300 hover:text-white'
+                  }`}
               >
                 Users
               </Link>
@@ -108,7 +104,7 @@ function AppContent() {
                   <div className="text-xs text-slate-400">{user.role}</div>
                 </div>
               </div>
-              
+
               <button
                 onClick={logout}
                 className="py-1.5 px-3 rounded-lg bg-slate-900 hover:bg-red-950/20 hover:text-red-400 border border-slate-800 hover:border-red-900/40 text-slate-400 transition-all duration-200 flex items-center space-x-1.5 text-sm cursor-pointer"
@@ -119,8 +115,8 @@ function AppContent() {
               </button>
             </div>
           ) : (
-            <Link 
-              to="/login" 
+            <Link
+              to="/login"
               className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white font-medium shadow-md shadow-violet-600/10 hover:shadow-violet-600/20 transition-all duration-200"
             >
               Sign In
@@ -139,29 +135,29 @@ function AppContent() {
             <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Protected Routes */}
-            <Route 
-              path="/dashboard" 
+            <Route
+              path="/dashboard"
               element={
                 <ProtectedRoute>
                   <Dashboard />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/tasks" 
+            <Route
+              path="/tasks"
               element={
                 <ProtectedRoute>
                   <Tasks />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/users" 
+            <Route
+              path="/users"
               element={
                 <ProtectedRoute>
                   <Users />
                 </ProtectedRoute>
-              } 
+              }
             />
 
             {/* Redirect Fallbacks */}

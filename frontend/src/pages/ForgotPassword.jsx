@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Mail, ArrowLeft, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
@@ -13,13 +13,13 @@ export default function ForgotPassword() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
+
     // Basic validation
     if (!email) {
       setError('Please enter your email address.');
       return;
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('Please enter a valid email address.');
@@ -118,7 +118,7 @@ export default function ForgotPassword() {
             </div>
             <h2 className="text-2xl font-bold text-white tracking-tight">Simulated Email Sent!</h2>
             <p className="text-sm text-slate-400 mt-3 leading-relaxed">
-              We have generated a mock password reset link. Please click on the link displayed in the 
+              We have generated a mock password reset link. Please click on the link displayed in the
               <strong> server alerts</strong> banner at the top of the screen to proceed to the reset screen.
             </p>
             <div className="mt-8 pt-6 border-t border-slate-800/80">

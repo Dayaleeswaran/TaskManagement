@@ -1,4 +1,5 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useState, useEffect, useContext } from 'react';
 
 const AuthContext = createContext(null);
 
@@ -19,22 +20,20 @@ const DEFAULT_USERS = [
 ];
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    // Recover session from localStorage instantly on init to avoid extra re-renders
+    const savedSession = localStorage.getItem('taskflow_current_user');
+    return savedSession ? JSON.parse(savedSession) : null;
+  });
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
 
-  // Initialize mock users and restore session
+  // Initialize mock users
   useEffect(() => {
     // Set up users database in localStorage if not already present
     const storedUsers = localStorage.getItem('taskflow_users');
     if (!storedUsers) {
       localStorage.setItem('taskflow_users', JSON.stringify(DEFAULT_USERS));
-    }
-
-    // Recover session from localStorage
-    const savedSession = localStorage.getItem('taskflow_current_user');
-    if (savedSession) {
-      setUser(JSON.parse(savedSession));
     }
 
     // Simulate small latency to check session
@@ -97,14 +96,14 @@ export const AuthProvider = ({ children }) => {
 
     // Generate random 8-character token
     const token = Math.random().toString(36).substring(2, 10);
-    
+
     // Store token-email mapping in localStorage for retrieval
     const tokens = JSON.parse(localStorage.getItem('taskflow_reset_tokens') || '{}');
     tokens[token] = email.toLowerCase();
     localStorage.setItem('taskflow_reset_tokens', JSON.stringify(tokens));
 
     const resetLink = `/reset-password?token=${token}`;
-    
+
     // Add notification so the user can easily click/test it
     const newNotification = {
       id: Date.now(),
