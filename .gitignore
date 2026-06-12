@@ -52,11 +52,5 @@ Thumbs.db
 *.sln
 *.swp
 # Local Architectural & Design Docs
-/docs/database-architecture.md
-/docs/security-design.md
-/docs/frontend-design.md
-/docs/auth-design.md
-/docs/database-dictionary.md
-/docs/devops-ci-cd-strategy.md
-/docs/relationships.md
-/docs/schema-specification.md 
+/docs/**/*.md
+/docs/*.md

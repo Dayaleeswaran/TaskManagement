@@ -1,22 +1,28 @@
 const bcrypt = require("bcrypt");
-const { PrismaClient } = require("@prisma/client");
-
-const prisma = new PrismaClient();
+const prisma = require("../prisma");
 
 exports.register = async (req, res, next) => {
   try {
     const { name, email, password, role } = req.body;
+    
+    if (!email || !password || !name) {
+      const error = new Error("Name, email, and password are required.");
+      error.statusCode = 400;
+      error.errorCode = "BAD_REQUEST";
+      throw error;
+    }
+
+    const emailLower = email.toLowerCase();
 
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: emailLower },
     });
 
     if (existingUser) {
-      return res.status(400).json({
-        error: {
-          message: "User already exists.",
-        },
-      });
+      const error = new Error("User already exists.");
+      error.statusCode = 400;
+      error.errorCode = "EMAIL_ALREADY_EXISTS";
+      throw error;
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
@@ -24,7 +30,7 @@ exports.register = async (req, res, next) => {
     const user = await prisma.user.create({
       data: {
         name,
-        email,
+        email: emailLower,
         password: hashedPassword,
         role,
         mustResetPassword: true,

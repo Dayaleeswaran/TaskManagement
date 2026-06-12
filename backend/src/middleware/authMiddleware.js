@@ -1,7 +1,6 @@
 const jwt = require("jsonwebtoken");
-const { PrismaClient } = require("@prisma/client");
+const prisma = require("../prisma");
 
-const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || "your-jwt-secret-key-change-me-in-production";
 
 const verifyToken = async (req, res, next) => {

@@ -1,8 +1,6 @@
-const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcrypt");
+const prisma = require("../prisma");
 const { sendWelcomeEmail } = require("./emailService");
-
-const prisma = new PrismaClient();
 
 /**
  * Helper to remove password from user object.
