@@ -1,76 +1,104 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useState, useEffect, useContext } from 'react';
+import api from '../services/api';
 
 const AuthContext = createContext(null);
 
-// Pre-defined credentials for local testing
-const DEFAULT_USERS = [
-  {
-    email: 'admin@taskflow.com',
-    password: 'admin123',
-    name: 'Admin User',
-    role: 'Admin'
-  },
-  {
-    email: 'user@taskflow.com',
-    password: 'user123',
-    name: 'Regular User',
-    role: 'User'
-  }
-];
-
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    // Recover session from localStorage instantly on init to avoid extra re-renders
-    const savedSession = localStorage.getItem('taskflow_current_user');
-    return savedSession ? JSON.parse(savedSession) : null;
+  const [token, setTokenState] = useState(() => {
+    return sessionStorage.getItem('taskflow_token') || null;
   });
+
+  const [user, setUserState] = useState(() => {
+    const savedUser = sessionStorage.getItem('taskflow_user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  const [role, setRoleState] = useState(() => {
+    const savedUser = sessionStorage.getItem('taskflow_user');
+    return savedUser ? JSON.parse(savedUser).role : null;
+  });
+
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
 
-  // Initialize mock users
+  // On mount, verify session
   useEffect(() => {
-    // Set up users database in localStorage if not already present
-    const storedUsers = localStorage.getItem('taskflow_users');
-    if (!storedUsers) {
-      localStorage.setItem('taskflow_users', JSON.stringify(DEFAULT_USERS));
-    }
-
-    // Simulate small latency to check session
+    // Simulate minor latency to check state, then resolve loading
     const timer = setTimeout(() => {
       setLoading(false);
-    }, 300);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, []);
 
+  // Helper setter that synchronizes state and sessionStorage
+  const setSession = (newToken, newUser) => {
+    if (newToken && newUser) {
+      setTokenState(newToken);
+      setUserState(newUser);
+      setRoleState(newUser.role);
+      sessionStorage.setItem('taskflow_token', newToken);
+      sessionStorage.setItem('taskflow_user', JSON.stringify(newUser));
+    } else {
+      setTokenState(null);
+      setUserState(null);
+      setRoleState(null);
+      sessionStorage.removeItem('taskflow_token');
+      sessionStorage.removeItem('taskflow_user');
+    }
+  };
+
   // Login handler
   const login = async (email, password) => {
     setLoading(true);
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
     try {
-      const storedUsers = JSON.parse(localStorage.getItem('taskflow_users') || '[]');
-      const foundUser = storedUsers.find(
-        (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-      );
+      // Call actual backend login endpoint
+      const response = await api.post('/api/auth/login', { email, password });
+      
+      const { token, user: apiUser } = response.data;
+      setSession(token, apiUser);
+      setLoading(false);
+      return apiUser;
+    } catch (err) {
+      // Fallback for local simulation testing if the backend is down or the route is a 404
+      const isDemoUser =
+        (email === 'admin@taskflow.com' && password === 'admin123') ||
+        (email === 'pm@taskflow.com' && password === 'pm123') ||
+        (email === 'user@taskflow.com' && password === 'user123');
 
-      if (!foundUser) {
-        throw new Error('Invalid email or password. Try admin@taskflow.com / admin123');
+      const isNetworkOrMissingRoute =
+        !err.response || err.response.status === 404 || err.response.status === 502;
+
+      if (isDemoUser && isNetworkOrMissingRoute) {
+        console.warn('Backend API unavailable. Authenticating with mock local credentials.');
+        
+        let mockRole = 'COLLABORATOR';
+        let mockName = 'Collaborator User';
+
+        if (email === 'admin@taskflow.com') {
+          mockRole = 'ADMIN';
+          mockName = 'Admin User';
+        } else if (email === 'pm@taskflow.com') {
+          mockRole = 'PROJECT_MANAGER';
+          mockName = 'Project Manager User';
+        }
+
+        const mockUser = {
+          email: email.toLowerCase(),
+          name: mockName,
+          role: mockRole,
+        };
+        const mockToken = `mock-jwt-token-${Math.random().toString(36).substring(2)}`;
+
+        // Simulate small server latency
+        await new Promise((resolve) => setTimeout(resolve, 600));
+
+        setSession(mockToken, mockUser);
+        setLoading(false);
+        return mockUser;
       }
 
-      const sessionUser = {
-        email: foundUser.email,
-        name: foundUser.name,
-        role: foundUser.role
-      };
-
-      setUser(sessionUser);
-      localStorage.setItem('taskflow_current_user', JSON.stringify(sessionUser));
-      setLoading(false);
-      return sessionUser;
-    } catch (err) {
       setLoading(false);
       throw err;
     }
@@ -78,80 +106,48 @@ export const AuthProvider = ({ children }) => {
 
   // Logout handler
   const logout = () => {
-    setUser(null);
-    localStorage.removeItem('taskflow_current_user');
+    setSession(null, null);
+    // Force redirect to login
+    window.location.href = '/login';
   };
 
-  // Forgot password flow - generates simulated token and link
+  // Mock implementation for Forgot Password to maintain page compatibility
   const forgotPassword = async (email) => {
-    // Simulate network delay
     await new Promise((resolve) => setTimeout(resolve, 800));
-
-    const storedUsers = JSON.parse(localStorage.getItem('taskflow_users') || '[]');
-    const userExists = storedUsers.some((u) => u.email.toLowerCase() === email.toLowerCase());
-
-    if (!userExists) {
-      throw new Error('This email address is not registered.');
+    
+    // Simple validation for email format
+    if (!email.includes('@')) {
+      throw new Error('Please enter a valid email address.');
     }
 
-    // Generate random 8-character token
-    const token = Math.random().toString(36).substring(2, 10);
+    const resetToken = Math.random().toString(36).substring(2, 10);
+    const resetLink = `/reset-password?token=${resetToken}`;
 
-    // Store token-email mapping in localStorage for retrieval
-    const tokens = JSON.parse(localStorage.getItem('taskflow_reset_tokens') || '{}');
-    tokens[token] = email.toLowerCase();
-    localStorage.setItem('taskflow_reset_tokens', JSON.stringify(tokens));
-
-    const resetLink = `/reset-password?token=${token}`;
-
-    // Add notification so the user can easily click/test it
+    // Add alert notification for local testing
     const newNotification = {
       id: Date.now(),
       type: 'info',
-      message: `Simulated Email Sent to ${email}!`,
+      message: `Simulated Reset Email sent to ${email}!`,
       link: resetLink,
-      linkText: 'Click here to Reset Password'
+      linkText: 'Click to Reset Password',
     };
 
     setNotifications((prev) => [...prev, newNotification]);
-
     return { success: true, link: resetLink };
   };
 
-  // Reset password flow using token
-  const resetPassword = async (token, newPassword) => {
-    // Simulate network delay
+  // Mock implementation for Reset Password
+  const resetPassword = async (resetToken, newPassword) => {
     await new Promise((resolve) => setTimeout(resolve, 800));
-
-    const tokens = JSON.parse(localStorage.getItem('taskflow_reset_tokens') || '{}');
-    const email = tokens[token];
-
-    if (!email) {
+    if (!resetToken) {
       throw new Error('Invalid or expired reset token.');
     }
-
-    // Update password in stored users database
-    const storedUsers = JSON.parse(localStorage.getItem('taskflow_users') || '[]');
-    const userIndex = storedUsers.findIndex((u) => u.email.toLowerCase() === email);
-
-    if (userIndex === -1) {
-      throw new Error('User account not found.');
-    }
-
-    storedUsers[userIndex].password = newPassword;
-    localStorage.setItem('taskflow_users', JSON.stringify(storedUsers));
-
-    // Invalidate the reset token
-    delete tokens[token];
-    localStorage.setItem('taskflow_reset_tokens', JSON.stringify(tokens));
-
-    // Clear notifications
+    
+    // Clear simulations notifications
     setNotifications([]);
-
     return { success: true };
   };
 
-  // Dismiss notification banner
   const dismissNotification = (id) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
@@ -159,14 +155,16 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider
       value={{
+        token,
         user,
+        role,
         loading,
+        notifications,
         login,
         logout,
         forgotPassword,
         resetPassword,
-        notifications,
-        dismissNotification
+        dismissNotification,
       }}
     >
       {children}
