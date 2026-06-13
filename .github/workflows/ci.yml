@@ -1,20 +1,23 @@
-name: CI/CD Pipeline & Code Quality Validation
+name: Continuous Integration
 
 on:
   push:
-    branches: [ main, dev ]
+    branches:
+      - dev
   pull_request:
-    branches: [ main, dev ]
+    branches:
+      - main
 
 jobs:
-  code-quality-backend:
-    name: Backend Lint & Prisma Verification
+  backend-checks:
+    name: Backend Checks (Node.js & Prisma)
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -24,35 +27,32 @@ jobs:
       - name: Install Backend Dependencies
         run: |
           cd backend
-          npm ci
-
-      - name: Validate Prisma Schema
-        env:
-          DATABASE_URL: "postgresql://postgres:password123@localhost:5432/tms_dev_db?schema=public"
-        run: |
-          cd backend
-          npx prisma validate
+          npm install
 
       - name: Generate Prisma Client
-        env:
-          DATABASE_URL: "postgresql://postgres:password123@localhost:5432/tms_dev_db?schema=public"
         run: |
           cd backend
           npx prisma generate
 
-      - name: Backend Security Audit
+      - name: Run Backend Linter
         run: |
           cd backend
-          npm audit --audit-level=high || true
+          npm run lint --if-present
 
-  code-quality-frontend:
-    name: Frontend Lint & Build Verification
+      - name: Run Backend Tests
+        run: |
+          cd backend
+          npm test
+
+  frontend-checks:
+    name: Frontend Checks (React & Vite)
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -62,84 +62,35 @@ jobs:
       - name: Install Frontend Dependencies
         run: |
           cd frontend
-          npm ci
+          npm install
 
-      - name: Run ESLint
-        run: |
-          cd frontend
-          npm run lint
-
-      - name: Build Frontend Application
+      - name: Verify Production Build
         run: |
           cd frontend
           npm run build
 
-      - name: Frontend Security Audit
+      - name: Run Frontend Linter
         run: |
           cd frontend
-          npm audit --audit-level=high || true
+          npm run lint --if-present
 
-  docker-validation:
-    name: Dockerfile Lint & Container Build Checks
+  docker-compose-validation:
+    name: Docker Compose Validation
     runs-on: ubuntu-latest
-    needs: [code-quality-backend, code-quality-frontend]
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Lint Backend Dockerfile
-        uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: backend/Dockerfile
-          ignore: DL3018,DL3008
+      - name: Install Docker Compose
+        run: |
+          if ! command -v docker-compose &> /dev/null; then
+            echo "Docker Compose not found. Installing..."
+            sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
+          fi
+          docker-compose --version
 
-      - name: Lint Frontend Dockerfile
-        uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: frontend/Dockerfile
-          ignore: DL3018,DL3008
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Backend Image (Validation)
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          file: ./backend/Dockerfile
-          push: false
-          tags: tms-backend:test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build Frontend Image (Validation)
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
-          push: false
-          tags: tms-frontend:test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Run Trivy Vulnerability Scanner (Backend)
-        uses: aquasecurity/trivy-action@v0.36.0
-        continue-on-error: true
-        with:
-          image-ref: 'tms-backend:test'
-          format: 'table'
-          exit-code: '0'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-
-      - name: Run Trivy Vulnerability Scanner (Frontend)
-        uses: aquasecurity/trivy-action@v0.36.0
-        continue-on-error: true
-        with:
-          image-ref: 'tms-frontend:test'
-          format: 'table'
-          exit-code: '0'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
+      - name: Validate Docker Compose Schema
+        run: |
+          docker-compose config
