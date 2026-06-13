@@ -253,3 +253,32 @@ This checklist must be fully verified and checked off prior to marking any relea
 - [ ] **Rollback Strategy**:
   - [ ] In the event of a critical failure during rollout, verify the mechanism to redeploy the previous stable Docker image tag instantly.
   - [ ] Database backup snapshot created before the deployment.
+
+---
+
+## 7. Branch Protection Rules (GitHub Repository Settings)
+
+To guarantee that no code is merged into protected branches (`main` and `dev`) without meeting our rigorous quality gates, administrators must configure the following branch protection rules in the GitHub repository settings.
+
+### 7.1 main Branch Protection Rules
+* **Path**: Settings -> Branches -> Add branch protection rule
+* **Branch name pattern**: `main`
+* **Protection Configurations**:
+  * **Require a pull request before merging**: Enforce all code changes to pass through a Pull Request. Direct pushes to `main` are blocked.
+    * **Require approvals**: Enabled, with a minimum of **1 approval** required (recommending peer reviews).
+    * **Dismiss stale pull request approvals when new commits are pushed**: Enabled, to force re-review if the code changes.
+  * **Require status checks to pass before merging**: Blocks merging until the CI pipeline runs successfully.
+    * **Require branches to be up to date before merging**: Enabled, to ensure the feature branch contains all changes from `main`.
+    * **Status Checks Required**:
+      * `Backend Checks (Node.js & Prisma)` (validates Express, Prisma and ESLint compiling)
+      * `Frontend Checks (React & Vite)` (validates React production build and ESLint)
+      * `Docker Compose Validation` (validates Docker Compose YAML structure)
+  * **Require conversation resolution before merging**: Enabled, ensuring all code comments/reviews are marked as resolved.
+  * **Restrict who can push to matching branches**: Only allowed for automated releases or administrators.
+
+### 7.2 dev Branch Protection Rules
+* **Branch name pattern**: `dev`
+* **Protection Configurations**:
+  * **Require a pull request before merging** (Require approvals: **1 approval**).
+  * **Require status checks to pass before merging** (Status Checks Required: same list as above).
+  * **Block force pushes** (Enforced on both branches).
