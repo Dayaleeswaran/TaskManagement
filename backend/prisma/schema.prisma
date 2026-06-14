@@ -41,6 +41,9 @@ model User {
   assignments       TaskAssignment[]
   comments          Comment[]        @relation("CommentAuthor")
   notifications     Notification[]
+
+  @@index([email])
+  @@index([role])
 }
 
 model Project {
@@ -80,6 +83,7 @@ model Task {
   @@index([createdById])
   @@index([status])
   @@index([priority])
+  @@index([dueDate])
 }
 
 model TaskAssignment {
@@ -119,4 +123,5 @@ model Notification {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, isRead])
 }
