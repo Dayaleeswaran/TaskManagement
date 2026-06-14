@@ -182,7 +182,7 @@ async function main() {
   // 8. Seed sample Notification
   await prisma.notification.create({
     data: {
-      type: 'TASK_ASSIGNMENT',
+      type: 'TASK_ASSIGNED',
       message: `You have been assigned to task: "${task2.title}"`,
       isRead: false,
       userId: collab2.id,

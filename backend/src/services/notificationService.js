@@ -62,26 +62,14 @@ const createNotification = async (userId, type, message) => {
 const createBulkNotifications = async (userIds, type, message) => {
   if (!userIds || userIds.length === 0) return [];
 
-  // Bulk insert via createMany
-  await prisma.notification.createMany({
+  // Bulk insert via createManyAndReturn (supported in Postgres)
+  const notifications = await prisma.notification.createManyAndReturn({
     data: userIds.map((userId) => ({
       userId,
       type,
       message,
       isRead: false,
     })),
-  });
-
-  // Fetch the just-created notifications to emit them accurately
-  const notifications = await prisma.notification.findMany({
-    where: {
-      userId: { in: userIds },
-      type,
-      message,
-      isRead: false,
-    },
-    orderBy: { createdAt: "desc" },
-    take: userIds.length,
   });
 
   // Emit to each user's socket room
