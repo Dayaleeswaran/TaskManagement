@@ -131,7 +131,7 @@ Security is central to our configuration management. Under no circumstances shou
 | `DATABASE_URL` | Backend | Connection String `postgresql://...` | Prisma database connection endpoint. | Keep credentials private. Never use defaults in production. |
 | `JWT_SECRET` | Backend | High-entropy string (min 32 chars) | Key used to sign JWT session tokens. | Must be rotated periodically and generated cryptographically. |
 | `VITE_API_URL` | Frontend | URL with HTTP/HTTPS scheme | The base endpoint for API communication. | Must use HTTPS protocol in production. |
-| `VITE_WS_URL` | Frontend | URL with WS/WSS scheme | The WebSocket endpoint for real-time alerts. | Must use WSS protocol in production. |
+| `VITE_SOCKET_URL` | Frontend | URL with WS/WSS scheme | The WebSocket endpoint for real-time alerts. | Must use WSS protocol in production. |
 
 ### Secrets Protection Guidelines
 

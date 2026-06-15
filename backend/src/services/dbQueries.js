@@ -1,5 +1,4 @@
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+const prisma = require("../prisma");
 
 /**
  * Retrieves tasks with status, priority, and assignee filters and supports pagination.

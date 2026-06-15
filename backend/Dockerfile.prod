@@ -1,0 +1,22 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies using npm ci (clean install for reliable builds)
+COPY package*.json ./
+RUN npm ci
+
+# Copy backend source code
+COPY . .
+
+# Generate Prisma Client code based on database schema
+RUN npx prisma generate
+
+# Expose backend API port
+EXPOSE 3000
+
+# Set environment to production
+ENV NODE_ENV=production
+
+# Start the application in production mode
+CMD ["npm", "run", "start"]
