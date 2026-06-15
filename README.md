@@ -54,3 +54,28 @@ A GitHub Actions workflow is defined in [.github/workflows/ci.yml](file:///c:/Us
 - **Docker Validation**: Lints Dockerfiles via Hadolint.
 - **Security Scanning**: Audits dependencies for vulnerability warnings and runs Trivy on container images.
 - **Prisma Schema Verification**: Validates formatting and database integrity mapping.
+
+---
+
+## API Documentation (Swagger)
+
+The backend server includes complete Swagger API documentation. 
+
+- **Documentation UI:** [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
+- **Swagger JSON Payload:** [http://localhost:3000/api/docs/swagger.json](http://localhost:3000/api/docs/swagger.json)
+
+### Authenticating in Swagger UI
+
+To test protected endpoints directly within Swagger UI:
+
+1. **Get an Access Token:** 
+   Send a login request to the `POST /api/v1/auth/login` endpoint using standard user credentials. Copy the `token` string returned in the response payload.
+2. **Open Swagger Authorization:**
+   Click the green **Authorize** button at the top-right of the Swagger UI dashboard.
+3. **Input the Token:**
+   Enter the token string directly in the value text field. 
+   *Note: Do not prefix the token with `Bearer ` as Swagger UI is configured to apply the bearer scheme automatically.*
+4. **Authorize & Persist:**
+   Click **Authorize** to save the token, then click **Close**. 
+   Thanks to the configured auth persistence, this token will remain authorized across page refreshes.
+
