@@ -32,7 +32,7 @@ services:
       DATABASE_URL: "postgresql://postgres:production_password_change_me@postgres:5432/tms_prod_db?schema=public"
       JWT_SECRET: "production-jwt-super-secret-key-change-me"
       JWT_EXPIRES_IN: "24h"
-      CLIENT_ORIGIN: "http://localhost:80"
+      CLIENT_ORIGIN: "http://localhost,http://localhost:80"
     command: sh -c "npx prisma migrate deploy && npm run start"
     depends_on:
       postgres:
@@ -49,8 +49,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
       args:
-        VITE_API_URL: "http://localhost"
-        VITE_SOCKET_URL: "http://localhost"
+        VITE_API_URL: ""
+        VITE_SOCKET_URL: ""
     container_name: tms_frontend_prod
     restart: always
     ports:

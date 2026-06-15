@@ -11,9 +11,20 @@ let io;
  */
 const init = (server) => {
   const clientOrigin = process.env.CLIENT_ORIGIN;
-  const allowedOrigins = clientOrigin
+  const rawOrigins = clientOrigin
     ? clientOrigin.split(",").map((o) => o.trim()).filter(Boolean)
     : [];
+
+  // Automatically allow the port-less default origin if a default port is specified
+  const extraOrigins = [];
+  rawOrigins.forEach((origin) => {
+    if (origin.startsWith("http://") && origin.endsWith(":80")) {
+      extraOrigins.push(origin.slice(0, -3));
+    } else if (origin.startsWith("https://") && origin.endsWith(":443")) {
+      extraOrigins.push(origin.slice(0, -4));
+    }
+  });
+  const allowedOrigins = [...rawOrigins, ...extraOrigins];
 
   io = new Server(server, {
     cors: {

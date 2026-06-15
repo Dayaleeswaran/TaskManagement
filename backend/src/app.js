@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const http = require("http");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("../swagger");
 
@@ -14,6 +16,25 @@ const healthRoutes = require("./routes/healthRoutes");
 const { errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
+
+// Secure application by setting various HTTP headers
+app.use(helmet());
+
+// Rate limiting middleware to prevent brute-force/DoS attacks
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per 15 minutes
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  message: {
+    status: 429,
+    message: "Too many requests from this IP, please try again after 15 minutes"
+  }
+});
+
+// Apply rate limiter to all API routes
+app.use("/api", apiLimiter);
+
 const server = http.createServer(app);
 
 // Initialize Socket.io
@@ -21,9 +42,20 @@ init(server);
 
 // Production-grade CORS setup
 const clientOrigin = process.env.CLIENT_ORIGIN;
-const allowedOrigins = clientOrigin
+const rawOrigins = clientOrigin
   ? clientOrigin.split(",").map((o) => o.trim()).filter(Boolean)
   : [];
+
+// Automatically allow the port-less default origin if a default port is specified
+const extraOrigins = [];
+rawOrigins.forEach((origin) => {
+  if (origin.startsWith("http://") && origin.endsWith(":80")) {
+    extraOrigins.push(origin.slice(0, -3));
+  } else if (origin.startsWith("https://") && origin.endsWith(":443")) {
+    extraOrigins.push(origin.slice(0, -4));
+  }
+});
+const allowedOrigins = [...rawOrigins, ...extraOrigins];
 
 if (process.env.NODE_ENV === "production" && allowedOrigins.length === 0) {
   console.warn("WARNING: NODE_ENV is set to 'production' but CLIENT_ORIGIN is not defined or is empty!");
