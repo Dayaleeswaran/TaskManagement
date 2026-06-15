@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import NotificationPanel from './NotificationPanel';
 import {
   LayoutDashboard,
   Users,
@@ -109,6 +110,7 @@ export default function MainLayout() {
 
         {/* User profile details & Logout */}
         <div className="flex items-center space-x-3 sm:space-x-4">
+          <NotificationPanel />
           <div className="flex items-center space-x-3 border-r border-slate-900 pr-3 sm:pr-4">
             {/* User Avatar with Initials */}
             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center font-bold text-xs text-white shadow shadow-violet-500/10">
