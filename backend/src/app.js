@@ -6,6 +6,7 @@ const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const commentRoutes = require("./routes/comment.routes");
 const notificationRoutes = require("./routes/notification.routes");
+const healthRoutes = require("./routes/healthRoutes");
 const { errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
@@ -31,6 +32,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/v1", commentRoutes);
 app.use("/api/v1", notificationRoutes);
+app.use("/api/health", healthRoutes);
 
 // Centralized Error Handler (must be registered after all routes)
 app.use(errorHandler);
