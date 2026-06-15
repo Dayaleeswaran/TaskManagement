@@ -10,9 +10,22 @@ let io;
  * @returns {Server} The initialized socket.io server instance.
  */
 const init = (server) => {
+  const clientOrigin = process.env.CLIENT_ORIGIN;
+  const allowedOrigins = clientOrigin
+    ? clientOrigin.split(",").map((o) => o.trim()).filter(Boolean)
+    : [];
+
   io = new Server(server, {
     cors: {
-      origin: process.env.CLIENT_ORIGIN || "*",
+      origin: (origin, callback) => {
+        if (!origin || process.env.NODE_ENV !== "production") {
+          return callback(null, true);
+        }
+        if (allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+        return callback(new Error(`Origin ${origin} not allowed by CORS`));
+      },
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
       credentials: true,
     },

@@ -19,13 +19,38 @@ const server = http.createServer(app);
 // Initialize Socket.io
 init(server);
 
-app.use(
-  cors({
-    origin: process.env.CLIENT_ORIGIN || "*",
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    credentials: true,
-  })
-);
+// Production-grade CORS setup
+const clientOrigin = process.env.CLIENT_ORIGIN;
+const allowedOrigins = clientOrigin
+  ? clientOrigin.split(",").map((o) => o.trim()).filter(Boolean)
+  : [];
+
+if (process.env.NODE_ENV === "production" && allowedOrigins.length === 0) {
+  console.warn("WARNING: NODE_ENV is set to 'production' but CLIENT_ORIGIN is not defined or is empty!");
+}
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. mobile apps, curl, postman, server-to-server)
+    // or if we are not in production environment
+    if (!origin || process.env.NODE_ENV !== "production") {
+      return callback(null, true);
+    }
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`Origin ${origin} not allowed by CORS`));
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  credentials: true,
+  optionsSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
+
+// Handle HTTP OPTIONS preflight requests explicitly for all routes
+app.options("*", cors(corsOptions));
+
 app.use(express.json());
 
 // Mount Swagger Documentation Route
