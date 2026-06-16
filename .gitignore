@@ -27,7 +27,7 @@ yarn-error.log*
 # ==========================================
 # 3. Prisma ORM & Database Artifacts
 # ==========================================
-/backend/prisma/migrations/
+# /backend/prisma/migrations/ (Must be tracked to share database schema updates)
 /backend/prisma/dev.db
 /backend/prisma/dev.db-journal
 /backend/prisma/schema.prisma.backup
@@ -51,6 +51,3 @@ Thumbs.db
 *.njsproj
 *.sln
 *.swp
-# Local Architectural & Design Docs
-/docs/**/*.md
-/docs/*.md
