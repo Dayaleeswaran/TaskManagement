@@ -13,7 +13,7 @@ const sanitizeInput = (req, res, next) => {
 
     // 2. Simple SQLi pattern check (Keyword + special character)
     const sqlKeywords = /\b(union|select|insert|update|delete|drop|alter)\b/gi;
-    const sqlChars = /[\'\";\-]/g;
+    const sqlChars = /['";-]/g;
     if (sqlKeywords.test(val) && sqlChars.test(val)) return true;
 
     return false;
