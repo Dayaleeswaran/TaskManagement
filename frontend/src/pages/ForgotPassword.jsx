@@ -8,21 +8,28 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [emailError, setEmailError] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const handleEmailChange = (e) => {
+    setEmail(e.target.value);
+    if (emailError) setEmailError('');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setEmailError('');
 
-    // Basic validation
-    if (!email) {
-      setError('Please enter your email address.');
+    // Per-field validation
+    if (!email.trim()) {
+      setEmailError('Email address is required.');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address.');
+      setEmailError('Please enter a valid email address.');
       return;
     }
 
@@ -68,21 +75,30 @@ export default function ForgotPassword() {
                   Email Address
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                  <div className={`absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none ${emailError ? 'text-red-400' : 'text-slate-500'}`}>
                     <Mail className="h-5 w-5" />
                   </div>
                   <input
                     id="email"
                     name="email"
                     type="email"
-                    required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="block w-full pl-11 pr-4 py-3 bg-slate-900 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all duration-200 font-sans"
+                    onChange={handleEmailChange}
+                    className={`block w-full pl-11 pr-4 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 font-sans ${
+                      emailError
+                        ? 'border-red-500 focus:ring-red-500/50'
+                        : 'border-slate-800 focus:ring-violet-500'
+                    }`}
                     placeholder="e.g. admin@taskflow.com"
                     disabled={loading}
                   />
                 </div>
+                {emailError && (
+                  <p className="mt-1.5 text-xs font-medium text-red-400 flex items-center gap-1">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    {emailError}
+                  </p>
+                )}
               </div>
 
               <button

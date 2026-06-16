@@ -12,29 +12,55 @@ export default function ResetPassword() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({ password: '', confirmPassword: '' });
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const handlePasswordChange = (e) => {
+    setPassword(e.target.value);
+    if (fieldErrors.password) {
+      setFieldErrors((prev) => ({ ...prev, password: '' }));
+    }
+  };
+
+  const handleConfirmPasswordChange = (e) => {
+    setConfirmPassword(e.target.value);
+    if (fieldErrors.confirmPassword) {
+      setFieldErrors((prev) => ({ ...prev, confirmPassword: '' }));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({ password: '', confirmPassword: '' });
 
     if (!token) {
       setError('Missing reset token. Please request a new link.');
       return;
     }
 
+    // Per-field validation
+    const errors = { password: '', confirmPassword: '' };
+    let hasErrors = false;
+
     if (!password) {
-      setError('Please enter a new password.');
-      return;
+      errors.password = 'Please enter a new password.';
+      hasErrors = true;
+    } else if (password.length < 6) {
+      errors.password = 'Password must be at least 6 characters long.';
+      hasErrors = true;
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long.');
-      return;
+    if (!confirmPassword) {
+      errors.confirmPassword = 'Please confirm your password.';
+      hasErrors = true;
+    } else if (password && confirmPassword && password !== confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match.';
+      hasErrors = true;
     }
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+    if (hasErrors) {
+      setFieldErrors(errors);
       return;
     }
 
@@ -99,21 +125,30 @@ export default function ResetPassword() {
                   New Password
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                  <div className={`absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none ${fieldErrors.password ? 'text-red-400' : 'text-slate-500'}`}>
                     <Lock className="h-5 w-5" />
                   </div>
                   <input
                     id="password"
                     name="password"
                     type="password"
-                    required
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full pl-11 pr-4 py-3 bg-slate-900 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all duration-200 font-sans"
+                    onChange={handlePasswordChange}
+                    className={`block w-full pl-11 pr-4 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 font-sans ${
+                      fieldErrors.password
+                        ? 'border-red-500 focus:ring-red-500/50'
+                        : 'border-slate-800 focus:ring-violet-500'
+                    }`}
                     placeholder="At least 6 characters"
                     disabled={loading}
                   />
                 </div>
+                {fieldErrors.password && (
+                  <p className="mt-1.5 text-xs font-medium text-red-400 flex items-center gap-1">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    {fieldErrors.password}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -121,21 +156,30 @@ export default function ResetPassword() {
                   Confirm Password
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                  <div className={`absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none ${fieldErrors.confirmPassword ? 'text-red-400' : 'text-slate-500'}`}>
                     <Lock className="h-5 w-5" />
                   </div>
                   <input
                     id="confirmPassword"
                     name="confirmPassword"
                     type="password"
-                    required
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="block w-full pl-11 pr-4 py-3 bg-slate-900 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all duration-200 font-sans"
+                    onChange={handleConfirmPasswordChange}
+                    className={`block w-full pl-11 pr-4 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 font-sans ${
+                      fieldErrors.confirmPassword
+                        ? 'border-red-500 focus:ring-red-500/50'
+                        : 'border-slate-800 focus:ring-violet-500'
+                    }`}
                     placeholder="Repeat password"
                     disabled={loading}
                   />
                 </div>
+                {fieldErrors.confirmPassword && (
+                  <p className="mt-1.5 text-xs font-medium text-red-400 flex items-center gap-1">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    {fieldErrors.confirmPassword}
+                  </p>
+                )}
               </div>
 
               <button

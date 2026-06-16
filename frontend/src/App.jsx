@@ -1,8 +1,11 @@
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
+import ToastContainer from './components/Toast';
 import ProtectedRoute from './components/ProtectedRoute';
 import MainLayout from './components/MainLayout';
 import ErrorBoundary from './components/ErrorBoundary';
+
 
 // Pages
 import Login from './pages/Login';
@@ -165,7 +168,10 @@ export default function App() {
     <ErrorBoundary>
       <Router>
         <AuthProvider>
-          <AppContent />
+          <ToastProvider>
+            <ToastContainer />
+            <AppContent />
+          </ToastProvider>
         </AuthProvider>
       </Router>
     </ErrorBoundary>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import NotificationPanel from './NotificationPanel';
@@ -20,6 +20,7 @@ export default function MainLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
   const isActive = (path) => location.pathname === path;
 
@@ -46,16 +47,41 @@ export default function MainLayout() {
 
   const menuItems = navigationConfig[user?.role] || [];
 
+  // Standardized role badge colors: ADMIN=purple, PM=blue, COLLABORATOR=gray
   const getRoleBadgeStyle = (role) => {
     switch (role) {
       case 'ADMIN':
-        return 'bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 text-violet-400 border-violet-500/30';
+        return 'bg-purple-500/10 text-purple-400 border-purple-500/30';
       case 'PROJECT_MANAGER':
-        return 'bg-gradient-to-r from-fuchsia-500/10 to-pink-500/10 text-fuchsia-400 border-fuchsia-500/30';
+        return 'bg-blue-500/10 text-blue-400 border-blue-500/30';
       default:
-        return 'bg-slate-800/40 text-slate-400 border-slate-700/60';
+        return 'bg-slate-500/10 text-slate-400 border-slate-600/30';
     }
   };
+
+  // Open mobile sidebar
+  const openSidebar = useCallback(() => {
+    setMobileSidebarOpen(true);
+    setIsClosing(false);
+    document.body.classList.add('sidebar-open');
+  }, []);
+
+  // Close mobile sidebar with exit animation
+  const closeSidebar = useCallback(() => {
+    setIsClosing(true);
+    document.body.classList.remove('sidebar-open');
+    setTimeout(() => {
+      setMobileSidebarOpen(false);
+      setIsClosing(false);
+    }, 250);
+  }, []);
+
+  // Clean up body class on unmount
+  useEffect(() => {
+    return () => {
+      document.body.classList.remove('sidebar-open');
+    };
+  }, []);
 
   const renderNavLinks = (onClickCallback) => (
     <div className="space-y-1.5 px-3 py-4">
@@ -92,8 +118,9 @@ export default function MainLayout() {
         <div className="flex items-center space-x-3">
           {/* Mobile hamburger menu toggle */}
           <button
-            onClick={() => setMobileSidebarOpen(true)}
+            onClick={openSidebar}
             className="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-900 transition-colors cursor-pointer"
+            aria-label="Open navigation menu"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -153,17 +180,17 @@ export default function MainLayout() {
           </div>
         </aside>
 
-        {/* Mobile Slide-out Drawer Sidebar (Overlay) */}
+        {/* Mobile Slide-out Drawer Sidebar (Overlay with animation) */}
         {mobileSidebarOpen && (
           <div className="fixed inset-0 z-50 md:hidden flex">
             {/* Backdrop */}
             <div
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-              onClick={() => setMobileSidebarOpen(false)}
+              className={`fixed inset-0 bg-black/60 backdrop-blur-sm ${isClosing ? 'sidebar-backdrop-exit' : 'sidebar-backdrop-enter'}`}
+              onClick={closeSidebar}
             ></div>
 
-            {/* Sidebar drawer content */}
-            <div className="relative flex flex-col w-64 max-w-xs bg-slate-950 border-r border-slate-900 h-full shadow-2xl transition-transform duration-300 ease-out z-10">
+            {/* Sidebar drawer content with slide animation */}
+            <div className={`relative flex flex-col w-64 max-w-xs bg-slate-950 border-r border-slate-900 h-full shadow-2xl z-10 ${isClosing ? 'sidebar-drawer-exit' : 'sidebar-drawer-enter'}`}>
               <div className="p-4 flex items-center justify-between border-b border-slate-900">
                 <div className="flex items-center space-x-2.5">
                   <div className="h-8 w-8 rounded-lg bg-gradient-to-tr from-violet-600 to-fuchsia-600 flex items-center justify-center font-bold text-white shadow shadow-violet-500/20 text-sm">
@@ -172,15 +199,16 @@ export default function MainLayout() {
                   <span className="text-sm font-bold text-white">Menu Navigation</span>
                 </div>
                 <button
-                  onClick={() => setMobileSidebarOpen(false)}
+                  onClick={closeSidebar}
                   className="p-1 rounded-lg hover:bg-slate-900 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  aria-label="Close navigation menu"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
 
               <div className="flex-1 overflow-y-auto">
-                {renderNavLinks(() => setMobileSidebarOpen(false))}
+                {renderNavLinks(closeSidebar)}
               </div>
 
               <div className="p-4 border-t border-slate-900 text-[10px] text-slate-600 flex items-center justify-between">

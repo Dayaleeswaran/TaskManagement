@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { Mail, Lock, Loader2, AlertCircle, Info, ShieldCheck } from 'lucide-react';
 
 export default function Login() {
   const { login, user } = useAuth();
+  const { addToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -12,6 +14,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' });
 
   // Get redirection path or default to dashboard
   const from = location.state?.from?.pathname || '/dashboard';
@@ -23,19 +26,51 @@ export default function Login() {
     }
   }, [user, navigate]);
 
+  // Clear field error when user types
+  const handleEmailChange = (e) => {
+    setEmail(e.target.value);
+    if (fieldErrors.email) {
+      setFieldErrors((prev) => ({ ...prev, email: '' }));
+    }
+  };
+
+  const handlePasswordChange = (e) => {
+    setPassword(e.target.value);
+    if (fieldErrors.password) {
+      setFieldErrors((prev) => ({ ...prev, password: '' }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({ email: '', password: '' });
 
-    // Basic Validations
-    if (!email || !password) {
-      setError('Please fill in all fields.');
-      return;
+    // Per-field validation
+    const errors = { email: '', password: '' };
+    let hasErrors = false;
+
+    if (!email.trim()) {
+      errors.email = 'Email address is required.';
+      hasErrors = true;
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        errors.email = 'Please enter a valid email address.';
+        hasErrors = true;
+      }
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address.');
+    if (!password) {
+      errors.password = 'Password is required.';
+      hasErrors = true;
+    } else if (password.length < 4) {
+      errors.password = 'Password must be at least 4 characters.';
+      hasErrors = true;
+    }
+
+    if (hasErrors) {
+      setFieldErrors(errors);
       return;
     }
 
@@ -45,7 +80,9 @@ export default function Login() {
       // Success: Navigate to redirected route
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err.message || 'Incorrect email or password. Please try again.');
+      const errorMsg = err.message || 'Incorrect email or password. Please try again.';
+      setError(errorMsg);
+      addToast(errorMsg, 'error');
     } finally {
       setLoading(false);
     }
@@ -75,6 +112,7 @@ export default function Login() {
           <p className="text-sm text-slate-400 mt-2">Sign in to your account to continue</p>
         </div>
 
+        {/* Server-level error banner (auth failures only) */}
         {error && (
           <div className="mb-6 p-4 rounded-xl bg-red-950/40 border border-red-800/40 flex items-start space-x-3 text-red-200">
             <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
@@ -88,20 +126,29 @@ export default function Login() {
               Email Address
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+              <div className={`absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none ${fieldErrors.email ? 'text-red-400' : 'text-slate-500'}`}>
                 <Mail className="h-5 w-5" />
               </div>
               <input
                 id="email"
                 type="email"
-                required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="block w-full pl-11 pr-4 py-3 bg-slate-900 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all duration-200 font-sans"
+                onChange={handleEmailChange}
+                className={`block w-full pl-11 pr-4 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 font-sans ${
+                  fieldErrors.email
+                    ? 'border-red-500 focus:ring-red-500/50'
+                    : 'border-slate-800 focus:ring-violet-500'
+                }`}
                 placeholder="you@example.com"
                 disabled={loading}
               />
             </div>
+            {fieldErrors.email && (
+              <p className="mt-1.5 text-xs font-medium text-red-400 flex items-center gap-1">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {fieldErrors.email}
+              </p>
+            )}
           </div>
 
           <div>
@@ -117,20 +164,29 @@ export default function Login() {
               </Link>
             </div>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+              <div className={`absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none ${fieldErrors.password ? 'text-red-400' : 'text-slate-500'}`}>
                 <Lock className="h-5 w-5" />
               </div>
               <input
                 id="password"
                 type="password"
-                required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="block w-full pl-11 pr-4 py-3 bg-slate-900 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all duration-200 font-sans"
+                onChange={handlePasswordChange}
+                className={`block w-full pl-11 pr-4 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 font-sans ${
+                  fieldErrors.password
+                    ? 'border-red-500 focus:ring-red-500/50'
+                    : 'border-slate-800 focus:ring-violet-500'
+                }`}
                 placeholder="••••••••"
                 disabled={loading}
               />
             </div>
+            {fieldErrors.password && (
+              <p className="mt-1.5 text-xs font-medium text-red-400 flex items-center gap-1">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {fieldErrors.password}
+              </p>
+            )}
           </div>
 
           <button

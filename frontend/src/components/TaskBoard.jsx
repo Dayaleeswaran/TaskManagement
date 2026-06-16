@@ -16,7 +16,9 @@ import { Search, Filter, RefreshCw } from 'lucide-react';
 import api from '../services/api';
 import TaskCard from './TaskCard';
 import TaskDetailModal from './TaskDetailModal';
+import SkeletonCard from './SkeletonCard';
 import useTaskFilters from '../hooks/useTaskFilters';
+import { useToast } from '../context/ToastContext';
 
 // Kanban Board columns config mapping to Prisma db Status enum
 const COLUMNS = [
@@ -34,7 +36,7 @@ function BoardColumn({ id, title, children, count }) {
   return (
     <div 
       ref={setNodeRef}
-      className="flex flex-col bg-slate-950/30 border border-slate-900 rounded-2xl p-4 min-h-[600px] flex-1 transition-all duration-200"
+      className="flex flex-col bg-slate-950/30 border border-slate-900 rounded-2xl p-4 min-h-[600px] min-w-[300px] flex-1 transition-all duration-200"
     >
       {/* Column Header */}
       <div className="flex items-center justify-between pb-4 mb-3 border-b border-slate-900">
@@ -56,12 +58,45 @@ function BoardColumn({ id, title, children, count }) {
 }
 
 /**
+ * Skeleton loading state for the Kanban board
+ */
+function BoardSkeleton() {
+  return (
+    <div className="flex gap-6 overflow-x-auto pb-4 kanban-scroll-container snap-x snap-mandatory md:grid md:grid-cols-3 md:overflow-x-visible">
+      {COLUMNS.map((column) => (
+        <div
+          key={column.id}
+          className="flex flex-col bg-slate-950/30 border border-slate-900 rounded-2xl p-4 min-h-[600px] min-w-[300px] flex-1 snap-start"
+        >
+          {/* Column Header skeleton */}
+          <div className="flex items-center justify-between pb-4 mb-3 border-b border-slate-900">
+            <div className="flex items-center space-x-2.5">
+              <div className="h-2.5 w-2.5 rounded-full skeleton-shimmer bg-slate-800/60" />
+              <div className="h-4 w-20 rounded skeleton-shimmer bg-slate-800/60" />
+            </div>
+            <div className="h-5 w-6 rounded-md skeleton-shimmer bg-slate-800/60" />
+          </div>
+
+          {/* Skeleton cards */}
+          <div className="flex-1 flex flex-col gap-3.5">
+            <SkeletonCard />
+            <SkeletonCard />
+            {column.id !== 'COMPLETED' && <SkeletonCard />}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
  * Main TaskBoard Kanban Component
  */
 export default function TaskBoard() {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState(null);
+  const { addToast } = useToast();
 
   // Configure sensors for Drag and Drop
   // Use PointerSensor with activation constraint to prevent blocking normal click events
@@ -181,6 +216,9 @@ export default function TaskBoard() {
     // Save previous state for rollback in case of error
     const previousTasks = [...tasks];
 
+    // Format status name for toast
+    const statusLabel = targetStatus.replace('_', ' ').toLowerCase();
+
     // 1. Optimistic UI Update (Update local state instantly)
     setTasks((prevTasks) =>
       prevTasks.map((task) =>
@@ -192,10 +230,12 @@ export default function TaskBoard() {
     try {
       await api.patch(`/api/v1/tasks/${taskId}/status`, { status: targetStatus });
       console.log(`[Optimistic OK] Task ${taskId} status updated to: ${targetStatus}`);
+      addToast(`Task moved to ${statusLabel}`, 'success');
     } catch (err) {
       console.error('[Optimistic Fail] Reverting task status update:', err);
       // Revert state on error
       setTasks(previousTasks);
+      addToast('Failed to update task status. Changes reverted.', 'error');
     }
   };
 
@@ -297,17 +337,14 @@ export default function TaskBoard() {
 
       {/* Kanban Drag-and-Drop Columns Area */}
       {isLoading ? (
-        <div className="py-20 flex flex-col items-center justify-center space-y-4">
-          <RefreshCw className="h-8 w-8 text-violet-500 animate-spin" />
-          <p className="text-slate-400 text-sm font-medium">Loading project board tasks...</p>
-        </div>
+        <BoardSkeleton />
       ) : (
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
           onDragEnd={handleDragEnd}
         >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+          <div className="flex gap-6 overflow-x-auto pb-4 kanban-scroll-container snap-x snap-mandatory md:grid md:grid-cols-3 md:overflow-x-visible">
             {COLUMNS.map((column) => {
               const columnTasks = getTasksByStatus(column.id);
               return (

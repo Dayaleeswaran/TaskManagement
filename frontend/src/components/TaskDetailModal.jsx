@@ -116,6 +116,18 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded }) {
     }
   };
 
+  // Standardized role badge colors for comment author avatars
+  const getRoleBadgeColor = (role) => {
+    switch (role) {
+      case 'ADMIN':
+        return 'bg-purple-600/10 border-purple-500/25 text-purple-300';
+      case 'PROJECT_MANAGER':
+        return 'bg-blue-600/10 border-blue-500/25 text-blue-300';
+      default:
+        return 'bg-violet-600/10 border-violet-500/25 text-violet-300';
+    }
+  };
+
   const formatRelativeTime = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -276,7 +288,7 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded }) {
                   const initials = author.name?.split(' ').map(n => n[0]).join('') || 'U';
                   return (
                     <div key={comment.id} className="p-3 bg-slate-950/30 rounded-xl border border-slate-850 flex items-start space-x-3 text-sm">
-                      <div className="h-8 w-8 rounded-lg bg-violet-600/10 border border-violet-500/25 flex items-center justify-center font-bold text-xs text-violet-300 flex-shrink-0">
+                      <div className={`h-8 w-8 rounded-lg border flex items-center justify-center font-bold text-xs flex-shrink-0 ${getRoleBadgeColor(author.role)}`}>
                         {initials}
                       </div>
                       <div className="flex-1 space-y-1 min-w-0">
