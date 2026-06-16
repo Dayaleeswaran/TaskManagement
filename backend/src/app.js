@@ -81,7 +81,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Handle HTTP OPTIONS preflight requests explicitly for all routes
-app.options("*", cors(corsOptions));
+app.options("*path", cors(corsOptions));
 
 app.use(express.json());
 
