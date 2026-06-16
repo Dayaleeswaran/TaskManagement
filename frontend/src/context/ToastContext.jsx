@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useState, useContext, useCallback } from 'react';
+import { createContext, useState, useContext, useCallback, useMemo } from 'react';
 
 const ToastContext = createContext(null);
 
@@ -13,20 +13,6 @@ let toastIdCounter = 0;
 export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
-  const addToast = useCallback((message, type = 'info', duration = 4000) => {
-    const id = ++toastIdCounter;
-    const toast = { id, message, type, duration, exiting: false };
-
-    setToasts((prev) => [...prev, toast]);
-
-    // Auto-dismiss after duration
-    setTimeout(() => {
-      dismissToast(id);
-    }, duration);
-
-    return id;
-  }, []);
-
   const dismissToast = useCallback((id) => {
     // Trigger exit animation first
     setToasts((prev) =>
@@ -39,8 +25,27 @@ export const ToastProvider = ({ children }) => {
     }, 280);
   }, []);
 
+  const addToast = useCallback((message, type = 'info', duration = 4000) => {
+    const id = ++toastIdCounter;
+    const toast = { id, message, type, duration, exiting: false };
+
+    setToasts((prev) => [...prev, toast]);
+
+    // Auto-dismiss after duration
+    setTimeout(() => {
+      dismissToast(id);
+    }, duration);
+
+    return id;
+  }, [dismissToast]);
+
+  const value = useMemo(
+    () => ({ toasts, addToast, dismissToast }),
+    [toasts, addToast, dismissToast]
+  );
+
   return (
-    <ToastContext.Provider value={{ toasts, addToast, dismissToast }}>
+    <ToastContext.Provider value={value}>
       {children}
     </ToastContext.Provider>
   );

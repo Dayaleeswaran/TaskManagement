@@ -9,8 +9,8 @@ This guide is designed for **Members 1, 2, 3, and 4** to execute their Day 5 tas
 To prevent conflicts and ensure a smooth delivery:
 1. **🛡️ Member 2 (Security) — [COMPLETED]**
    - Security configurations, inputs sanitization, token blacklists, and linter fixes have been pushed to `dev`.
-2. **🎨 Member 3 (Frontend UX) — [NEXT]**
-   - Implement sidebar responsiveness, Kanban horizontal scrolls, skeleton loaders, form validation borders, and toaster alerts.
+2. **🎨 Member 3 (Frontend UX) — [COMPLETED]**
+   - Responsive layout fixes, skeleton loading cards, form validations, and global Toast alert systems have been integrated.
 3. **🗄️ Member 4 (API Testing) — [IN PROGRESS/NEXT]**
    - Prepare the Postman collection, verify validation/sanitization responses, and generate test reports.
 4. **👑 Member 1 (Team Lead) — [FINAL STEP]**
@@ -64,7 +64,7 @@ git pull origin dev
 
 ---
 
-## 🎨 Member 3: Frontend | Polish & Responsive UX
+## 🎨 Member 3: Frontend | Polish & Responsive UX [COMPLETED]
 
 ### **Goal**: Fix responsive layout issues (hamburger menus, horizontal scroll Kanban), implement skeleton load states, inline form validations, and a global Toast alerting system.
 
