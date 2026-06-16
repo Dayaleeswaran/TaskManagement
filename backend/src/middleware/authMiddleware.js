@@ -1,6 +1,8 @@
 const jwt = require("jsonwebtoken");
 const prisma = require("../prisma");
 
+const { isBlacklisted } = require("./tokenBlacklist");
+
 const JWT_SECRET = process.env.JWT_SECRET || "your-jwt-secret-key-change-me-in-production";
 
 const verifyToken = async (req, res, next) => {
@@ -15,7 +17,20 @@ const verifyToken = async (req, res, next) => {
     }
 
     const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, JWT_SECRET);
+
+    // Check if token has been revoked / blacklisted (logout)
+    if (isBlacklisted(token)) {
+      return res.status(401).json({
+        errorCode: "TOKEN_REVOKED",
+        message: "This token has been invalidated. Please log in again.",
+        details: null,
+      });
+    }
+
+    // Pin algorithm to HS256 for secure verification
+    const decoded = jwt.verify(token, JWT_SECRET, {
+      algorithms: ["HS256"],
+    });
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },

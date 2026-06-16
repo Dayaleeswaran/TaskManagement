@@ -14,25 +14,66 @@ const notificationRoutes = require("./routes/notification.routes");
 const taskRoutes = require("./routes/taskRoutes");
 const healthRoutes = require("./routes/healthRoutes");
 const { errorHandler } = require("./middleware/errorHandler");
+const { sanitizeInput } = require("./middleware/sanitizeMiddleware");
 
 const app = express();
 
-// Secure application by setting various HTTP headers
-app.use(helmet());
+// Secure application by setting various HTTP headers (OWASP Hardening)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+      imgSrc: ["'self'", "data:", "https://validator.swagger.io"],
+      connectSrc: ["'self'", "*", "wss://*", "ws://*"],
+    },
+  },
+  hsts: {
+    maxAge: 31536000, // 1 year
+    includeSubDomains: true,
+    preload: true,
+  },
+  noSniff: true,
+  frameguard: {
+    action: "deny",
+  },
+  xssFilter: true,
+  hidePoweredBy: true,
+}));
 
-// Rate limiting middleware to prevent brute-force/DoS attacks
+// Global Rate limiting middleware to prevent brute-force/DoS attacks
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per 15 minutes
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  standardHeaders: true,
+  legacyHeaders: false,
   message: {
-    status: 429,
-    message: "Too many requests from this IP, please try again after 15 minutes"
+    errorCode: "TOO_MANY_REQUESTS",
+    message: "Too many requests from this IP, please try again after 15 minutes.",
+    details: null,
   }
 });
 
-// Apply rate limiter to all API routes
+// Stricter rate limiter for authentication/login routes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 requests per 15 minutes
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    errorCode: "TOO_MANY_AUTH_ATTEMPTS",
+    message: "Too many authentication attempts, please try again after 15 minutes.",
+    details: null,
+  }
+});
+
+// Apply strict rate limiting to auth endpoints
+app.use("/api/auth", authLimiter);
+app.use("/api/v1/auth", authLimiter);
+
+// Apply global rate limiter to all other API routes
 app.use("/api", apiLimiter);
 
 const server = http.createServer(app);
@@ -84,6 +125,7 @@ app.use(cors(corsOptions));
 app.options("*path", cors(corsOptions));
 
 app.use(express.json());
+app.use(sanitizeInput);
 
 // Mount Swagger Documentation Route
 app.use(

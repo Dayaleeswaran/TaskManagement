@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const prisma = require("../prisma");
+const { addToBlacklist } = require("../middleware/tokenBlacklist");
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-jwt-secret-key-change-me-in-production";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "24h";
@@ -116,6 +117,15 @@ exports.login = async (req, res, next) => {
   }
 };
 
-exports.logout = (req, res) => {
-  res.status(200).json({ message: "Logout successful" });
+exports.logout = (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+      addToBlacklist(token);
+    }
+    res.status(200).json({ message: "Logout successful" });
+  } catch (err) {
+    next(err);
+  }
 };

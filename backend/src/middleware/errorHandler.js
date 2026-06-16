@@ -6,6 +6,9 @@ const { Prisma } = require("@prisma/client");
  * { errorCode, message, details }
  */
 const errorHandler = (err, req, res, next) => {
+  const isProduction = process.env.NODE_ENV === "production";
+
+  // Detailed server logging internally
   console.error("[Error Handler Log]:", err);
 
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
@@ -14,27 +17,34 @@ const errorHandler = (err, req, res, next) => {
         return res.status(409).json({
           errorCode: "CONFLICT",
           message: "A unique constraint validation failed. The resource already exists.",
-          details: err.meta?.target || null
+          details: isProduction ? null : err.meta?.target || null,
         });
       case "P2025":
         return res.status(404).json({
           errorCode: "NOT_FOUND",
-          message: err.meta?.cause || "Record not found on the server.",
-          details: null
+          message: isProduction ? "Record not found." : err.meta?.cause || "Record not found on the server.",
+          details: null,
         });
       default:
         return res.status(400).json({
-          errorCode: `BAD_REQUEST_DB_${err.code}`,
-          message: `Database operation failed: ${err.message}`,
-          details: err.meta || null
+          errorCode: "DATABASE_ERROR",
+          message: isProduction ? "A database error occurred." : `Database operation failed: ${err.message}`,
+          details: isProduction ? null : err.meta || null,
         });
     }
   }
 
   const statusCode = err.statusCode || err.status || 500;
   const errorCode = err.errorCode || err.code || "INTERNAL_SERVER_ERROR";
-  const message = err.message || "An unexpected error occurred.";
-  const details = err.details || null;
+  
+  let message = err.message || "An unexpected error occurred.";
+  let details = err.details || null;
+
+  // Mask detailed 500 error messages in production
+  if (isProduction && statusCode === 500) {
+    message = "An unexpected error occurred.";
+    details = null;
+  }
 
   return res.status(statusCode).json({
     errorCode,
