@@ -1,5 +1,5 @@
 const express = require("express");
-const { register } = require("../controllers/authController");
+const { register, login, logout } = require("../controllers/authController");
 
 const router = express.Router();
 
@@ -51,9 +51,7 @@ const router = express.Router();
  *       500:
  *         description: Internal Server Error
  */
-router.post("/login", (req, res) => {
-  res.status(501).json({ message: "Not Implemented" });
-});
+router.post("/login", login);
 
 /**
  * @swagger
@@ -109,9 +107,7 @@ router.post("/register", register);
  *       500:
  *         description: Server error
  */
-router.post("/logout", (req, res) => {
-  res.status(501).json({ message: "Not Implemented" });
-});
+router.post("/logout", logout);
 
 /**
  * @swagger
