@@ -1,0 +1,1483 @@
+{
+  "info": {
+    "_postman_id": "8c454e7f-442a-4df3-a189-e137f7147b4d",
+    "name": "Task Management API Tests",
+    "description": "Functional test collection for the Task Management REST API. Supports role-based auto-login using pre-request scripts and caches auth tokens for ADMIN, PROJECT_MANAGER, and COLLABORATOR roles.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Authentication endpoints: Login, Registration, Logout, and Reset Password.",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Temporary Test User\",\n  \"email\": \"tempuser@tms.com\",\n  \"password\": \"User@123!\",\n  \"role\": \"COLLABORATOR\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Registration status code is 201 or 400\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 400]);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "    pm.test(\"Success payload conforms to spec\", function () {",
+                  "        var jsonData = pm.response.json();",
+                  "        pm.expect(jsonData.message).to.eql(\"User registered successfully\");",
+                  "        pm.expect(jsonData.userId).to.exist;",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Admin login status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Token is generated and cached\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.token).to.exist;",
+                  "    pm.collectionVariables.set(\"adminToken\", jsonData.token);",
+                  "    pm.collectionVariables.set(\"authToken\", jsonData.token);",
+                  "    pm.collectionVariables.set(\"adminUserId\", jsonData.user.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as Project Manager",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{pmEmail}}\",\n  \"password\": \"{{pmPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"PM login status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Token is generated and cached\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.token).to.exist;",
+                  "    pm.collectionVariables.set(\"pmToken\", jsonData.token);",
+                  "    pm.collectionVariables.set(\"authToken\", jsonData.token);",
+                  "    pm.collectionVariables.set(\"pmUserId\", jsonData.user.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as Collaborator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{collabEmail}}\",\n  \"password\": \"{{collabPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Collaborator login status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Token is generated and cached\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.token).to.exist;",
+                  "    pm.collectionVariables.set(\"collabToken\", jsonData.token);",
+                  "    pm.collectionVariables.set(\"authToken\", jsonData.token);",
+                  "    pm.collectionVariables.set(\"collabUserId\", jsonData.user.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login with Invalid Credentials (Failure)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@tms.com\",\n  \"password\": \"WrongPassword!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Login fails with 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.errorCode).to.eql(\"UNAUTHORIZED\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reset Password (Stub 501)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"dummy-reset-token\",\n  \"newPassword\": \"NewPassword@123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "reset-password"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 501 Not Implemented\", function () {",
+                  "    pm.response.to.have.status(501);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql(\"Not Implemented\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Ensure we use active collaborator token or fallback to admin",
+                  "var token = pm.collectionVariables.get(\"collabToken\") || pm.collectionVariables.get(\"adminToken\");",
+                  "pm.collectionVariables.set(\"authToken\", token);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Logout status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql(\"Logout successful\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "User profile management endpoints. All routes require Bearer token. Some require ADMIN role.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{authToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Folder level pre-request script: default authentication is ADMIN",
+              "const baseUrl = pm.collectionVariables.get(\"baseUrl\");",
+              "const email = pm.collectionVariables.get(\"adminEmail\");",
+              "const password = pm.collectionVariables.get(\"adminPassword\");",
+              "",
+              "if (!pm.collectionVariables.get(\"adminToken\")) {",
+              "    pm.sendRequest({",
+              "        url: baseUrl + \"/auth/login\",",
+              "        method: \"POST\",",
+              "        header: { \"Content-Type\": \"application/json\" },",
+              "        body: {",
+              "            mode: \"raw\",",
+              "            raw: JSON.stringify({ email: email, password: password })",
+              "        }",
+              "    }, function (err, res) {",
+              "        if (!err && res.code === 200) {",
+              "            const token = res.json().token;",
+              "            pm.collectionVariables.set(\"adminToken\", token);",
+              "            pm.collectionVariables.set(\"authToken\", token);",
+              "        }",
+              "    });",
+              "} else {",
+              "    pm.collectionVariables.set(\"authToken\", pm.collectionVariables.get(\"adminToken\"));",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "Create User (Admin Only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane PM\",\n  \"email\": \"jane.pm@tms.com\",\n  \"role\": \"PROJECT_MANAGER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"User created status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Returns the created user object without password\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.user).to.exist;",
+                  "    pm.expect(jsonData.user.password).to.be.undefined;",
+                  "    pm.expect(jsonData.user.email).to.eql(\"jane.pm@tms.com\");",
+                  "    pm.collectionVariables.set(\"createdUserId\", jsonData.user.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Users (Admin Only)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?search=Jane&role=PROJECT_MANAGER&page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "Jane"
+                },
+                {
+                  "key": "role",
+                  "value": "PROJECT_MANAGER"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"List users status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Includes users list and pagination meta\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.users).to.be.an(\"array\");",
+                  "    pm.expect(jsonData.pagination).to.exist;",
+                  "    pm.expect(jsonData.pagination.page).to.eql(1);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Users - Forbidden for Collaborators",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Override folder level admin token with collaborator token to test RBAC",
+                  "const baseUrl = pm.collectionVariables.get(\"baseUrl\");",
+                  "const email = pm.collectionVariables.get(\"collabEmail\");",
+                  "const password = pm.collectionVariables.get(\"collabPassword\");",
+                  "",
+                  "if (!pm.collectionVariables.get(\"collabToken\")) {",
+                  "    pm.sendRequest({",
+                  "        url: baseUrl + \"/auth/login\",",
+                  "        method: \"POST\",",
+                  "        header: { \"Content-Type\": \"application/json\" },",
+                  "        body: {",
+                  "            mode: \"raw\",",
+                  "            raw: JSON.stringify({ email: email, password: password })",
+                  "        }",
+                  "    }, function (err, res) {",
+                  "        if (!err && res.code === 200) {",
+                  "            const token = res.json().token;",
+                  "            pm.collectionVariables.set(\"collabToken\", token);",
+                  "            pm.collectionVariables.set(\"authToken\", token);",
+                  "        }",
+                  "    });",
+                  "} else {",
+                  "    pm.collectionVariables.set(\"authToken\", pm.collectionVariables.get(\"collabToken\"));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Collaborator list access is 403 Forbidden\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.errorCode).to.eql(\"FORBIDDEN\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get User Details (Self / Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{createdUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{createdUserId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Get details status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Returns the correct profile\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.user.id).to.eql(pm.collectionVariables.get(\"createdUserId\"));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update User Profile (Self / Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane PM Updated\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{createdUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{createdUserId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Update user status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Reflects updated fields\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.user.name).to.eql(\"Jane PM Updated\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update User Role (Admin Only)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"COLLABORATOR\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{createdUserId}}/role",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{createdUserId}}",
+                "role"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Update role status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Role is modified correctly\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.user.role).to.eql(\"COLLABORATOR\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deactivate User (Admin Only)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{createdUserId}}/deactivate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{createdUserId}}",
+                "deactivate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Deactivate status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"User isActive is false\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.user.isActive).to.eql(false);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete User (Admin Only)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{createdUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{createdUserId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Soft delete status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Confirms user is deactivated\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.user.isActive).to.eql(false);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "description": "Task management endpoints. All routes return 501 Not Implemented in current codebase stubs, verified here.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{authToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Folder level pre-request script: authenticates as PM",
+              "const baseUrl = pm.collectionVariables.get(\"baseUrl\");",
+              "const email = pm.collectionVariables.get(\"pmEmail\");",
+              "const password = pm.collectionVariables.get(\"pmPassword\");",
+              "",
+              "if (!pm.collectionVariables.get(\"pmToken\")) {",
+              "    pm.sendRequest({",
+              "        url: baseUrl + \"/auth/login\",",
+              "        method: \"POST\",",
+              "        header: { \"Content-Type\": \"application/json\" },",
+              "        body: {",
+              "            mode: \"raw\",",
+              "            raw: JSON.stringify({ email: email, password: password })",
+              "        }",
+              "    }, function (err, res) {",
+              "        if (!err && res.code === 200) {",
+              "            const token = res.json().token;",
+              "            pm.collectionVariables.set(\"pmToken\", token);",
+              "            pm.collectionVariables.set(\"authToken\", token);",
+              "        }",
+              "    });",
+              "} else {",
+              "    pm.collectionVariables.set(\"authToken\", pm.collectionVariables.get(\"pmToken\"));",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "Create Task (Stub 501)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Implement API Rate Limiting\",\n  \"description\": \"Configure sliding window limit to auth endpoints\",\n  \"status\": \"TODO\",\n  \"priority\": \"HIGH\",\n  \"dueDate\": \"2026-07-10T12:00:00.000Z\",\n  \"projectId\": \"a3b60580-c11f-4f76-8041-325b1bc8bb01\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tasks"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 501 Not Implemented\", function () {",
+                  "    pm.response.to.have.status(501);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql(\"Not Implemented\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Tasks (Stub 501)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks?status=TODO&priority=HIGH",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tasks"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "TODO"
+                },
+                {
+                  "key": "priority",
+                  "value": "HIGH"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 501 Not Implemented\", function () {",
+                  "    pm.response.to.have.status(501);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Task Details (Stub 501)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks/a3b60580-c11f-4f76-8041-325b1bc8bb01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tasks",
+                "a3b60580-c11f-4f76-8041-325b1bc8bb01"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 501 Not Implemented\", function () {",
+                  "    pm.response.to.have.status(501);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Task (Stub 501)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Implement API Rate Limiting - Version 2\",\n  \"status\": \"IN_PROGRESS\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tasks/a3b60580-c11f-4f76-8041-325b1bc8bb01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tasks",
+                "a3b60580-c11f-4f76-8041-325b1bc8bb01"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 501 Not Implemented\", function () {",
+                  "    pm.response.to.have.status(501);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Assign User to Task (Stub 501)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{collabUserId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tasks/a3b60580-c11f-4f76-8041-325b1bc8bb01/assign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tasks",
+                "a3b60580-c11f-4f76-8041-325b1bc8bb01",
+                "assign"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 501 Not Implemented\", function () {",
+                  "    pm.response.to.have.status(501);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Task Status (Stub 501)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"COMPLETED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tasks/a3b60580-c11f-4f76-8041-325b1bc8bb01/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tasks",
+                "a3b60580-c11f-4f76-8041-325b1bc8bb01",
+                "status"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 501 Not Implemented\", function () {",
+                  "    pm.response.to.have.status(501);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Task (Stub 501)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks/a3b60580-c11f-4f76-8041-325b1bc8bb01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tasks",
+                "a3b60580-c11f-4f76-8041-325b1bc8bb01"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 501 Not Implemented\", function () {",
+                  "    pm.response.to.have.status(501);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Comments",
+      "description": "Task commenting endpoints. Fully integrated with database. Handled by COLLABORATOR role.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{authToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Folder level pre-request script: authenticates as Collaborator",
+              "const baseUrl = pm.collectionVariables.get(\"baseUrl\");",
+              "const email = pm.collectionVariables.get(\"collabEmail\");",
+              "const password = pm.collectionVariables.get(\"collabPassword\");",
+              "",
+              "if (!pm.collectionVariables.get(\"collabToken\")) {",
+              "    pm.sendRequest({",
+              "        url: baseUrl + \"/auth/login\",",
+              "        method: \"POST\",",
+              "        header: { \"Content-Type\": \"application/json\" },",
+              "        body: {",
+              "            mode: \"raw\",",
+              "            raw: JSON.stringify({ email: email, password: password })",
+              "        }",
+              "    }, function (err, res) {",
+              "        if (!err && res.code === 200) {",
+              "            const token = res.json().token;",
+              "            pm.collectionVariables.set(\"collabToken\", token);",
+              "            pm.collectionVariables.set(\"authToken\", token);",
+              "        }",
+              "    });",
+              "} else {",
+              "    pm.collectionVariables.set(\"authToken\", pm.collectionVariables.get(\"collabToken\"));",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "Create Comment on Non-Existent Task (Expected Failure)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"This comment should fail to post.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tasks/a3b60580-c11f-4f76-8041-325b1bc8bb01/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tasks",
+                "a3b60580-c11f-4f76-8041-325b1bc8bb01",
+                "comments"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Create comment fails with 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.errorCode).to.eql(\"TASK_NOT_FOUND\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Comments for Non-Existent Task (Expected Failure)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tasks/a3b60580-c11f-4f76-8041-325b1bc8bb01/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tasks",
+                "a3b60580-c11f-4f76-8041-325b1bc8bb01",
+                "comments"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Get comments fails with 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.errorCode).to.eql(\"TASK_NOT_FOUND\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Non-Existent Comment (Expected Failure)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/comments/a3b60580-c11f-4f76-8041-325b1bc8bb01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comments",
+                "a3b60580-c11f-4f76-8041-325b1bc8bb01"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Delete comment fails with 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.errorCode).to.eql(\"COMMENT_NOT_FOUND\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "description": "User notification endpoints. Handled by COLLABORATOR role. Fetches seeded notifications.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{authToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Folder level pre-request script: authenticates as Collaborator",
+              "const baseUrl = pm.collectionVariables.get(\"baseUrl\");",
+              "const email = pm.collectionVariables.get(\"collabEmail\");",
+              "const password = pm.collectionVariables.get(\"collabPassword\");",
+              "",
+              "if (!pm.collectionVariables.get(\"collabToken\")) {",
+              "    pm.sendRequest({",
+              "        url: baseUrl + \"/auth/login\",",
+              "        method: \"POST\",",
+              "        header: { \"Content-Type\": \"application/json\" },",
+              "        body: {",
+              "            mode: \"raw\",",
+              "            raw: JSON.stringify({ email: email, password: password })",
+              "        }",
+              "    }, function (err, res) {",
+              "        if (!err && res.code === 200) {",
+              "            const token = res.json().token;",
+              "            pm.collectionVariables.set(\"collabToken\", token);",
+              "            pm.collectionVariables.set(\"authToken\", token);",
+              "        }",
+              "    });",
+              "} else {",
+              "    pm.collectionVariables.set(\"authToken\", pm.collectionVariables.get(\"collabToken\"));",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "Get User Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Get notifications status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Extracts notification details\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.notifications).to.be.an(\"array\");",
+                  "    if (jsonData.notifications.length > 0) {",
+                  "        pm.collectionVariables.set(\"notificationId\", jsonData.notifications[0].id);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mark Single Notification as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/{{notificationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "{{notificationId}}",
+                "read"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.collectionVariables.get(\"notificationId\")) {",
+                  "    pm.test(\"Mark read status code is 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "        var jsonData = pm.response.json();",
+                  "        pm.expect(jsonData.notification.isRead).to.eql(true);",
+                  "    });",
+                  "} else {",
+                  "    console.warn(\"Skipping test: no notificationId available.\");",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mark All Notifications as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/read-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "read-all"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Mark all read status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.eql(\"All notifications marked as read.\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "description": "System health monitoring endpoints. Public access.",
+      "item": [
+        {
+          "name": "API Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Health status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"ok\");",
+                  "    pm.expect(jsonData.db).to.eql(\"connected\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "adminEmail",
+      "value": "admin@tms.com",
+      "type": "string"
+    },
+    {
+      "key": "adminPassword",
+      "value": "Admin@123!",
+      "type": "string"
+    },
+    {
+      "key": "pmEmail",
+      "value": "pm1@tms.com",
+      "type": "string"
+    },
+    {
+      "key": "pmPassword",
+      "value": "Manager@123!",
+      "type": "string"
+    },
+    {
+      "key": "collabEmail",
+      "value": "collab1@tms.com",
+      "type": "string"
+    },
+    {
+      "key": "collabPassword",
+      "value": "Collab@123!",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "pmToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "collabToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "createdUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "collabUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "pmUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "notificationId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
