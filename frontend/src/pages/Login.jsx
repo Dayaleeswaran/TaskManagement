@@ -91,26 +91,23 @@ export default function Login() {
   return (
     <div className="max-w-md w-full mx-auto py-8 px-4">
       {/* Demo Credentials Box */}
-      <div className="mb-6 p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-slate-300 flex items-start space-x-3 backdrop-blur-sm">
-        <Info className="h-5 w-5 text-violet-400 shrink-0 mt-0.5" />
+      <div className="mb-6 p-4 rounded-xl bg-slate-900 border border-slate-850 text-slate-500 flex items-start space-x-3 shadow-sm">
+        <Info className="h-5 w-5 text-slate-400 shrink-0 mt-0.5" />
         <div className="text-xs space-y-1">
-          <p className="font-semibold text-slate-200">Demo Accounts Available:</p>
-          <p>• <strong className="text-violet-300 font-mono">admin@tms.com</strong> / <span className="font-mono text-violet-300">Admin@123!</span> (Admin Role)</p>
-          <p>• <strong className="text-violet-300 font-mono">pm1@tms.com</strong> / <span className="font-mono text-violet-300">Manager@123!</span> (Project Manager)</p>
-          <p>• <strong className="text-violet-300 font-mono">collab1@tms.com</strong> / <span className="font-mono text-violet-300">Collab@123!</span> (Collaborator)</p>
+          <p className="font-semibold text-slate-350">Demo Accounts Available:</p>
+          <p>• <strong className="text-slate-400 font-mono">admin@tms.com</strong> / <span className="font-mono text-slate-400">Admin@123!</span> (Admin Role)</p>
+          <p>• <strong className="text-slate-400 font-mono">pm1@tms.com</strong> / <span className="font-mono text-slate-400">Manager@123!</span> (Project Manager)</p>
+          <p>• <strong className="text-slate-400 font-mono">collab1@tms.com</strong> / <span className="font-mono text-slate-400">Collab@123!</span> (Collaborator)</p>
         </div>
       </div>
 
-      <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-8 shadow-2xl backdrop-blur-md relative overflow-hidden">
-        {/* Decorative gradient bar */}
-        <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-violet-600 via-fuchsia-600 to-violet-600"></div>
-
+      <div className="bg-slate-900 border border-slate-850 rounded-2xl p-8 shadow-md relative overflow-hidden">
         <div className="text-center mb-8">
-          <div className="mx-auto h-12 w-12 rounded-xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center mb-4 text-violet-400">
+          <div className="mx-auto h-12 w-12 rounded-xl bg-slate-950 border border-slate-850 flex items-center justify-center mb-4 text-slate-500">
             <ShieldCheck className="h-6 w-6" />
           </div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Welcome to TaskFlow</h2>
-          <p className="text-sm text-slate-400 mt-2">Sign in to your account to continue</p>
+          <h2 className="text-2xl font-bold text-slate-100 tracking-tight">Welcome to TaskFlow</h2>
+          <p className="text-sm text-slate-500 mt-2">Sign in to your account to continue</p>
         </div>
 
         {/* Server-level error banner (auth failures only) */}
@@ -123,7 +120,7 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label htmlFor="email" className="block text-sm font-semibold text-slate-200 mb-2">
+            <label htmlFor="email" className="block text-sm font-semibold text-slate-350 mb-2">
               Email Address
             </label>
             <div className="relative">
@@ -138,7 +135,7 @@ export default function Login() {
                 className={`block w-full pl-11 pr-4 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 font-sans ${
                   fieldErrors.email
                     ? 'border-red-500 focus:ring-red-500/50'
-                    : 'border-slate-800 focus:ring-violet-500'
+                    : 'border-slate-850 focus:ring-slate-400'
                 }`}
                 placeholder="you@example.com"
                 disabled={loading}
@@ -154,12 +151,12 @@ export default function Login() {
 
           <div>
             <div className="flex justify-between items-center mb-2">
-              <label htmlFor="password" className="text-sm font-semibold text-slate-200">
+              <label htmlFor="password" className="text-sm font-semibold text-slate-350">
                 Password
               </label>
               <Link
                 to="/forgot-password"
-                className="text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors duration-150"
+                className="text-xs font-medium text-slate-500 hover:text-slate-200 transition-colors duration-150"
               >
                 Forgot password?
               </Link>
@@ -176,7 +173,7 @@ export default function Login() {
                 className={`block w-full pl-11 pr-4 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 font-sans ${
                   fieldErrors.password
                     ? 'border-red-500 focus:ring-red-500/50'
-                    : 'border-slate-800 focus:ring-violet-500'
+                    : 'border-slate-850 focus:ring-slate-400'
                 }`}
                 placeholder="••••••••"
                 disabled={loading}
@@ -193,7 +190,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 px-4 mt-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 active:from-violet-700 active:to-fuchsia-700 text-white font-semibold shadow-lg shadow-violet-600/15 hover:shadow-violet-600/25 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="w-full py-3 px-4 mt-2 rounded-xl bg-violet-600 hover:bg-violet-650 active:bg-violet-750 text-white font-semibold shadow-sm transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {loading ? (
               <>

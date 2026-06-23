@@ -77,23 +77,20 @@ export default function ResetPassword() {
 
   return (
     <div className="max-w-md w-full mx-auto py-12 px-4">
-      <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-8 shadow-2xl backdrop-blur-md relative overflow-hidden">
-        {/* Top subtle decorative gradient */}
-        <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-violet-600 via-fuchsia-600 to-violet-600"></div>
-
+      <div className="bg-slate-900 border border-slate-850 rounded-2xl p-8 shadow-md relative overflow-hidden">
         {!token ? (
           <div className="text-center py-4">
             <div className="mx-auto h-12 w-12 rounded-xl bg-red-950/30 border border-red-500/20 flex items-center justify-center mb-4 text-red-400">
               <AlertCircle className="h-6 w-6" />
             </div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">Invalid Link</h2>
-            <p className="text-sm text-slate-400 mt-2">
+            <h2 className="text-2xl font-bold text-slate-100 tracking-tight">Invalid Link</h2>
+            <p className="text-sm text-slate-500 mt-2">
               The reset token is missing. Please go back and request a new password reset link.
             </p>
-            <div className="mt-8 pt-6 border-t border-slate-800/80">
+            <div className="mt-8 pt-6 border-t border-slate-850">
               <Link
                 to="/forgot-password"
-                className="inline-flex items-center text-sm font-semibold text-violet-400 hover:text-violet-300 transition-colors duration-200 space-x-2"
+                className="inline-flex items-center text-sm font-semibold text-slate-500 hover:text-slate-200 transition-colors duration-200 space-x-2"
               >
                 <ArrowLeft className="h-4 w-4" />
                 <span>Forgot Password</span>
@@ -103,11 +100,11 @@ export default function ResetPassword() {
         ) : !isSubmitted ? (
           <>
             <div className="text-center mb-8">
-              <div className="mx-auto h-12 w-12 rounded-xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center mb-4 text-violet-400">
+              <div className="mx-auto h-12 w-12 rounded-xl bg-slate-950 border border-slate-850 flex items-center justify-center mb-4 text-slate-500">
                 <KeyRound className="h-6 w-6" />
               </div>
-              <h2 className="text-2xl font-bold text-white tracking-tight">Reset Password</h2>
-              <p className="text-sm text-slate-400 mt-2">
+              <h2 className="text-2xl font-bold text-slate-100 tracking-tight">Reset Password</h2>
+              <p className="text-sm text-slate-500 mt-2">
                 Create a secure password for your TaskFlow account.
               </p>
             </div>
@@ -121,7 +118,7 @@ export default function ResetPassword() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label htmlFor="password" className="block text-sm font-semibold text-slate-200 mb-2">
+                <label htmlFor="password" className="block text-sm font-semibold text-slate-350 mb-2">
                   New Password
                 </label>
                 <div className="relative">
@@ -137,7 +134,7 @@ export default function ResetPassword() {
                     className={`block w-full pl-11 pr-4 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 font-sans ${
                       fieldErrors.password
                         ? 'border-red-500 focus:ring-red-500/50'
-                        : 'border-slate-800 focus:ring-violet-500'
+                        : 'border-slate-850 focus:ring-slate-400'
                     }`}
                     placeholder="At least 6 characters"
                     disabled={loading}
@@ -152,7 +149,7 @@ export default function ResetPassword() {
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-semibold text-slate-200 mb-2">
+                <label htmlFor="confirmPassword" className="block text-sm font-semibold text-slate-350 mb-2">
                   Confirm Password
                 </label>
                 <div className="relative">
@@ -168,7 +165,7 @@ export default function ResetPassword() {
                     className={`block w-full pl-11 pr-4 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 font-sans ${
                       fieldErrors.confirmPassword
                         ? 'border-red-500 focus:ring-red-500/50'
-                        : 'border-slate-800 focus:ring-violet-500'
+                        : 'border-slate-850 focus:ring-slate-400'
                     }`}
                     placeholder="Repeat password"
                     disabled={loading}
@@ -185,7 +182,7 @@ export default function ResetPassword() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 active:from-violet-700 active:to-fuchsia-700 text-white font-semibold shadow-lg shadow-violet-600/15 hover:shadow-violet-600/25 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className="w-full py-3 px-4 rounded-xl bg-violet-600 hover:bg-violet-650 active:bg-violet-750 text-white font-semibold shadow-sm transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {loading ? (
                   <>
@@ -200,17 +197,17 @@ export default function ResetPassword() {
           </>
         ) : (
           <div className="text-center py-4">
-            <div className="mx-auto h-16 w-16 rounded-full bg-emerald-950/30 border border-emerald-500/20 flex items-center justify-center mb-6 text-emerald-400">
+            <div className="mx-auto h-16 w-16 rounded-full bg-slate-950 border border-slate-850 flex items-center justify-center mb-6 text-emerald-500">
               <CheckCircle2 className="h-10 w-10" />
             </div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">Password Reset Complete!</h2>
-            <p className="text-sm text-slate-400 mt-3 leading-relaxed">
+            <h2 className="text-2xl font-bold text-slate-100 tracking-tight">Password Reset Complete!</h2>
+            <p className="text-sm text-slate-500 mt-3 leading-relaxed">
               Your password has been successfully updated. You can now log in using your new credentials.
             </p>
-            <div className="mt-8 pt-6 border-t border-slate-800/80">
+            <div className="mt-8 pt-6 border-t border-slate-850">
               <Link
                 to="/login"
-                className="w-full py-3 px-4 rounded-xl bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white font-semibold shadow-md shadow-violet-600/15 transition-all duration-200 flex items-center justify-center space-x-2"
+                className="w-full py-3 px-4 rounded-xl bg-violet-600 hover:bg-violet-650 active:bg-violet-750 text-white font-semibold shadow-sm transition-all duration-200 flex items-center justify-center space-x-2"
               >
                 <span>Go to Sign In</span>
               </Link>

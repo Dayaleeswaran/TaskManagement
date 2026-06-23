@@ -94,7 +94,7 @@ export default function TaskCard({ task, onClick }) {
     <div
       ref={setNodeRef}
       style={style}
-      className="group relative p-4 rounded-xl bg-slate-900/65 border border-slate-800/60 hover:border-slate-700/80 hover:bg-slate-900/95 transition-all duration-200 shadow shadow-slate-950/20 flex flex-col justify-between gap-3 cursor-pointer"
+      className="group relative p-4 rounded-xl bg-slate-900 border border-slate-850 hover:border-slate-700 hover:shadow-md transition-all duration-200 shadow-sm flex flex-col justify-between gap-3 cursor-pointer"
       onClick={onClick}
     >
       {/* Top Section */}
@@ -108,7 +108,7 @@ export default function TaskCard({ task, onClick }) {
           <div
             {...attributes}
             {...listeners}
-            className="p-1 rounded text-slate-600 hover:text-slate-400 hover:bg-slate-800/40 transition-colors opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing"
+            className="p-1 rounded text-slate-500 hover:text-slate-800 hover:bg-slate-905 transition-colors opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing"
             onClick={(e) => e.stopPropagation()} // Stop modal from opening when grabbing handle
             title="Drag task"
           >
@@ -116,7 +116,7 @@ export default function TaskCard({ task, onClick }) {
           </div>
         </div>
 
-        <h4 className="text-sm font-bold text-white leading-snug group-hover:text-violet-350 transition-colors duration-150 line-clamp-2">
+        <h4 className="text-sm font-bold text-slate-100 leading-snug group-hover:text-slate-400 transition-colors duration-150 line-clamp-2">
           {task.title}
         </h4>
         
@@ -128,7 +128,7 @@ export default function TaskCard({ task, onClick }) {
       </div>
 
       {/* Bottom Footer Section */}
-      <div className="flex items-center justify-between border-t border-slate-800/50 pt-3 mt-1 flex-wrap gap-2">
+      <div className="flex items-center justify-between border-t border-slate-850 pt-3 mt-1 flex-wrap gap-2">
         {/* Due Date Indicator */}
         <div className={`flex items-center space-x-1.5 px-2 py-0.5 rounded text-[10px] font-semibold border ${dueStatus.style}`}>
           <Calendar className="h-3 w-3" />
@@ -139,7 +139,7 @@ export default function TaskCard({ task, onClick }) {
           {/* Comments Count */}
           {commentCount > 0 && (
             <div className="flex items-center space-x-1 text-slate-500 text-xs font-semibold" title="Comments">
-              <MessageSquare className="h-3 w-3 text-slate-400" />
+              <MessageSquare className="h-3 w-3 text-slate-500" />
               <span>{commentCount}</span>
             </div>
           )}
@@ -152,7 +152,7 @@ export default function TaskCard({ task, onClick }) {
                 return (
                   <div
                     key={idx}
-                    className="h-6 w-6 rounded-full bg-violet-600/90 border border-slate-900 flex items-center justify-center text-[10px] font-bold text-white shadow shadow-slate-950/40"
+                    className="h-6 w-6 rounded-full bg-violet-600 border border-slate-900 flex items-center justify-center text-[10px] font-bold text-white shadow-sm"
                     title={userObj.name}
                   >
                     {getAssigneeInitials(assignment)}
@@ -161,14 +161,14 @@ export default function TaskCard({ task, onClick }) {
               })
             ) : (
               <div
-                className="h-6 w-6 rounded-full bg-slate-800 border border-slate-900 flex items-center justify-center text-[10px] text-slate-500 font-semibold"
+                className="h-6 w-6 rounded-full bg-slate-905 border border-slate-900 flex items-center justify-center text-[10px] text-slate-400 font-semibold"
                 title="Unassigned"
               >
                 ?
               </div>
             )}
             {task.assignments && task.assignments.length > 3 && (
-              <div className="h-6 w-6 rounded-full bg-slate-800 border border-slate-900 flex items-center justify-center text-[9px] font-extrabold text-slate-300">
+              <div className="h-6 w-6 rounded-full bg-slate-905 border border-slate-900 flex items-center justify-center text-[9px] font-extrabold text-slate-400">
                 +{task.assignments.length - 3}
               </div>
             )}

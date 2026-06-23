@@ -386,7 +386,7 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
                   <>
                     <button
                       onClick={() => setIsEditing(true)}
-                      className="p-1.5 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 hover:text-white hover:bg-blue-600 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-100 hover:bg-slate-905 transition-colors cursor-pointer"
                       title="Edit Task"
                     >
                       <Edit3 className="h-4 w-4" />

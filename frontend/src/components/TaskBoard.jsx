@@ -38,15 +38,15 @@ function BoardColumn({ id, title, children, count }) {
   return (
     <div 
       ref={setNodeRef}
-      className="flex flex-col bg-slate-950/30 border border-slate-900 rounded-2xl p-4 min-h-[600px] min-w-[300px] flex-1 transition-all duration-200"
+      className="flex flex-col bg-slate-950 border border-slate-850 rounded-2xl p-4 min-h-[600px] min-w-[300px] flex-1 transition-all duration-200"
     >
       {/* Column Header */}
-      <div className="flex items-center justify-between pb-4 mb-3 border-b border-slate-900">
+      <div className="flex items-center justify-between pb-4 mb-3 border-b border-slate-850">
         <div className="flex items-center space-x-2.5">
-          <div className={`h-2.5 w-2.5 rounded-full border ${id === 'TODO' ? 'bg-slate-400 border-slate-350' : id === 'IN_PROGRESS' ? 'bg-indigo-500 border-indigo-400' : 'bg-emerald-500 border-emerald-400'}`} />
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider">{title}</h3>
+          <div className={`h-2.5 w-2.5 rounded-full border ${id === 'TODO' ? 'bg-slate-400 border-slate-200' : id === 'IN_PROGRESS' ? 'bg-violet-400 border-violet-300' : 'bg-emerald-500 border-emerald-400'}`} />
+          <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider">{title}</h3>
         </div>
-        <span className="px-2 py-0.5 rounded-md bg-slate-900/60 border border-slate-800 text-slate-400 text-[11px] font-bold">
+        <span className="px-2 py-0.5 rounded-md bg-slate-900 border border-slate-850 text-slate-400 text-[11px] font-bold shadow-sm">
           {count}
         </span>
       </div>
@@ -68,10 +68,10 @@ function BoardSkeleton() {
       {COLUMNS.map((column) => (
         <div
           key={column.id}
-          className="flex flex-col bg-slate-950/30 border border-slate-900 rounded-2xl p-4 min-h-[600px] min-w-[300px] flex-1 snap-start"
+          className="flex flex-col bg-slate-950 border border-slate-850 rounded-2xl p-4 min-h-[600px] min-w-[300px] flex-1 snap-start"
         >
           {/* Column Header skeleton */}
-          <div className="flex items-center justify-between pb-4 mb-3 border-b border-slate-900">
+          <div className="flex items-center justify-between pb-4 mb-3 border-b border-slate-850">
             <div className="flex items-center space-x-2.5">
               <div className="h-2.5 w-2.5 rounded-full skeleton-shimmer bg-slate-800/60" />
               <div className="h-4 w-20 rounded skeleton-shimmer bg-slate-800/60" />
@@ -350,7 +350,7 @@ export default function TaskBoard() {
   return (
     <div className="space-y-6">
       {/* Board Filtering Panel */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/40 p-4 rounded-2xl border border-slate-800/60">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 p-4 rounded-2xl border border-slate-850 shadow-sm">
         <div className="flex items-center space-x-3.5 flex-1 max-w-md">
           <div className="relative w-full">
             <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
@@ -359,7 +359,7 @@ export default function TaskBoard() {
               placeholder="Search tasks by title..."
               value={filters.search}
               onChange={(e) => updateFilter('search', e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-800/80 focus:border-violet-500 focus:outline-none rounded-xl text-sm placeholder-slate-500 text-slate-200 transition-colors"
+              className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-850 focus:border-violet-600 focus:ring-1 focus:ring-violet-600/20 focus:outline-none rounded-xl text-sm placeholder-slate-500 text-slate-100 transition-colors"
             />
           </div>
         </div>
@@ -371,7 +371,7 @@ export default function TaskBoard() {
             <select
               value={filters.priority}
               onChange={(e) => updateFilter('priority', e.target.value)}
-              className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+              className="px-3 py-2 bg-slate-900 border border-slate-850 rounded-xl text-xs text-slate-400 focus:outline-none focus:border-violet-600 focus:ring-1 focus:ring-violet-600/20 transition-colors cursor-pointer"
             >
               <option value="">All Priorities</option>
               <option value="LOW">Low</option>
@@ -384,7 +384,7 @@ export default function TaskBoard() {
           <select
             value={filters.label}
             onChange={(e) => updateFilter('label', e.target.value)}
-            className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+            className="px-3 py-2 bg-slate-900 border border-slate-850 rounded-xl text-xs text-slate-400 focus:outline-none focus:border-violet-600 focus:ring-1 focus:ring-violet-600/20 transition-colors cursor-pointer"
           >
             <option value="">All Labels</option>
             {uniqueLabels.map((name) => (
@@ -398,7 +398,7 @@ export default function TaskBoard() {
           <select
             value={filters.assignedTo}
             onChange={(e) => updateFilter('assignedTo', e.target.value)}
-            className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+            className="px-3 py-2 bg-slate-900 border border-slate-850 rounded-xl text-xs text-slate-400 focus:outline-none focus:border-violet-600 focus:ring-1 focus:ring-violet-600/20 transition-colors cursor-pointer"
           >
             <option value="">All Assignees</option>
             {uniqueAssignees.map((user) => (
@@ -412,7 +412,7 @@ export default function TaskBoard() {
           {(filters.search || filters.priority || filters.assignedTo || filters.label) && (
             <button
               onClick={resetFilters}
-              className="px-3 py-2 border border-slate-800 rounded-xl text-xs text-violet-400 hover:text-white hover:bg-slate-950 transition-colors cursor-pointer"
+              className="px-3 py-2 border border-slate-850 rounded-xl text-xs text-slate-400 hover:text-slate-100 hover:bg-slate-905 transition-colors cursor-pointer"
             >
               Reset
             </button>
@@ -422,7 +422,7 @@ export default function TaskBoard() {
           {(user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER') && (
             <button
               onClick={() => setIsCreateOpen(true)}
-              className="px-3 py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-violet-600/15 transition-all duration-200 flex items-center space-x-1.5 cursor-pointer"
+              className="px-3 py-2 bg-violet-600 hover:bg-violet-650 text-white text-xs font-semibold rounded-xl shadow-sm hover:shadow transition-all duration-200 flex items-center space-x-1.5 cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
               <span>Create Task</span>
@@ -433,7 +433,7 @@ export default function TaskBoard() {
           <button
             onClick={handleRefreshBoard}
             disabled={isLoading}
-            className="p-2 border border-slate-800 hover:border-slate-700 bg-slate-950/40 rounded-xl text-slate-400 hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+            className="p-2 border border-slate-850 hover:border-slate-750 bg-slate-900 rounded-xl text-slate-500 hover:text-slate-100 transition-colors cursor-pointer disabled:opacity-50"
             title="Refresh board"
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -461,8 +461,8 @@ export default function TaskBoard() {
                   count={columnTasks.length}
                 >
                   <SortableContext
-                    items={columnTasks.map((t) => t.id)}
-                    strategy={verticalListSortingStrategy}
+                     items={columnTasks.map((t) => t.id)}
+                     strategy={verticalListSortingStrategy}
                   >
                     <div className="flex flex-col gap-3.5">
                       {columnTasks.map((task) => (
@@ -475,7 +475,7 @@ export default function TaskBoard() {
                     </div>
                   </SortableContext>
                   {columnTasks.length === 0 && (
-                    <div className="flex-1 border border-dashed border-slate-800/40 rounded-2xl flex flex-col items-center justify-center p-6 text-center select-none py-14">
+                    <div className="flex-1 border border-dashed border-slate-800 rounded-2xl flex flex-col items-center justify-center p-6 text-center select-none py-14">
                       <p className="text-xs text-slate-500 font-medium">Drop tasks here</p>
                     </div>
                   )}

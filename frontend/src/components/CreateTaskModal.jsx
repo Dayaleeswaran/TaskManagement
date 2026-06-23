@@ -128,17 +128,17 @@ export default function CreateTaskModal({ onClose, onTaskCreated }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 text-slate-100 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto kanban-scroll-container">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
+      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-850 rounded-2xl p-6 text-slate-100 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto kanban-scroll-container">
         
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <h2 className="text-xl font-bold text-white bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+        <div className="flex items-center justify-between border-b border-slate-850 pb-3">
+          <h2 className="text-xl font-bold text-slate-100">
             Create New Task
           </h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+            className="text-slate-500 hover:text-slate-100 p-1 rounded-lg hover:bg-slate-950 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -357,19 +357,19 @@ export default function CreateTaskModal({ onClose, onTaskCreated }) {
             </div>
 
             {/* Action buttons */}
-            <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+            <div className="flex justify-end gap-3 pt-3 border-t border-slate-850">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={submitting}
-                className="px-4 py-2 border border-slate-850 hover:bg-slate-800 text-slate-400 hover:text-white font-semibold rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 border border-slate-850 hover:bg-slate-950 text-slate-500 hover:text-slate-100 font-semibold rounded-xl transition-colors cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-4 py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold rounded-xl shadow-lg shadow-violet-600/15 transition-all duration-200 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 bg-violet-600 hover:bg-violet-650 text-white font-semibold rounded-xl shadow-sm hover:shadow transition-all duration-200 flex items-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 <span>Create Task</span>
