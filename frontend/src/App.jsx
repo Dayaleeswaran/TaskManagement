@@ -11,6 +11,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 // Pages
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
+import VerifyResetCode from './pages/VerifyResetCode';
 import ResetPassword from './pages/ResetPassword';
 import Users from './pages/Users';
 import Tasks from './pages/Tasks';
@@ -28,7 +29,7 @@ import { X } from 'lucide-react';
 function DashboardRedirect() {
   const { role } = useAuth();
 
-  if (role === 'ADMIN') {
+  if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
     return <Navigate to="/users" replace />;
   } else if (role === 'PROJECT_MANAGER') {
     return <Navigate to="/tasks" replace />;
@@ -93,6 +94,14 @@ function AppContent() {
             element={
               <div className="flex-1 flex items-center justify-center p-6 bg-slate-950">
                 <ForgotPassword />
+              </div>
+            }
+          />
+          <Route
+            path="/verify-reset-code"
+            element={
+              <div className="flex-1 flex items-center justify-center p-6 bg-slate-950">
+                <VerifyResetCode />
               </div>
             }
           />

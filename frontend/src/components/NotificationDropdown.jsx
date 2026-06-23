@@ -15,7 +15,7 @@ export default function NotificationDropdown({ onClose }) {
       {/* Header */}
       <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <span className="text-sm font-bold text-slate-800">Notifications</span>
+          <span className="text-sm font-bold text-slate-300">Notifications</span>
           {unreadCount > 0 && (
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100">
               {unreadCount} new

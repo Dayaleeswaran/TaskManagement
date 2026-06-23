@@ -1,12 +1,17 @@
-import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { KeyRound, ArrowLeft, CheckCircle2, AlertCircle, Loader2, Lock } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
+import { KeyRound, CheckCircle2, AlertCircle, Loader2, Lock, ArrowLeft, Check, X } from 'lucide-react';
 
 export default function ResetPassword() {
   const { resetPassword } = useAuth();
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  const { addToast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const email = location.state?.email || '';
+  const code = location.state?.code || '';
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -15,11 +20,23 @@ export default function ResetPassword() {
   const [fieldErrors, setFieldErrors] = useState({ password: '', confirmPassword: '' });
   const [isSubmitted, setIsSubmitted] = useState(false);
 
+  // Redirect to login after 3 seconds on success
+  useEffect(() => {
+    let timer;
+    if (isSubmitted) {
+      timer = setTimeout(() => {
+        navigate('/login', { replace: true });
+      }, 3000);
+    }
+    return () => clearTimeout(timer);
+  }, [isSubmitted, navigate]);
+
   const handlePasswordChange = (e) => {
     setPassword(e.target.value);
     if (fieldErrors.password) {
       setFieldErrors((prev) => ({ ...prev, password: '' }));
     }
+    if (error) setError('');
   };
 
   const handleConfirmPasswordChange = (e) => {
@@ -27,85 +44,96 @@ export default function ResetPassword() {
     if (fieldErrors.confirmPassword) {
       setFieldErrors((prev) => ({ ...prev, confirmPassword: '' }));
     }
+    if (error) setError('');
   };
+
+  // Real-time requirement matching
+  const requirements = [
+    { id: 'length', label: 'At least 8 characters', met: password.length >= 8 },
+    { id: 'uppercase', label: 'One uppercase letter (A-Z)', met: /[A-Z]/.test(password) },
+    { id: 'number', label: 'One number (0-9)', met: /[0-9]/.test(password) },
+    { id: 'special', label: 'One special character (!@#$...)', met: /[!@#$%^&*(),.?":{}|<>]/.test(password) },
+  ];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setFieldErrors({ password: '', confirmPassword: '' });
 
-    if (!token) {
-      setError('Missing reset token. Please request a new link.');
+    if (!email || !code) {
+      setError('Missing reset session context. Please request a new code.');
       return;
     }
 
-    // Per-field validation
-    const errors = { password: '', confirmPassword: '' };
-    let hasErrors = false;
-
-    if (!password) {
-      errors.password = 'Please enter a new password.';
-      hasErrors = true;
-    } else if (password.length < 6) {
-      errors.password = 'Password must be at least 6 characters long.';
-      hasErrors = true;
+    const allMet = requirements.every((r) => r.met);
+    if (!allMet) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        password: 'Password does not meet all complexity requirements listed below.',
+      }));
+      return;
     }
 
     if (!confirmPassword) {
-      errors.confirmPassword = 'Please confirm your password.';
-      hasErrors = true;
-    } else if (password && confirmPassword && password !== confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match.';
-      hasErrors = true;
+      setFieldErrors((prev) => ({ ...prev, confirmPassword: 'Please confirm your password.' }));
+      return;
     }
 
-    if (hasErrors) {
-      setFieldErrors(errors);
+    if (password !== confirmPassword) {
+      setFieldErrors((prev) => ({ ...prev, confirmPassword: 'Passwords do not match.' }));
       return;
     }
 
     try {
       setLoading(true);
-      await resetPassword(token, password);
+      await resetPassword(email, code, password);
       setIsSubmitted(true);
+      addToast('Password reset successfully!', 'success');
     } catch (err) {
-      setError(err.message || 'Failed to reset password. The link might be expired.');
+      const apiError = err.message || 'Failed to reset password. The verification code might be expired.';
+      setError(apiError);
+      addToast(apiError, 'error');
     } finally {
       setLoading(false);
     }
   };
 
+  const hasSession = email && code;
+
   return (
     <div className="max-w-md w-full mx-auto py-12 px-4">
-      <div className="bg-slate-900 border border-slate-850 rounded-2xl p-8 shadow-md relative overflow-hidden">
-        {!token ? (
+      <div className="bg-slate-955 bg-opacity-60 backdrop-filter backdrop-blur-md border border-slate-800 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
+        {/* Top subtle decorative gradient bar */}
+        <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-violet-600 via-fuchsia-600 to-violet-600"></div>
+
+        {!hasSession ? (
           <div className="text-center py-4">
             <div className="mx-auto h-12 w-12 rounded-xl bg-red-950/30 border border-red-500/20 flex items-center justify-center mb-4 text-red-400">
               <AlertCircle className="h-6 w-6" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-100 tracking-tight">Invalid Link</h2>
-            <p className="text-sm text-slate-500 mt-2">
-              The reset token is missing. Please go back and request a new password reset link.
+            <h2 className="text-2xl font-bold text-slate-100 tracking-tight">Session Expired</h2>
+            <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+              We couldn't find a valid verification session. To protect your account, please request a new password reset code first.
             </p>
             <div className="mt-8 pt-6 border-t border-slate-850">
               <Link
                 to="/forgot-password"
-                className="inline-flex items-center text-sm font-semibold text-slate-500 hover:text-slate-200 transition-colors duration-200 space-x-2"
+                className="w-full py-3 px-4 rounded-xl bg-violet-600 hover:bg-violet-650 active:bg-violet-750 text-white font-semibold shadow-sm transition-all duration-200 flex items-center justify-center space-x-2 cursor-pointer"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span>Forgot Password</span>
+                <span>Request Verification Code</span>
               </Link>
             </div>
           </div>
         ) : !isSubmitted ? (
           <>
             <div className="text-center mb-8">
-              <div className="mx-auto h-12 w-12 rounded-xl bg-slate-950 border border-slate-850 flex items-center justify-center mb-4 text-slate-500">
-                <KeyRound className="h-6 w-6" />
+              <div className="mx-auto h-12 w-12 rounded-xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center mb-4 text-violet-400">
+                <Lock className="h-6 w-6" />
               </div>
-              <h2 className="text-2xl font-bold text-slate-100 tracking-tight">Reset Password</h2>
-              <p className="text-sm text-slate-500 mt-2">
-                Create a secure password for your TaskFlow account.
+              <h2 className="text-2xl font-bold text-white tracking-tight">Create New Password</h2>
+              <p className="text-sm text-slate-400 mt-2">
+                Set a strong password for <strong className="text-slate-350">{email}</strong>.
               </p>
             </div>
 
@@ -118,7 +146,7 @@ export default function ResetPassword() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label htmlFor="password" className="block text-sm font-semibold text-slate-350 mb-2">
+                <label htmlFor="password" className="block text-sm font-semibold text-slate-200 mb-2">
                   New Password
                 </label>
                 <div className="relative">
@@ -129,27 +157,48 @@ export default function ResetPassword() {
                     id="password"
                     name="password"
                     type="password"
+                    autoComplete="new-password"
                     value={password}
                     onChange={handlePasswordChange}
-                    className={`block w-full pl-11 pr-4 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 font-sans ${
+                    className={`block w-full pl-11 pr-4 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-550 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 font-sans ${
                       fieldErrors.password
                         ? 'border-red-500 focus:ring-red-500/50'
-                        : 'border-slate-850 focus:ring-slate-400'
+                        : 'border-slate-800 focus:ring-violet-500'
                     }`}
-                    placeholder="At least 6 characters"
+                    placeholder="Enter new password"
                     disabled={loading}
+                    autoFocus
                   />
                 </div>
                 {fieldErrors.password && (
-                  <p className="mt-1.5 text-xs font-medium text-red-400 flex items-center gap-1">
-                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                    {fieldErrors.password}
+                  <p className="mt-1.5 text-xs font-medium text-red-400 leading-normal flex items-start gap-1">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                    <span>{fieldErrors.password}</span>
                   </p>
                 )}
+
+                {/* Password requirement indicator grid */}
+                <div className="mt-3 space-y-2 rounded-xl bg-slate-950/40 p-4 border border-slate-800/60">
+                  <p className="text-xs font-semibold text-slate-450 uppercase tracking-wider mb-1">Complexity Checklist</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {requirements.map((req) => (
+                      <div key={req.id} className="flex items-center space-x-2 text-xs">
+                        {req.met ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                        ) : (
+                          <X className="h-3.5 w-3.5 text-slate-650 shrink-0" />
+                        )}
+                        <span className={req.met ? 'text-emerald-350 font-medium' : 'text-slate-500'}>
+                          {req.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-semibold text-slate-350 mb-2">
+                <label htmlFor="confirmPassword" className="block text-sm font-semibold text-slate-200 mb-2">
                   Confirm Password
                 </label>
                 <div className="relative">
@@ -160,12 +209,13 @@ export default function ResetPassword() {
                     id="confirmPassword"
                     name="confirmPassword"
                     type="password"
+                    autoComplete="new-password"
                     value={confirmPassword}
                     onChange={handleConfirmPasswordChange}
-                    className={`block w-full pl-11 pr-4 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 font-sans ${
+                    className={`block w-full pl-11 pr-4 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-550 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 font-sans ${
                       fieldErrors.confirmPassword
                         ? 'border-red-500 focus:ring-red-500/50'
-                        : 'border-slate-850 focus:ring-slate-400'
+                        : 'border-slate-800 focus:ring-violet-500'
                     }`}
                     placeholder="Repeat password"
                     disabled={loading}
@@ -174,7 +224,7 @@ export default function ResetPassword() {
                 {fieldErrors.confirmPassword && (
                   <p className="mt-1.5 text-xs font-medium text-red-400 flex items-center gap-1">
                     <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                    {fieldErrors.confirmPassword}
+                    <span>{fieldErrors.confirmPassword}</span>
                   </p>
                 )}
               </div>
@@ -182,7 +232,7 @@ export default function ResetPassword() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 px-4 rounded-xl bg-violet-600 hover:bg-violet-650 active:bg-violet-750 text-white font-semibold shadow-sm transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 active:from-violet-700 active:to-fuchsia-700 text-white font-semibold shadow-lg shadow-violet-600/15 hover:shadow-violet-600/25 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {loading ? (
                   <>
@@ -197,17 +247,17 @@ export default function ResetPassword() {
           </>
         ) : (
           <div className="text-center py-4">
-            <div className="mx-auto h-16 w-16 rounded-full bg-slate-950 border border-slate-850 flex items-center justify-center mb-6 text-emerald-500">
+            <div className="mx-auto h-16 w-16 rounded-full bg-emerald-950/30 border border-emerald-500/20 flex items-center justify-center mb-6 text-emerald-400">
               <CheckCircle2 className="h-10 w-10" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-100 tracking-tight">Password Reset Complete!</h2>
-            <p className="text-sm text-slate-500 mt-3 leading-relaxed">
-              Your password has been successfully updated. You can now log in using your new credentials.
+            <h2 className="text-2xl font-bold text-white tracking-tight">Password Reset Complete!</h2>
+            <p className="text-sm text-slate-400 mt-3 leading-relaxed">
+              Your password has been successfully updated. You can now log in using your new credentials. Redirecting you to login...
             </p>
-            <div className="mt-8 pt-6 border-t border-slate-850">
+            <div className="mt-8 pt-6 border-t border-slate-800">
               <Link
                 to="/login"
-                className="w-full py-3 px-4 rounded-xl bg-violet-600 hover:bg-violet-650 active:bg-violet-750 text-white font-semibold shadow-sm transition-all duration-200 flex items-center justify-center space-x-2"
+                className="w-full py-3 px-4 rounded-xl bg-violet-600 hover:bg-violet-650 active:bg-violet-750 text-white font-semibold shadow-sm transition-all duration-200 flex items-center justify-center space-x-2 cursor-pointer"
               >
                 <span>Go to Sign In</span>
               </Link>

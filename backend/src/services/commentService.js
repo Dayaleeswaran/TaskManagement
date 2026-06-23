@@ -140,8 +140,8 @@ const deleteComment = async (commentId, requestingUserId, requestingUserRole) =>
     throw error;
   }
 
-  // Access Control check: Author or ADMIN only
-  if (comment.authorId !== requestingUserId && requestingUserRole !== "ADMIN") {
+  // Access Control check: Author or ADMIN/SUPER_ADMIN only
+  if (comment.authorId !== requestingUserId && requestingUserRole !== "ADMIN" && requestingUserRole !== "SUPER_ADMIN") {
     const error = new Error("You are not authorized to delete this comment.");
     error.statusCode = 403;
     error.errorCode = "FORBIDDEN";

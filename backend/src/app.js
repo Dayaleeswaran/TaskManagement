@@ -19,6 +19,7 @@ const analyticsRoutes = require("./routes/analyticsRoutes");
 const searchRoutes = require("./routes/searchRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
 const { seedDefaultLabels } = require("./services/labelSeeder");
+const { seedSuperAdmin } = require("./services/superAdminSeeder");
 const { errorHandler } = require("./middleware/errorHandler");
 const { sanitizeInput } = require("./middleware/sanitizeMiddleware");
 
@@ -151,6 +152,7 @@ app.get("/", (req, res) => {
 
 // Run default labels seeder check on startup
 seedDefaultLabels();
+seedSuperAdmin();
 
 // Serve static uploaded attachments
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));

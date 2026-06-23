@@ -27,6 +27,14 @@ export default function MainLayout() {
 
   // Define navigation items configuration
   const navigationConfig = {
+    SUPER_ADMIN: [
+      { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+      { name: 'Users', path: '/users', icon: Users },
+      { name: 'Projects', path: '/projects', icon: FolderKanban },
+      { name: 'Tasks', path: '/tasks', icon: CheckSquare },
+      { name: 'Audit Logs', path: '/audit-logs', icon: ClipboardList },
+      { name: 'Notifications', path: '/notifications', icon: Bell },
+    ],
     ADMIN: [
       { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
       { name: 'Users', path: '/users', icon: Users },
@@ -51,9 +59,11 @@ export default function MainLayout() {
 
   const menuItems = navigationConfig[user?.role] || [];
 
-  // Standardized role badge colors: ADMIN=purple, PM=blue, COLLABORATOR=gray
+  // Standardized role badge colors: SUPER_ADMIN=amber, ADMIN=purple, PM=blue, COLLABORATOR=gray
   const getRoleBadgeStyle = (role) => {
     switch (role) {
+      case 'SUPER_ADMIN':
+        return 'bg-amber-500/10 text-amber-400 border-amber-500/30';
       case 'ADMIN':
         return 'bg-purple-500/10 text-purple-400 border-purple-500/30';
       case 'PROJECT_MANAGER':

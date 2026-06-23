@@ -114,41 +114,32 @@ export const AuthProvider = ({ children }) => {
     window.location.href = '/login';
   };
 
-  // Mock implementation for Forgot Password to maintain page compatibility
   const forgotPassword = async (email) => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    
-    // Simple validation for email format
-    if (!email.includes('@')) {
-      throw new Error('Please enter a valid email address.');
+    try {
+      const response = await api.post('/api/v1/auth/forgot-password', { email });
+      return response.data;
+    } catch (err) {
+      throw new Error(err.response?.data?.message || 'Failed to send verification code.');
     }
-
-    const resetToken = Math.random().toString(36).substring(2, 10);
-    const resetLink = `/reset-password?token=${resetToken}`;
-
-    // Add alert notification for local testing
-    const newNotification = {
-      id: Date.now(),
-      type: 'info',
-      message: `Simulated Reset Email sent to ${email}!`,
-      link: resetLink,
-      linkText: 'Click to Reset Password',
-    };
-
-    setNotifications((prev) => [...prev, newNotification]);
-    return { success: true, link: resetLink };
   };
 
-  // Mock implementation for Reset Password
-  const resetPassword = async (resetToken, newPassword) => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    if (!resetToken) {
-      throw new Error('Invalid or expired reset token.');
+  const verifyResetCode = async (email, code) => {
+    try {
+      const response = await api.post('/api/v1/auth/verify-reset-code', { email, code });
+      return response.data;
+    } catch (err) {
+      throw new Error(err.response?.data?.message || 'Invalid or expired verification code.');
     }
-    console.log(`[Auth Mock] Password reset requested for token "${resetToken}". New password complexity validated: ${!!newPassword}`);
-    // Clear simulations notifications
-    setNotifications([]);
-    return { success: true };
+  };
+
+  const resetPassword = async (email, code, newPassword) => {
+    try {
+      const response = await api.post('/api/v1/auth/reset-password', { email, code, newPassword });
+      setNotifications([]);
+      return response.data;
+    } catch (err) {
+      throw new Error(err.response?.data?.message || 'Failed to reset password.');
+    }
   };
 
   const dismissNotification = (id) => {
@@ -158,7 +149,7 @@ export const AuthProvider = ({ children }) => {
   const changePassword = async (newPassword) => {
     setLoading(true);
     try {
-      const response = await api.post('/api/v1/auth/reset-password', { newPassword });
+      const response = await api.post('/api/v1/auth/change-password', { newPassword });
       const updatedUser = { ...user, mustResetPassword: false };
       setSession(token, updatedUser);
       setLoading(false);
@@ -180,6 +171,7 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         forgotPassword,
+        verifyResetCode,
         resetPassword,
         changePassword,
         dismissNotification,

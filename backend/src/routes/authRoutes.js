@@ -1,7 +1,7 @@
 const express = require("express");
-const { register, login, logout, resetPassword } = require("../controllers/authController");
+const { register, login, logout, forgotPassword, verifyResetCode, resetPassword, changePassword } = require("../controllers/authController");
 const { validate } = require("../middleware/validateMiddleware");
-const { registerSchema, loginSchema } = require("../validators/authSchemas");
+const { registerSchema, loginSchema, forgotPasswordSchema, verifyResetCodeSchema, resetPasswordSchema } = require("../validators/authSchemas");
 const { verifyToken } = require("../middleware/authMiddleware");
 
 const router = express.Router();
@@ -112,34 +112,9 @@ router.post("/register", validate(registerSchema), register);
  */
 router.post("/logout", verifyToken, logout);
 
-/**
- * @swagger
- * /api/v1/auth/reset-password:
- *   post:
- *     summary: Reset password
- *     description: Reset user password using reset token.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - token
- *               - newPassword
- *             properties:
- *               token:
- *                 type: string
- *               newPassword:
- *                 type: string
- *     responses:
- *       200:
- *         description: Password reset successful
- *       400:
- *         description: Invalid/expired token or weak password
- *       500:
- *         description: Server error
- */
-router.post("/reset-password", verifyToken, resetPassword);
+router.post("/forgot-password", validate(forgotPasswordSchema), forgotPassword);
+router.post("/verify-reset-code", validate(verifyResetCodeSchema), verifyResetCode);
+router.post("/reset-password", validate(resetPasswordSchema), resetPassword);
+router.post("/change-password", verifyToken, changePassword);
 
 module.exports = router;

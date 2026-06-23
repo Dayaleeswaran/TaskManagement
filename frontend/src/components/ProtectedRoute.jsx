@@ -28,7 +28,10 @@ export default function ProtectedRoute({ children, role }) {
 
   // If a role limit is specified, check access
   if (role) {
-    const allowedRoles = Array.isArray(role) ? role : [role];
+    let allowedRoles = Array.isArray(role) ? role : [role];
+    if (allowedRoles.includes('ADMIN') && !allowedRoles.includes('SUPER_ADMIN')) {
+      allowedRoles = [...allowedRoles, 'SUPER_ADMIN'];
+    }
     
     if (!allowedRoles.includes(userRole)) {
       // Return a premium 403 view

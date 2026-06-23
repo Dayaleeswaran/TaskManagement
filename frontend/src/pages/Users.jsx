@@ -74,7 +74,7 @@ export default function Users() {
   };
 
   useEffect(() => {
-    if (user?.role === 'ADMIN') {
+    if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') {
       fetchUsers();
     }
   }, [page, appliedSearch, roleFilter, isActiveFilter, user]);
@@ -166,6 +166,8 @@ export default function Users() {
 
   const getRoleBadgeStyle = (role) => {
     switch (role) {
+      case 'SUPER_ADMIN':
+        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
       case 'ADMIN':
         return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
       case 'PROJECT_MANAGER':
@@ -175,7 +177,7 @@ export default function Users() {
     }
   };
 
-  if (user?.role !== 'ADMIN') {
+  if (user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN') {
     return (
       <div className="p-8 text-center bg-slate-950/20 border border-slate-900 rounded-3xl">
         <h2 className="text-xl font-bold text-rose-400">Unauthorized Access</h2>
@@ -231,19 +233,20 @@ export default function Users() {
           </div>
 
           {/* Role Filter */}
-          <select
-            value={roleFilter}
-            onChange={(e) => {
-              setRoleFilter(e.target.value);
-              setPage(1);
-            }}
-            className="px-3 py-2 bg-slate-900 border border-slate-800 text-xs text-slate-300 rounded-xl outline-none focus:border-violet-500 cursor-pointer"
-          >
-            <option value="">All Roles</option>
-            <option value="ADMIN">Admin</option>
-            <option value="PROJECT_MANAGER">Project Manager</option>
-            <option value="COLLABORATOR">Collaborator</option>
-          </select>
+            <select
+              value={roleFilter}
+              onChange={(e) => {
+                setRoleFilter(e.target.value);
+                setPage(1);
+              }}
+              className="px-3 py-2 bg-slate-900 border border-slate-800 text-xs text-slate-300 rounded-xl outline-none focus-within:border-violet-500 cursor-pointer"
+            >
+              <option value="">All Roles</option>
+              <option value="SUPER_ADMIN">Super Admin</option>
+              <option value="ADMIN">Admin</option>
+              <option value="PROJECT_MANAGER">Project Manager</option>
+              <option value="COLLABORATOR">Collaborator</option>
+            </select>
 
           {/* Active Status Filter */}
           <select
@@ -307,6 +310,7 @@ export default function Users() {
                     {/* User profile with initials avatar */}
                     <td className="p-4 flex items-center space-x-3">
                       <div className={`h-9 w-9 rounded-xl flex items-center justify-center font-bold text-xs text-white border select-none ${
+                        targetUser.role === 'SUPER_ADMIN' ? 'bg-amber-600/10 border-amber-500/25 text-amber-300' :
                         targetUser.role === 'ADMIN' ? 'bg-purple-600/10 border-purple-500/25 text-purple-300' :
                         targetUser.role === 'PROJECT_MANAGER' ? 'bg-blue-600/10 border-blue-500/25 text-blue-300' :
                         'bg-slate-800/20 border-slate-700/25 text-slate-300'
@@ -352,22 +356,24 @@ export default function Users() {
                         >
                           <Edit3 className="h-3.5 w-3.5" />
                         </button>
-                        <button
-                          onClick={() => handleToggleStatus(targetUser)}
-                          disabled={targetUser.id === user.id}
-                          className={`p-1.5 rounded border transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
-                            targetUser.isActive
-                              ? 'bg-slate-900 border-slate-800 text-slate-400 hover:text-rose-400 hover:border-rose-900/40 hover:bg-rose-950/20'
-                              : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-emerald-400 hover:border-emerald-900/40 hover:bg-emerald-950/20'
-                          }`}
-                          title={targetUser.isActive ? 'Deactivate User' : 'Activate User'}
-                        >
-                          {targetUser.isActive ? (
-                            <UserX className="h-3.5 w-3.5" />
-                          ) : (
-                            <UserCheck className="h-3.5 w-3.5" />
-                          )}
-                        </button>
+                        {targetUser.role !== 'SUPER_ADMIN' && (
+                          <button
+                            onClick={() => handleToggleStatus(targetUser)}
+                            disabled={targetUser.id === user.id}
+                            className={`p-1.5 rounded border transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
+                              targetUser.isActive
+                                ? 'bg-slate-900 border-slate-800 text-slate-400 hover:text-rose-400 hover:border-rose-900/40 hover:bg-rose-950/20'
+                                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-emerald-400 hover:border-emerald-900/40 hover:bg-emerald-950/20'
+                            }`}
+                            title={targetUser.isActive ? 'Deactivate User' : 'Activate User'}
+                          >
+                            {targetUser.isActive ? (
+                              <UserX className="h-3.5 w-3.5" />
+                            ) : (
+                              <UserCheck className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -440,7 +446,7 @@ export default function Users() {
                   onChange={(e) => setRole(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-905 border border-slate-800 focus:border-violet-500 focus:outline-none rounded-xl text-sm text-slate-200 cursor-pointer"
                 >
-                  <option value="ADMIN">Administrator</option>
+                  {user?.role === 'SUPER_ADMIN' && <option value="ADMIN">Administrator</option>}
                   <option value="PROJECT_MANAGER">Project Manager</option>
                   <option value="COLLABORATOR">Collaborator</option>
                 </select>
@@ -473,11 +479,17 @@ export default function Users() {
                 <select
                   value={editRole}
                   onChange={(e) => setEditRole(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-905 border border-slate-800 focus:border-violet-500 focus:outline-none rounded-xl text-sm text-slate-200 cursor-pointer"
+                  disabled={activeUser?.role === 'SUPER_ADMIN'}
+                  className="w-full px-3 py-2 bg-slate-905 border border-slate-800 focus:border-violet-500 focus:outline-none rounded-xl text-sm text-slate-200 cursor-pointer disabled:opacity-50"
                 >
-                  <option value="ADMIN">Administrator</option>
-                  <option value="PROJECT_MANAGER">Project Manager</option>
-                  <option value="COLLABORATOR">Collaborator</option>
+                  {activeUser?.role === 'SUPER_ADMIN' && <option value="SUPER_ADMIN">Super Admin</option>}
+                  {user?.role === 'SUPER_ADMIN' && activeUser?.role !== 'SUPER_ADMIN' && <option value="ADMIN">Administrator</option>}
+                  {activeUser?.role !== 'SUPER_ADMIN' && (
+                    <>
+                      <option value="PROJECT_MANAGER">Project Manager</option>
+                      <option value="COLLABORATOR">Collaborator</option>
+                    </>
+                  )}
                 </select>
               </div>
               <button

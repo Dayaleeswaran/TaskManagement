@@ -40,9 +40,11 @@ export default function Profile() {
     }
   };
 
-  // Standardized role badge colors: ADMIN=purple, PM=blue, COLLABORATOR=gray
+  // Standardized role badge colors: SUPER_ADMIN=amber, ADMIN=purple, PM=blue, COLLABORATOR=gray
   const getRoleColor = (role) => {
     switch (role) {
+      case 'SUPER_ADMIN':
+        return 'from-amber-500/20 to-amber-600/20 text-amber-300 border-amber-500/30';
       case 'ADMIN':
         return 'from-purple-500/20 to-purple-600/20 text-purple-300 border-purple-500/30';
       case 'PROJECT_MANAGER':
@@ -168,11 +170,19 @@ export default function Profile() {
             Your account role assigns you the following dashboard and operations privileges:
           </p>
           <ul className="text-xs text-slate-300 space-y-2 pt-2">
+            {user?.role === 'SUPER_ADMIN' && (
+              <>
+                <li className="flex items-start">✓ Full System Access & Seeding</li>
+                <li className="flex items-start">✓ Super Admin Account Protections</li>
+                <li className="flex items-start">✓ Access to Users Dashboard (`/users`)</li>
+                <li className="flex items-start">✓ View System-wide Audit Logs (`/audit-logs`)</li>
+              </>
+            )}
             {user?.role === 'ADMIN' && (
               <>
                 <li className="flex items-start">✓ Full System Administration</li>
                 <li className="flex items-start">✓ Access to Users Dashboard (`/users`)</li>
-                <li className="flex items-start">✓ Manage all Tasks (`/tasks`)</li>
+                <li className="flex items-start">✓ Manage Project Managers & Collaborators</li>
                 <li className="flex items-start">✓ Soft Delete and User Role updates</li>
               </>
             )}

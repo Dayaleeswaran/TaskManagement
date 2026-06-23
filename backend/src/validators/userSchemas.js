@@ -1,7 +1,7 @@
 const { z } = require("zod");
 const { passwordPolicy } = require("./authSchemas");
 
-const RoleEnum = z.enum(["ADMIN", "PROJECT_MANAGER", "COLLABORATOR"]);
+const RoleEnum = z.enum(["SUPER_ADMIN", "ADMIN", "PROJECT_MANAGER", "COLLABORATOR"]);
 
 const createUserSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters long"),

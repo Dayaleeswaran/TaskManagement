@@ -71,7 +71,7 @@ router.use(checkPasswordReset);
  */
 router.post(
   "/",
-  requireRole("ADMIN"),
+  requireRole(["ADMIN", "SUPER_ADMIN"]),
   validate(createUserSchema),
   createUserController
 );
@@ -137,13 +137,13 @@ router.post(
  */
 router.get(
   "/",
-  requireRole(["ADMIN", "PROJECT_MANAGER"]),
+  requireRole(["SUPER_ADMIN", "ADMIN", "PROJECT_MANAGER"]),
   getAllUsersController
 );
 
 router.get(
   "/audit-logs",
-  requireRole("ADMIN"),
+  requireRole(["ADMIN", "SUPER_ADMIN"]),
   getAuditLogsController
 );
 
@@ -268,14 +268,14 @@ router.put(
  */
 router.patch(
   "/:id/deactivate",
-  requireRole("ADMIN"),
+  requireRole(["ADMIN", "SUPER_ADMIN"]),
   deactivateUserController
 );
 
 // Admin-only: Deactivate (soft delete) user
 router.delete(
   "/:id",
-  requireRole("ADMIN"),
+  requireRole(["ADMIN", "SUPER_ADMIN"]),
   deactivateUserController
 );
 
@@ -327,7 +327,7 @@ router.delete(
  */
 router.patch(
   "/:id/role",
-  requireRole("ADMIN"),
+  requireRole(["ADMIN", "SUPER_ADMIN"]),
   validate(assignRoleSchema),
   assignRoleController
 );

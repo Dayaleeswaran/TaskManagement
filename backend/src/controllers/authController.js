@@ -2,6 +2,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const prisma = require("../prisma");
 const { addToBlacklist } = require("../middleware/tokenBlacklist");
+const { sendPasswordResetCode } = require("../services/emailService");
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-jwt-secret-key-change-me-in-production";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "24h";
@@ -130,7 +131,156 @@ exports.logout = (req, res, next) => {
   }
 };
 
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const emailLower = email.toLowerCase();
+
+    const user = await prisma.user.findUnique({
+      where: { email: emailLower },
+    });
+
+    if (user) {
+      // Generate a random 6-digit numeric code
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          resetCode: code,
+          resetCodeExpiry: expiry,
+          resetCodeAttempts: 0,
+        },
+      });
+
+      sendPasswordResetCode(user.email, code).catch((err) => {
+        console.error(`[Email Service] Failed to send reset code to ${user.email}:`, err);
+      });
+    }
+
+    // Generic response to prevent email enumeration
+    return res.status(200).json({
+      message: "If an account exists with this email, a verification code has been sent.",
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.verifyResetCode = async (req, res, next) => {
+  try {
+    const { email, code } = req.body;
+    const emailLower = email.toLowerCase();
+
+    const user = await prisma.user.findUnique({
+      where: { email: emailLower },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        errorCode: "BAD_REQUEST",
+        message: "Invalid or expired verification code.",
+      });
+    }
+
+    // Check failed attempts protection
+    if (user.resetCodeAttempts >= 5) {
+      return res.status(400).json({
+        errorCode: "TOO_MANY_FAILED_ATTEMPTS",
+        message: "Too many failed attempts. Please request a new verification code.",
+      });
+    }
+
+    // Validate code presence, correctness, and expiration
+    if (!user.resetCode || user.resetCode !== code || !user.resetCodeExpiry || new Date() > user.resetCodeExpiry) {
+      // Increment attempt counter on mismatch
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { resetCodeAttempts: { increment: 1 } },
+      });
+
+      return res.status(400).json({
+        errorCode: "BAD_REQUEST",
+        message: "Invalid or expired verification code.",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Verification successful.",
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.resetPassword = async (req, res, next) => {
+  try {
+    const { email, code, newPassword } = req.body;
+    const emailLower = email.toLowerCase();
+
+    const user = await prisma.user.findUnique({
+      where: { email: emailLower },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        errorCode: "BAD_REQUEST",
+        message: "Invalid or expired verification code.",
+      });
+    }
+
+    // Verify attempts
+    if (user.resetCodeAttempts >= 5) {
+      return res.status(400).json({
+        errorCode: "TOO_MANY_FAILED_ATTEMPTS",
+        message: "Too many failed attempts. Please request a new verification code.",
+      });
+    }
+
+    // Verify code and expiration again
+    if (!user.resetCode || user.resetCode !== code || !user.resetCodeExpiry || new Date() > user.resetCodeExpiry) {
+      return res.status(400).json({
+        errorCode: "BAD_REQUEST",
+        message: "Invalid or expired verification code.",
+      });
+    }
+
+    // Password complexity check
+    const hasMinLength = newPassword.length >= 8;
+    const hasUppercase = /[A-Z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword);
+    if (!(hasMinLength && hasUppercase && hasNumber && hasSpecialChar)) {
+      return res.status(400).json({
+        errorCode: "BAD_REQUEST",
+        message: "Password does not meet complexity requirements.",
+      });
+    }
+
+    // Hash password and save
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        resetCode: null,
+        resetCodeExpiry: null,
+        resetCodeAttempts: 0,
+        mustResetPassword: false, // Clearing any reset flags on successful password update
+      },
+    });
+
+    return res.status(200).json({
+      message: "Password reset successfully.",
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.changePassword = async (req, res, next) => {
   try {
     const { newPassword } = req.body;
 

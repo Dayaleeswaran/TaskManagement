@@ -7,6 +7,30 @@ const auditService = require("../services/auditService");
  */
 const createUserController = async (req, res, next) => {
   try {
+    const { role } = req.body;
+
+    // Admin restriction: Admins can only manage Project Managers and Collaborators.
+    if (req.user.role === "ADMIN") {
+      if (role === "ADMIN" || role === "SUPER_ADMIN") {
+        return res.status(403).json({
+          errorCode: "FORBIDDEN",
+          message: "Administrators cannot create Admin or Super Admin users.",
+        });
+      }
+    }
+
+    if (role === "SUPER_ADMIN") {
+      const existingSuperAdmin = await prisma.user.findFirst({
+        where: { role: "SUPER_ADMIN" },
+      });
+      if (existingSuperAdmin) {
+        return res.status(400).json({
+          errorCode: "BAD_REQUEST",
+          message: "A Super Admin already exists in the system.",
+        });
+      }
+    }
+
     const user = await userService.createUser(req.body);
     await auditService.log(
       "USER_CREATE",
@@ -45,8 +69,8 @@ const getUserByIdController = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // Authorization: Only admin can view other users' profiles
-    if (req.user.role !== "ADMIN" && req.user.id !== id) {
+    // Authorization: Only admin/super-admin can view other users' profiles
+    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && req.user.id !== id) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "You are not authorized to view this user profile.",
@@ -70,8 +94,20 @@ const updateUserController = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // Authorization: Users cannot edit other users' profiles
-    if (req.user.role !== "ADMIN" && req.user.id !== id) {
+    // Retrieve target user
+    const targetUser = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({
+        errorCode: "USER_NOT_FOUND",
+        message: "User not found.",
+      });
+    }
+
+    // Authorization: Users cannot edit other users' profiles unless admin or super admin
+    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && req.user.id !== id) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "You are not authorized to update this user profile.",
@@ -79,17 +115,59 @@ const updateUserController = async (req, res, next) => {
       });
     }
 
+    // Admins cannot edit Super Admin profiles
+    if (targetUser.role === "SUPER_ADMIN" && req.user.role === "ADMIN") {
+      return res.status(403).json({
+        errorCode: "FORBIDDEN",
+        message: "Administrators cannot edit the Super Admin profile.",
+      });
+    }
+
+    // Admins cannot edit other Admin profiles (admins can only manage PMs and Collaborators)
+    if (targetUser.role === "ADMIN" && req.user.role === "ADMIN" && req.user.id !== id) {
+      return res.status(403).json({
+        errorCode: "FORBIDDEN",
+        message: "Administrators cannot edit other Admin profiles.",
+      });
+    }
+
+    // Super Admin protections: Cannot have role changed, cannot be deactivated
+    if (targetUser.role === "SUPER_ADMIN") {
+      if (req.body.role && req.body.role !== "SUPER_ADMIN") {
+        return res.status(400).json({
+          errorCode: "BAD_REQUEST",
+          message: "Super Admin role cannot be changed.",
+        });
+      }
+      if (req.body.isActive === false) {
+        return res.status(400).json({
+          errorCode: "BAD_REQUEST",
+          message: "Super Admin cannot be deactivated.",
+        });
+      }
+    }
+
+    // Admin restrictions on assigning role or status
+    if (req.user.role === "ADMIN") {
+      if (req.body.role && (req.body.role === "ADMIN" || req.body.role === "SUPER_ADMIN")) {
+        return res.status(403).json({
+          errorCode: "FORBIDDEN",
+          message: "Administrators cannot assign Admin or Super Admin roles.",
+        });
+      }
+    }
+
     // Prepare update data
     const updateData = { ...req.body };
 
-    // Prevent non-admins from updating administrative fields
-    if (req.user.role !== "ADMIN") {
+    // Prevent non-admins/non-super-admins from updating administrative fields
+    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN") {
       delete updateData.role;
       delete updateData.isActive;
     }
 
     const user = await userService.updateUser(id, updateData);
-    if (req.user.role === "ADMIN") {
+    if (req.user.role === "ADMIN" || req.user.role === "SUPER_ADMIN") {
       if (updateData.isActive === true) {
         await auditService.log(
           "USER_ACTIVATE",
@@ -122,13 +200,42 @@ const deactivateUserController = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // Prevent admin from deactivating themselves
+    // Prevent deactivating self
     if (req.user.id === id) {
       return res.status(400).json({
         errorCode: "BAD_REQUEST",
         message: "You cannot deactivate your own account.",
         details: null,
       });
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({
+        errorCode: "USER_NOT_FOUND",
+        message: "User not found.",
+      });
+    }
+
+    // Super Admin protections: Cannot be deactivated or deleted
+    if (targetUser.role === "SUPER_ADMIN") {
+      return res.status(400).json({
+        errorCode: "BAD_REQUEST",
+        message: "Super Admin account cannot be deactivated or deleted.",
+      });
+    }
+
+    // Admin restrictions: cannot deactivate other Admins or Super Admins
+    if (req.user.role === "ADMIN") {
+      if (targetUser.role === "ADMIN" || targetUser.role === "SUPER_ADMIN") {
+        return res.status(403).json({
+          errorCode: "FORBIDDEN",
+          message: "Administrators cannot deactivate other Admin or Super Admin accounts.",
+        });
+      }
     }
 
     const user = await userService.deactivateUser(id);
@@ -155,13 +262,62 @@ const assignRoleController = async (req, res, next) => {
     const { id } = req.params;
     const { role } = req.body;
 
-    // Prevent admin from changing their own role (optional safety check)
-    if (req.user.id === id && req.user.role === "ADMIN" && role !== "ADMIN") {
+    const targetUser = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({
+        errorCode: "USER_NOT_FOUND",
+        message: "User not found.",
+      });
+    }
+
+    // Super Admin protections: Cannot have role changed
+    if (targetUser.role === "SUPER_ADMIN") {
       return res.status(400).json({
         errorCode: "BAD_REQUEST",
-        message: "Administrators cannot change their own administrative role.",
-        details: null,
+        message: "Super Admin role cannot be changed.",
       });
+    }
+
+    // Admin restrictions
+    if (req.user.role === "ADMIN") {
+      // Admins cannot change roles of other Admins or Super Admin
+      if (targetUser.role === "ADMIN" || targetUser.role === "SUPER_ADMIN") {
+        return res.status(403).json({
+          errorCode: "FORBIDDEN",
+          message: "Administrators cannot modify roles for Admin or Super Admin accounts.",
+        });
+      }
+      // Admins cannot promote to Admin or Super Admin
+      if (role === "ADMIN" || role === "SUPER_ADMIN") {
+        return res.status(403).json({
+          errorCode: "FORBIDDEN",
+          message: "Administrators cannot assign Admin or Super Admin roles.",
+        });
+      }
+    }
+
+    // Prevent changing own administrative role
+    if (req.user.id === id) {
+      return res.status(400).json({
+        errorCode: "BAD_REQUEST",
+        message: "You cannot modify your own administrative role.",
+      });
+    }
+
+    // If new role is SUPER_ADMIN, check if one already exists
+    if (role === "SUPER_ADMIN") {
+      const existingSuperAdmin = await prisma.user.findFirst({
+        where: { role: "SUPER_ADMIN" },
+      });
+      if (existingSuperAdmin) {
+        return res.status(400).json({
+          errorCode: "BAD_REQUEST",
+          message: "A Super Admin already exists in the system.",
+        });
+      }
     }
 
     const user = await userService.assignRole(id, role);
@@ -182,7 +338,7 @@ const assignRoleController = async (req, res, next) => {
 
 const getAuditLogsController = async (req, res, next) => {
   try {
-    if (req.user.role !== "ADMIN") {
+    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN") {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "Only administrators can view audit logs.",

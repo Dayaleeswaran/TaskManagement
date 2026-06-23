@@ -1,6 +1,6 @@
 const { z } = require("zod");
 
-const RoleEnum = z.enum(["ADMIN", "PROJECT_MANAGER", "COLLABORATOR"]);
+const RoleEnum = z.enum(["SUPER_ADMIN", "ADMIN", "PROJECT_MANAGER", "COLLABORATOR"]);
 
 // Strong password policy (Min 8 chars, 1 uppercase, 1 number, 1 special character)
 // Error message is generic to avoid revealing validation failures
@@ -29,8 +29,26 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+const forgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email format"),
+});
+
+const verifyResetCodeSchema = z.object({
+  email: z.string().email("Invalid email format"),
+  code: z.string().length(6, "Verification code must be exactly 6 digits"),
+});
+
+const resetPasswordSchema = z.object({
+  email: z.string().email("Invalid email format"),
+  code: z.string().length(6, "Verification code must be exactly 6 digits"),
+  newPassword: passwordPolicy,
+});
+
 module.exports = {
   passwordPolicy,
   registerSchema,
   loginSchema,
+  forgotPasswordSchema,
+  verifyResetCodeSchema,
+  resetPasswordSchema,
 };

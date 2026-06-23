@@ -7,7 +7,7 @@ const getDashboardAnalytics = async (req, res, next) => {
   try {
     const { role, id: userId } = req.user;
     
-    if (role === "ADMIN") {
+    if (role === "ADMIN" || role === "SUPER_ADMIN") {
       const [
         totalUsers,
         activeUsers,

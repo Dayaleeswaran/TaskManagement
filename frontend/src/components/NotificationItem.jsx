@@ -25,7 +25,7 @@ export default function NotificationItem({ notification, onClick }) {
           <div className="flex-1 min-w-0">
             <p
               className={`text-sm leading-relaxed break-words ${
-                !isRead ? 'text-slate-900 font-semibold' : 'text-slate-500 font-normal'
+                !isRead ? 'text-slate-300 font-semibold' : 'text-slate-500 font-normal'
               }`}
             >
               {message}

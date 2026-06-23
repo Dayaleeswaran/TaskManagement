@@ -15,7 +15,7 @@ const getTasks = async (req, res, next) => {
     }
 
     // Verify project members access restriction
-    if (projectId && req.user.role !== "ADMIN") {
+    if (projectId && req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN") {
       const project = await prisma.project.findUnique({
         where: { id: projectId },
       });
@@ -73,7 +73,7 @@ const getTaskById = async (req, res, next) => {
         error.errorCode = "FORBIDDEN";
         throw error;
       }
-    } else if (req.user.role !== "ADMIN" && task.project.ownerId !== req.user.id) {
+    } else if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && task.project.ownerId !== req.user.id) {
       const isMember = await prisma.projectMember.findUnique({
         where: {
           projectId_userId: { projectId: task.projectId, userId: req.user.id },
@@ -96,7 +96,7 @@ const getTaskById = async (req, res, next) => {
 
 const createTask = async (req, res, next) => {
   try {
-    if (req.user.role !== "ADMIN" && req.user.role !== "PROJECT_MANAGER") {
+    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && req.user.role !== "PROJECT_MANAGER") {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "Only Administrators and Project Managers can create tasks.",
@@ -132,7 +132,7 @@ const createTask = async (req, res, next) => {
     }
 
     // Check project membership/ownership
-    if (req.user.role !== "ADMIN" && project.ownerId !== req.user.id) {
+    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && project.ownerId !== req.user.id) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "You can only create tasks in projects you own.",
@@ -238,7 +238,7 @@ const updateTask = async (req, res, next) => {
     }
 
     // Allow Admin or Project Manager of this project to edit
-    if (req.user.role !== "ADMIN" && existingTask.project.ownerId !== req.user.id) {
+    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && existingTask.project.ownerId !== req.user.id) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "Only Administrators and the Project Manager can edit tasks.",
@@ -354,7 +354,7 @@ const deleteTask = async (req, res, next) => {
       return res.status(404).json({ errorCode: "TASK_NOT_FOUND", message: "Task not found." });
     }
 
-    if (req.user.role !== "ADMIN" && existingTask.project.ownerId !== req.user.id) {
+    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && existingTask.project.ownerId !== req.user.id) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "Only Administrators and Project Managers can delete tasks.",
@@ -393,7 +393,7 @@ const restoreTask = async (req, res, next) => {
       return res.status(404).json({ errorCode: "TASK_NOT_FOUND", message: "Task not found." });
     }
 
-    if (req.user.role !== "ADMIN" && existingTask.project.ownerId !== req.user.id) {
+    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && existingTask.project.ownerId !== req.user.id) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "Only Administrators and Project Managers can restore tasks.",
@@ -420,7 +420,7 @@ const restoreTask = async (req, res, next) => {
 
 const assignTask = async (req, res, next) => {
   try {
-    if (req.user.role !== "ADMIN" && req.user.role !== "PROJECT_MANAGER") {
+    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && req.user.role !== "PROJECT_MANAGER") {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "Only Administrators and Project Managers can assign tasks.",

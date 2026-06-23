@@ -34,7 +34,7 @@ export default function Dashboard() {
           api.get('/api/v1/analytics/dashboard')
         ];
 
-        if (user?.role === 'ADMIN') {
+        if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') {
           promises.push(api.get('/api/v1/users?limit=100'));
         }
 
@@ -76,6 +76,8 @@ export default function Dashboard() {
   // Enforce badge styles
   const getRoleBadgeStyle = (role) => {
     switch (role) {
+      case 'SUPER_ADMIN':
+        return 'bg-amber-500/10 text-amber-600 border-amber-200';
       case 'ADMIN':
         return 'bg-purple-500/10 text-purple-600 border-purple-200';
       case 'PROJECT_MANAGER':
@@ -669,7 +671,7 @@ export default function Dashboard() {
           <Activity className="h-8 w-8 text-violet-500 animate-pulse" />
           <p className="text-sm text-slate-500 font-medium">Loading secure panel details...</p>
         </div>
-      ) : user?.role === 'ADMIN' ? (
+      ) : (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') ? (
         renderAdminView()
       ) : user?.role === 'PROJECT_MANAGER' ? (
         renderPMView()

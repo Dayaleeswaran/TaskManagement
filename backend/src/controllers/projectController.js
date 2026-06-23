@@ -46,7 +46,7 @@ const getProjects = async (req, res, next) => {
 
 const createProject = async (req, res, next) => {
   try {
-    if (req.user.role !== "ADMIN" && req.user.role !== "PROJECT_MANAGER") {
+    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && req.user.role !== "PROJECT_MANAGER") {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "Only Administrators and Project Managers can create projects.",
@@ -154,7 +154,7 @@ const createProject = async (req, res, next) => {
 
 const updateProject = async (req, res, next) => {
   try {
-    if (req.user.role !== "ADMIN" && req.user.role !== "PROJECT_MANAGER") {
+    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && req.user.role !== "PROJECT_MANAGER") {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "Only Administrators and Project Managers can edit projects.",
@@ -176,7 +176,7 @@ const updateProject = async (req, res, next) => {
     }
 
     // Check ownership if not admin
-    if (req.user.role !== "ADMIN" && existingProject.ownerId !== req.user.id) {
+    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && existingProject.ownerId !== req.user.id) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "You can only update projects that you own.",
@@ -199,7 +199,7 @@ const updateProject = async (req, res, next) => {
 
 const deleteProject = async (req, res, next) => {
   try {
-    if (req.user.role !== "ADMIN" && req.user.role !== "PROJECT_MANAGER") {
+    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && req.user.role !== "PROJECT_MANAGER") {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "Only Administrators and Project Managers can archive/delete projects.",
@@ -220,7 +220,7 @@ const deleteProject = async (req, res, next) => {
     }
 
     // Check ownership if not admin
-    if (req.user.role !== "ADMIN" && existingProject.ownerId !== req.user.id) {
+    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && existingProject.ownerId !== req.user.id) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "You can only delete projects that you own.",
@@ -256,7 +256,7 @@ const deleteProject = async (req, res, next) => {
 
 const restoreProject = async (req, res, next) => {
   try {
-    if (req.user.role !== "ADMIN" && req.user.role !== "PROJECT_MANAGER") {
+    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && req.user.role !== "PROJECT_MANAGER") {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "Only Administrators and Project Managers can restore projects.",
@@ -276,7 +276,7 @@ const restoreProject = async (req, res, next) => {
       });
     }
 
-    if (req.user.role !== "ADMIN" && existingProject.ownerId !== req.user.id) {
+    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && existingProject.ownerId !== req.user.id) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "You can only restore projects that you own.",
@@ -343,7 +343,7 @@ const getProjectMembers = async (req, res, next) => {
     }
 
     // Verify membership access
-    if (role !== "ADMIN" && project.ownerId !== userId) {
+    if (role !== "ADMIN" && role !== "SUPER_ADMIN" && project.ownerId !== userId) {
       const isMember = project.members.some((m) => m.userId === userId);
       if (!isMember) {
         return res.status(403).json({
@@ -385,7 +385,7 @@ const addProjectMember = async (req, res, next) => {
     }
 
     // Only Owner (Project Manager) or Admin can add members
-    if (role !== "ADMIN" && project.ownerId !== currentUserId) {
+    if (role !== "ADMIN" && role !== "SUPER_ADMIN" && project.ownerId !== currentUserId) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "Only the Project Manager or Admin can manage members.",
@@ -468,7 +468,7 @@ const removeProjectMember = async (req, res, next) => {
     }
 
     // Only Owner or Admin can remove members
-    if (role !== "ADMIN" && project.ownerId !== currentUserId) {
+    if (role !== "ADMIN" && role !== "SUPER_ADMIN" && project.ownerId !== currentUserId) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "Only the Project Manager or Admin can manage members.",
@@ -530,7 +530,7 @@ const getProjectActivities = async (req, res, next) => {
     }
 
     // Verify membership access
-    if (role !== "ADMIN" && project.ownerId !== userId) {
+    if (role !== "ADMIN" && role !== "SUPER_ADMIN" && project.ownerId !== userId) {
       const isMember = project.members.some((m) => m.userId === userId);
       if (!isMember) {
         return res.status(403).json({
