@@ -25,6 +25,9 @@ export default function CreateTaskModal({ onClose, onTaskCreated }) {
   });
   const [estimatedHours, setEstimatedHours] = useState('');
   const [selectedLabels, setSelectedLabels] = useState([]);
+  const [projectMembers, setProjectMembers] = useState([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [assignedUserIds, setAssignedUserIds] = useState([]);
 
   const AVAILABLE_LABELS = ['BUG', 'FEATURE', 'URGENT', 'DOCUMENTATION', 'REFACTOR'];
 
@@ -49,6 +52,24 @@ export default function CreateTaskModal({ onClose, onTaskCreated }) {
     fetchProjects();
   }, []);
 
+  useEffect(() => {
+    if (!projectId) return;
+    const fetchMembers = async () => {
+      try {
+        setLoadingMembers(true);
+        const res = await api.get(`/api/v1/projects/${projectId}/members`);
+        setProjectMembers(res.data);
+        setAssignedUserIds([]);
+      } catch (err) {
+        console.error('Failed to load project members:', err);
+        addToast('Failed to load project members.', 'error');
+      } finally {
+        setLoadingMembers(false);
+      }
+    };
+    fetchMembers();
+  }, [projectId]);
+
   // Close modal when Escape key is pressed
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -68,6 +89,10 @@ export default function CreateTaskModal({ onClose, onTaskCreated }) {
       addToast('Please select a project.', 'error');
       return;
     }
+    if (assignedUserIds.length === 0) {
+      addToast('At least one assignee is required.', 'error');
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -81,6 +106,7 @@ export default function CreateTaskModal({ onClose, onTaskCreated }) {
         startDate: startDate ? new Date(startDate).toISOString() : null,
         estimatedHours: estimatedHours ? parseFloat(estimatedHours) : null,
         labels: selectedLabels,
+        assignedUserIds,
       };
 
       await api.post('/api/v1/tasks', payload);
@@ -153,6 +179,54 @@ export default function CreateTaskModal({ onClose, onTaskCreated }) {
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* Assign To Multi-Select Project Members */}
+            <div className="space-y-1.5">
+              <label className="font-semibold text-slate-350">Assign To <span className="text-rose-500">*</span></label>
+              {loadingMembers ? (
+                <div className="text-slate-400 text-xs py-2 flex items-center gap-1.5">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
+                  <span>Loading members...</span>
+                </div>
+              ) : projectMembers.length === 0 ? (
+                <p className="text-rose-400 text-xs py-1">No active members found in this project.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-slate-950 border border-slate-850 rounded-xl">
+                  {projectMembers.map((member) => {
+                    const isSelected = assignedUserIds.includes(member.id);
+                    return (
+                      <button
+                        key={member.id}
+                        type="button"
+                        onClick={() => {
+                          setAssignedUserIds((prev) =>
+                            prev.includes(member.id)
+                              ? prev.filter((id) => id !== member.id)
+                              : [...prev, member.id]
+                          );
+                        }}
+                        className={`flex items-center space-x-2.5 px-3 py-1.5 rounded-lg border text-left transition-all duration-150 cursor-pointer ${
+                          isSelected
+                            ? 'bg-violet-600/10 border-violet-500 text-violet-300'
+                            : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-750'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          readOnly
+                          className="accent-violet-500 pointer-events-none"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold truncate">{member.name}</p>
+                          <p className="text-[10px] text-slate-500 truncate">{member.role?.replace('_', ' ')}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Task Title */}

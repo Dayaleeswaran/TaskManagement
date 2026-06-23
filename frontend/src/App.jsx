@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
+import { NotificationProvider } from './context/NotificationContext';
 import ToastContainer from './components/Toast';
 import ProtectedRoute from './components/ProtectedRoute';
 import MainLayout from './components/MainLayout';
@@ -181,10 +182,12 @@ export default function App() {
     <ErrorBoundary>
       <Router>
         <AuthProvider>
-          <ToastProvider>
-            <ToastContainer />
-            <AppContent />
-          </ToastProvider>
+          <NotificationProvider>
+            <ToastProvider>
+              <ToastContainer />
+              <AppContent />
+            </ToastProvider>
+          </NotificationProvider>
         </AuthProvider>
       </Router>
     </ErrorBoundary>

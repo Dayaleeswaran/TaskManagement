@@ -1,5 +1,6 @@
 const prisma = require("../prisma");
 const notificationService = require("./notificationService");
+const activityService = require("./activityService");
 
 /**
  * Creates a comment on a specific task and triggers notifications for the task owner and assignees.
@@ -67,15 +68,20 @@ const createComment = async (taskId, authorId, body) => {
   });
 
   if (recipientIds.size > 0) {
-    const message = `${author.name} commented on task "${task.title}": "${
-      body.length > 50 ? body.substring(0, 50) + "..." : body
-    }"`;
+    const message = `${author.name} commented on task: ${task.title}`;
     await notificationService.createBulkNotifications(
       Array.from(recipientIds),
       "COMMENT_ADDED",
       message
     );
   }
+
+  // Record Activity
+  await activityService.createActivity(
+    task.projectId,
+    authorId,
+    `${author.name} commented on task "${task.title}".`
+  );
 
   return comment;
 };

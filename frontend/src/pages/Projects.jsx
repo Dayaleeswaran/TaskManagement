@@ -36,8 +36,13 @@ export default function Projects() {
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  const [systemUsers, setSystemUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [selectedMemberIds, setSelectedMemberIds] = useState([]);
+
   const fetchProjects = async () => {
     try {
+      setLoading(false);
       const response = await api.get('/api/v1/projects');
       setProjects(response.data || []);
     } catch (err) {
@@ -48,9 +53,25 @@ export default function Projects() {
     }
   };
 
+  const fetchSystemUsers = async () => {
+    try {
+      setLoadingUsers(true);
+      const response = await api.get('/api/v1/users?limit=100&isActive=true');
+      const usersData = response.data.users || response.data || [];
+      setSystemUsers(usersData);
+    } catch (err) {
+      console.error('Failed to load system users:', err);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
   useEffect(() => {
     fetchProjects();
-  }, []);
+    if (user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER') {
+      fetchSystemUsers();
+    }
+  }, [user]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -58,10 +79,15 @@ export default function Projects() {
 
     try {
       setSubmitting(true);
-      await api.post('/api/v1/projects', { name, description });
+      await api.post('/api/v1/projects', { 
+        name: name.trim(), 
+        description: description.trim(), 
+        memberUserIds: selectedMemberIds 
+      });
       addToast('Project created successfully!', 'success');
       setName('');
       setDescription('');
+      setSelectedMemberIds([]);
       setIsCreateOpen(false);
       fetchProjects();
     } catch (err) {
@@ -211,9 +237,15 @@ export default function Projects() {
       {/* Creation Modal */}
       {isCreateOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="fixed inset-0 bg-transparent" onClick={() => setIsCreateOpen(false)}></div>
-          <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl z-10">
-            <button className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer" onClick={() => setIsCreateOpen(false)}>
+          <div className="fixed inset-0 bg-transparent" onClick={() => {
+            setSelectedMemberIds([]);
+            setIsCreateOpen(false);
+          }}></div>
+          <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl z-10 max-h-[90vh] overflow-y-auto kanban-scroll-container">
+            <button className="absolute top-4 right-4 text-slate-400 hover:text-slate-650 cursor-pointer" onClick={() => {
+              setSelectedMemberIds([]);
+              setIsCreateOpen(false);
+            }}>
               <X className="h-5 w-5" />
             </button>
             <h2 className="text-lg font-bold text-slate-800 mb-4">Create New Project</h2>
@@ -238,6 +270,57 @@ export default function Projects() {
                   placeholder="Describe project details..."
                 />
               </div>
+
+              {/* Project Members Multi-Select Option */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Project Members</label>
+                {loadingUsers ? (
+                  <div className="text-xs text-slate-500 py-2 flex items-center gap-1.5">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
+                    <span>Loading users list...</span>
+                  </div>
+                ) : systemUsers.filter((u) => u.id !== user?.id).length === 0 ? (
+                  <p className="text-xs text-slate-400">No other active users available to add.</p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl">
+                    {systemUsers
+                      .filter((u) => u.id !== user?.id)
+                      .map((u) => {
+                        const isSelected = selectedMemberIds.includes(u.id);
+                        return (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedMemberIds((prev) =>
+                                prev.includes(u.id)
+                                  ? prev.filter((id) => id !== u.id)
+                                  : [...prev, u.id]
+                              );
+                            }}
+                            className={`flex items-center space-x-2.5 px-3 py-1.5 rounded-lg border text-left transition-colors cursor-pointer ${
+                              isSelected
+                                ? 'bg-violet-600/10 border-violet-500 text-violet-750'
+                                : 'bg-white border-slate-200 text-slate-505 hover:text-slate-800 hover:border-slate-350'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              readOnly
+                              className="accent-violet-500 pointer-events-none"
+                            />
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold truncate">{u.name}</p>
+                              <p className="text-[10px] text-slate-400 truncate">{u.role?.replace('_', ' ')} ({u.email})</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+
               <button 
                 type="submit" 
                 disabled={submitting}

@@ -5,27 +5,6 @@ const activityService = require("../services/activityService");
 const fs = require("fs");
 const path = require("path");
 
-/**
- * Helper to alert task watchers.
- */
-const notifyWatchers = async (taskId, actionType, message, excludeUserId) => {
-  try {
-    const watchers = await prisma.taskWatcher.findMany({
-      where: { taskId },
-      select: { userId: true },
-    });
-    
-    const recipientIds = watchers
-      .map((w) => w.userId)
-      .filter((uid) => uid !== excludeUserId);
-
-    if (recipientIds.length > 0) {
-      await notificationService.createBulkNotifications(recipientIds, actionType, message);
-    }
-  } catch (err) {
-    console.error("[Watchers Notify Fail]", err);
-  }
-};
 
 const getTasks = async (req, res, next) => {
   try {
@@ -85,8 +64,16 @@ const getTaskById = async (req, res, next) => {
       throw error;
     }
 
-    // Verify project members access restriction
-    if (req.user.role !== "ADMIN" && task.project.ownerId !== req.user.id) {
+    // Verify access permission
+    if (req.user.role === "COLLABORATOR") {
+      const isAssigned = task.assignments.some((a) => a.userId === req.user.id);
+      if (!isAssigned && task.createdById !== req.user.id) {
+        const error = new Error("You do not have permission to view this task.");
+        error.statusCode = 403;
+        error.errorCode = "FORBIDDEN";
+        throw error;
+      }
+    } else if (req.user.role !== "ADMIN" && task.project.ownerId !== req.user.id) {
       const isMember = await prisma.projectMember.findUnique({
         where: {
           projectId_userId: { projectId: task.projectId, userId: req.user.id },
@@ -94,14 +81,10 @@ const getTaskById = async (req, res, next) => {
       });
       
       if (!isMember) {
-        // Fallback for assignments check compatibility
-        const isAssigned = task.assignments.some((a) => a.userId === req.user.id);
-        if (!isAssigned && task.createdById !== req.user.id) {
-          const error = new Error("You do not have permission to view this task.");
-          error.statusCode = 403;
-          error.errorCode = "FORBIDDEN";
-          throw error;
-        }
+        const error = new Error("You do not have permission to view this task.");
+        error.statusCode = 403;
+        error.errorCode = "FORBIDDEN";
+        throw error;
       }
     }
 
@@ -120,13 +103,21 @@ const createTask = async (req, res, next) => {
       });
     }
 
-    const { title, description, status, priority, dueDate, startDate, estimatedHours, projectId, labels } = req.body;
+    const { title, description, status, priority, dueDate, startDate, estimatedHours, projectId, labels, assignedUserIds } = req.body;
     
     if (!title || !projectId) {
       const error = new Error("Title and Project ID are required.");
       error.statusCode = 400;
       error.errorCode = "BAD_REQUEST";
       throw error;
+    }
+
+    // Validate that assignee selection is mandatory
+    if (!assignedUserIds || !Array.isArray(assignedUserIds) || assignedUserIds.length === 0) {
+      return res.status(400).json({
+        errorCode: "BAD_REQUEST",
+        message: "At least one assignee is required.",
+      });
     }
 
     const project = await prisma.project.findUnique({
@@ -145,6 +136,21 @@ const createTask = async (req, res, next) => {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "You can only create tasks in projects you own.",
+      });
+    }
+
+    // Enforce project membership check on all assignees before saving
+    const membersCount = await prisma.projectMember.count({
+      where: {
+        projectId,
+        userId: { in: assignedUserIds },
+      },
+    });
+
+    if (membersCount !== assignedUserIds.length) {
+      return res.status(400).json({
+        errorCode: "BAD_REQUEST",
+        message: "All assignees must be members of the project.",
       });
     }
 
@@ -179,9 +185,19 @@ const createTask = async (req, res, next) => {
         labels: {
           connect: labelConnections,
         },
+        assignments: {
+          create: assignedUserIds.map((userId) => ({ userId })),
+        },
       },
       include: {
         labels: true,
+        assignments: {
+          include: {
+            user: {
+              select: { id: true, name: true, email: true },
+            },
+          },
+        },
       },
     });
 
@@ -190,6 +206,13 @@ const createTask = async (req, res, next) => {
       projectId,
       req.user.id,
       `${req.user.name} created task "${title}".`
+    );
+
+    // Create notifications and emit Socket.io to assigned users
+    await notificationService.createBulkNotifications(
+      assignedUserIds,
+      "TASK_ASSIGNED",
+      `You have been assigned to task: ${task.title}`
     );
 
     return res.status(201).json(task);
@@ -201,7 +224,7 @@ const createTask = async (req, res, next) => {
 const updateTask = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { title, description, status, priority, dueDate, startDate, estimatedHours, labels } = req.body;
+    const { title, description, status, priority, dueDate, startDate, estimatedHours, labels, assignedUserIds } = req.body;
 
     const existingTask = await prisma.task.findUnique({
       where: { id },
@@ -244,6 +267,58 @@ const updateTask = async (req, res, next) => {
       };
     }
 
+    // If assignedUserIds is provided, update task assignments
+    if (assignedUserIds !== undefined) {
+      if (!Array.isArray(assignedUserIds) || assignedUserIds.length === 0) {
+        return res.status(400).json({
+          errorCode: "BAD_REQUEST",
+          message: "At least one assignee is required.",
+        });
+      }
+
+      // Enforce project membership check on all assignees before saving
+      const membersCount = await prisma.projectMember.count({
+        where: {
+          projectId: existingTask.projectId,
+          userId: { in: assignedUserIds },
+        },
+      });
+
+      if (membersCount !== assignedUserIds.length) {
+        return res.status(400).json({
+          errorCode: "BAD_REQUEST",
+          message: "All assignees must be members of the project.",
+        });
+      }
+
+      // Get existing assignments to determine newly assigned users
+      const existingAssignments = await prisma.taskAssignment.findMany({
+        where: { taskId: id },
+        select: { userId: true },
+      });
+      const existingUserIds = new Set(existingAssignments.map((a) => a.userId));
+      const newlyAssignedUserIds = assignedUserIds.filter((userId) => !existingUserIds.has(userId));
+
+      // Update assignments in a transaction
+      await prisma.$transaction([
+        prisma.taskAssignment.deleteMany({
+          where: { taskId: id },
+        }),
+        prisma.taskAssignment.createMany({
+          data: assignedUserIds.map((userId) => ({ taskId: id, userId })),
+        }),
+      ]);
+
+      // Notify newly assigned users
+      if (newlyAssignedUserIds.length > 0) {
+        await notificationService.createBulkNotifications(
+          newlyAssignedUserIds,
+          "TASK_ASSIGNED",
+          `You have been assigned to task: ${existingTask.title}`
+        );
+      }
+    }
+
     const updatedTask = await prisma.task.update({
       where: { id },
       data: updateData,
@@ -259,15 +334,8 @@ const updateTask = async (req, res, next) => {
       `${req.user.name} updated task "${updatedTask.title}".`
     );
 
-    // Notify Watchers
-    await notifyWatchers(
-      id,
-      "TASK_UPDATED",
-      `Task "${updatedTask.title}" details were updated by ${req.user.name}`,
-      req.user.id
-    );
-
-    return res.status(200).json(updatedTask);
+    const fullUpdatedTask = await dbQueries.getTaskWithFullDetails(id);
+    return res.status(200).json(fullUpdatedTask);
   } catch (err) {
     next(err);
   }
@@ -380,6 +448,20 @@ const assignTask = async (req, res, next) => {
       return res.status(404).json({ errorCode: "USER_NOT_FOUND", message: "User not found." });
     }
 
+    // Check if user belongs to the project's member list
+    const isMember = await prisma.projectMember.findUnique({
+      where: {
+        projectId_userId: { projectId: task.projectId, userId },
+      },
+    });
+
+    if (!isMember) {
+      return res.status(400).json({
+        errorCode: "BAD_REQUEST",
+        message: "You can only assign tasks to project members.",
+      });
+    }
+
     const alreadyAssigned = task.assignments.some((a) => a.userId === userId);
     if (alreadyAssigned) {
       return res.status(400).json({ errorCode: "BAD_REQUEST", message: "User is already assigned." });
@@ -400,16 +482,9 @@ const assignTask = async (req, res, next) => {
     await notificationService.createNotification(
       userId,
       "TASK_ASSIGNED",
-      `You have been assigned to task: "${task.title}"`
+      `You have been assigned to task: ${task.title}`
     );
 
-    // Notify Watchers
-    await notifyWatchers(
-      id,
-      "TASK_ASSIGNED",
-      `Task "${task.title}" has been assigned to ${user.name} by ${req.user.name}`,
-      req.user.id
-    );
 
     return res.status(200).json({ message: "User assigned successfully" });
   } catch (err) {
@@ -461,32 +536,47 @@ const updateTaskStatus = async (req, res, next) => {
         
     await activityService.createActivity(task.projectId, req.user.id, activityMsg);
 
-    // Notify task creator and assignees
-    const recipients = new Set();
-    if (task.createdById !== req.user.id) {
-      recipients.add(task.createdById);
-    }
-    task.assignments.forEach((a) => {
-      if (a.userId !== req.user.id) {
-        recipients.add(a.userId);
+    if (status === "COMPLETED") {
+      // Notify PM (ownerId) and Creator (createdById), excluding the actor
+      const recipients = new Set();
+      if (task.createdById !== req.user.id) {
+        recipients.add(task.createdById);
       }
-    });
+      if (task.project.ownerId !== req.user.id) {
+        recipients.add(task.project.ownerId);
+      }
 
-    if (recipients.size > 0) {
-      await notificationService.createBulkNotifications(
-        Array.from(recipients),
-        "STATUS_CHANGED",
-        `Task "${task.title}" status has been changed to ${statusLabel} by ${req.user.name}`
-      );
+      if (recipients.size > 0) {
+        await notificationService.createBulkNotifications(
+          Array.from(recipients),
+          "TASK_COMPLETED",
+          `Task completed: ${task.title}`
+        );
+      }
+    } else {
+      // General status change notifications to creator, project owner, and assignees
+      const recipients = new Set();
+      if (task.createdById !== req.user.id) {
+        recipients.add(task.createdById);
+      }
+      if (task.project.ownerId !== req.user.id) {
+        recipients.add(task.project.ownerId);
+      }
+      task.assignments.forEach((a) => {
+        if (a.userId !== req.user.id) {
+          recipients.add(a.userId);
+        }
+      });
+
+      if (recipients.size > 0) {
+        await notificationService.createBulkNotifications(
+          Array.from(recipients),
+          "STATUS_CHANGED",
+          `Task "${task.title}" status has been changed to ${statusLabel} by ${req.user.name}`
+        );
+      }
     }
 
-    // Notify Watchers
-    await notifyWatchers(
-      id,
-      "STATUS_CHANGED",
-      `Task "${task.title}" status changed to ${statusLabel} by ${req.user.name}`,
-      req.user.id
-    );
 
     return res.status(200).json(updatedTask);
   } catch (err) {
@@ -520,60 +610,6 @@ const reorderTasks = async (req, res, next) => {
   }
 };
 
-// --- WATCHERS MANAGEMENT ---
-
-const watchTask = async (req, res, next) => {
-  try {
-    const { id: taskId } = req.params;
-    const userId = req.user.id;
-
-    const task = await prisma.task.findUnique({ where: { id: taskId } });
-    if (!task || task.deletedAt) {
-      return res.status(404).json({ errorCode: "TASK_NOT_FOUND", message: "Task not found." });
-    }
-
-    const existingWatcher = await prisma.taskWatcher.findUnique({
-      where: {
-        taskId_userId: { taskId, userId },
-      },
-    });
-
-    if (!existingWatcher) {
-      await prisma.taskWatcher.create({
-        data: { taskId, userId },
-      });
-    }
-
-    return res.status(200).json({ message: "You are now watching this task." });
-  } catch (err) {
-    next(err);
-  }
-};
-
-const unwatchTask = async (req, res, next) => {
-  try {
-    const { id: taskId } = req.params;
-    const userId = req.user.id;
-
-    const watcher = await prisma.taskWatcher.findUnique({
-      where: {
-        taskId_userId: { taskId, userId },
-      },
-    });
-
-    if (watcher) {
-      await prisma.taskWatcher.delete({
-        where: {
-          taskId_userId: { taskId, userId },
-        },
-      });
-    }
-
-    return res.status(200).json({ message: "You have unwatched this task." });
-  } catch (err) {
-    next(err);
-  }
-};
 
 // --- ATTACHMENTS MANAGEMENT ---
 
@@ -614,13 +650,6 @@ const uploadAttachment = async (req, res, next) => {
       `${req.user.name} attached file "${req.file.originalname}" to task "${task.title}".`
     );
 
-    // Notify Watchers
-    await notifyWatchers(
-      taskId,
-      "ATTACHMENT_ADDED",
-      `File "${req.file.originalname}" attached to task "${task.title}" by ${req.user.name}`,
-      req.user.id
-    );
 
     return res.status(201).json(attachment);
   } catch (err) {
@@ -677,8 +706,6 @@ module.exports = {
   assignTask,
   updateTaskStatus,
   reorderTasks,
-  watchTask,
-  unwatchTask,
   uploadAttachment,
   deleteAttachment,
 };

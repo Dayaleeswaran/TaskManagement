@@ -157,17 +157,6 @@ async function getTaskWithFullDetails(taskId) {
           createdAt: "desc"
         }
       },
-      watchers: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true
-            }
-          }
-        }
-      },
       comments: {
         include: {
           author: {

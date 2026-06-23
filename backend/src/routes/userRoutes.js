@@ -137,7 +137,7 @@ router.post(
  */
 router.get(
   "/",
-  requireRole("ADMIN"),
+  requireRole(["ADMIN", "PROJECT_MANAGER"]),
   getAllUsersController
 );
 

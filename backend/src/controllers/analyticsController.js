@@ -8,14 +8,27 @@ const getDashboardAnalytics = async (req, res, next) => {
     const { role, id: userId } = req.user;
     
     if (role === "ADMIN") {
-      const totalUsers = await prisma.user.count();
-      const activeUsers = await prisma.user.count({ where: { isActive: true } });
-      const projects = await prisma.project.count({ where: { deletedAt: null } });
-      const totalTasks = await prisma.task.count({ where: { deletedAt: null } });
-      
-      const completedTasks = await prisma.task.count({
-        where: { status: "COMPLETED", deletedAt: null },
-      });
+      const [
+        totalUsers,
+        activeUsers,
+        projects,
+        totalTasks,
+        completedTasks,
+        overdueTasks
+      ] = await Promise.all([
+        prisma.user.count(),
+        prisma.user.count({ where: { isActive: true } }),
+        prisma.project.count({ where: { deletedAt: null } }),
+        prisma.task.count({ where: { deletedAt: null } }),
+        prisma.task.count({ where: { status: "COMPLETED", deletedAt: null } }),
+        prisma.task.count({
+          where: {
+            dueDate: { lt: new Date() },
+            status: { not: "COMPLETED" },
+            deletedAt: null,
+          },
+        })
+      ]);
       
       const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
       
@@ -25,44 +38,46 @@ const getDashboardAnalytics = async (req, res, next) => {
         projects,
         tasks: totalTasks,
         completionRate,
+        overdueTasks,
       });
     } 
     
     if (role === "PROJECT_MANAGER") {
-      const activeProjects = await prisma.project.count({
-        where: { ownerId: userId, deletedAt: null },
-      });
-      
       const pmProjects = await prisma.project.findMany({
         where: { ownerId: userId, deletedAt: null },
         select: { id: true },
       });
       const pmProjectIds = pmProjects.map((p) => p.id);
+      const activeProjects = pmProjects.length;
       
-      // Distinct counts of users registered to the PM's projects
-      const projectMembers = await prisma.projectMember.findMany({
-        where: { projectId: { in: pmProjectIds } },
-        select: { userId: true },
-      });
+      const [
+        projectMembers,
+        tasksCompleted,
+        overdueTasks
+      ] = await Promise.all([
+        prisma.projectMember.findMany({
+          where: { projectId: { in: pmProjectIds } },
+          select: { userId: true },
+        }),
+        prisma.task.count({
+          where: {
+            projectId: { in: pmProjectIds },
+            status: "COMPLETED",
+            deletedAt: null,
+          },
+        }),
+        prisma.task.count({
+          where: {
+            projectId: { in: pmProjectIds },
+            dueDate: { lt: new Date() },
+            status: { not: "COMPLETED" },
+            deletedAt: null,
+          },
+        })
+      ]);
+      
       const uniqueMembers = new Set(projectMembers.map((m) => m.userId));
       const teamMembers = uniqueMembers.size;
-      
-      const tasksCompleted = await prisma.task.count({
-        where: {
-          projectId: { in: pmProjectIds },
-          status: "COMPLETED",
-          deletedAt: null,
-        },
-      });
-      
-      const overdueTasks = await prisma.task.count({
-        where: {
-          projectId: { in: pmProjectIds },
-          dueDate: { lt: new Date() },
-          status: { not: "COMPLETED" },
-          deletedAt: null,
-        },
-      });
       
       return res.status(200).json({
         activeProjects,
@@ -73,47 +88,51 @@ const getDashboardAnalytics = async (req, res, next) => {
     }
     
     if (role === "COLLABORATOR") {
-      const myTasks = await prisma.task.count({
-        where: {
-          assignments: { some: { userId } },
-          deletedAt: null,
-        },
-      });
-      
       const startOfToday = new Date();
       startOfToday.setHours(0, 0, 0, 0);
       const endOfToday = new Date();
       endOfToday.setHours(23, 59, 59, 999);
       
-      const dueToday = await prisma.task.count({
-        where: {
-          assignments: { some: { userId } },
-          dueDate: { gte: startOfToday, lte: endOfToday },
-          deletedAt: null,
-        },
-      });
-      
-      const overdue = await prisma.task.count({
-        where: {
-          assignments: { some: { userId } },
-          dueDate: { lt: new Date() },
-          status: { not: "COMPLETED" },
-          deletedAt: null,
-        },
-      });
-      
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
       
-      const completedThisMonth = await prisma.task.count({
-        where: {
-          assignments: { some: { userId } },
-          status: "COMPLETED",
-          updatedAt: { gte: startOfMonth },
-          deletedAt: null,
-        },
-      });
+      const [
+        myTasks,
+        dueToday,
+        overdue,
+        completedThisMonth
+      ] = await Promise.all([
+        prisma.task.count({
+          where: {
+            assignments: { some: { userId } },
+            deletedAt: null,
+          },
+        }),
+        prisma.task.count({
+          where: {
+            assignments: { some: { userId } },
+            dueDate: { gte: startOfToday, lte: endOfToday },
+            deletedAt: null,
+          },
+        }),
+        prisma.task.count({
+          where: {
+            assignments: { some: { userId } },
+            dueDate: { lt: new Date() },
+            status: { not: "COMPLETED" },
+            deletedAt: null,
+          },
+        }),
+        prisma.task.count({
+          where: {
+            assignments: { some: { userId } },
+            status: "COMPLETED",
+            updatedAt: { gte: startOfMonth },
+            deletedAt: null,
+          },
+        })
+      ]);
       
       return res.status(200).json({
         myTasks,

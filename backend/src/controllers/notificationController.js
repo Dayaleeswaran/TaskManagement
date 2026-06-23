@@ -6,7 +6,29 @@ const notificationService = require("../services/notificationService");
 const getNotificationsController = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const notifications = await notificationService.getNotificationsForUser(userId);
+    const { page, limit, filter } = req.query;
+
+    const options = {};
+    if (page) options.page = parseInt(page, 10) || 1;
+    if (limit) options.limit = parseInt(limit, 10) || 10;
+    if (filter) options.filter = filter;
+
+    const { notifications, total } = await notificationService.getNotificationsForUser(userId, options);
+
+    if (page) {
+      const pageNum = parseInt(page, 10) || 1;
+      const limitNum = parseInt(limit, 10) || 10;
+      return res.status(200).json({
+        notifications,
+        pagination: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(total / limitNum),
+        },
+      });
+    }
+
     return res.status(200).json({ notifications });
   } catch (err) {
     next(err);

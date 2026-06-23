@@ -28,27 +28,32 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        // Fetch tasks
-        const tasksRes = await api.get('/api/v1/tasks?limit=100');
-        const tasksData = tasksRes.data.tasks || tasksRes.data || [];
+        const promises = [
+          api.get('/api/v1/tasks?limit=100'),
+          api.get('/api/v1/projects'),
+          api.get('/api/v1/analytics/dashboard')
+        ];
 
-        // Fetch projects
-        const projectsRes = await api.get('/api/v1/projects');
-        const projectsData = projectsRes.data || [];
-
-        let usersData = [];
         if (user?.role === 'ADMIN') {
-          const usersRes = await api.get('/api/v1/users?limit=100');
-          usersData = usersRes.data.users || usersRes.data || [];
+          promises.push(api.get('/api/v1/users?limit=100'));
         }
 
-        // Fetch dashboard analytics metrics
-        const analyticsRes = await api.get('/api/v1/analytics/dashboard');
+        const results = await Promise.all(promises);
+
+        const tasksRes = results[0];
+        const projectsRes = results[1];
+        const analyticsRes = results[2];
+        const usersRes = results[3]; // undefined if not ADMIN
+
+        const tasksData = tasksRes.data.tasks || tasksRes.data || [];
+        const projectsData = projectsRes.data || [];
+        const analyticsData = analyticsRes.data;
+        const usersData = usersRes ? (usersRes.data.users || usersRes.data || []) : [];
 
         setTasks(tasksData);
         setProjects(projectsData);
+        setAnalytics(analyticsData);
         setUsers(usersData);
-        setAnalytics(analyticsRes.data);
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
       } finally {
@@ -461,12 +466,12 @@ export default function Dashboard() {
   const renderAdminView = () => {
     const managersList = users.filter(u => u.role === 'PROJECT_MANAGER');
     const collaboratorsList = users.filter(u => u.role === 'COLLABORATOR');
-    const adminAnalytics = analytics || { totalUsers: users.length, activeUsers: users.filter(u => u.isActive).length, projects: projects.length, tasks: totalTasks, completionRate: completionRate };
+    const adminAnalytics = analytics || { totalUsers: users.length, activeUsers: users.filter(u => u.isActive).length, projects: projects.length, tasks: totalTasks, completionRate: completionRate, overdueTasks: 0 };
 
     return (
       <div className="space-y-8">
         {/* Global Admin Stat Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
           <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
             <div className="space-y-1">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">System Projects</p>
@@ -484,6 +489,16 @@ export default function Dashboard() {
             </div>
             <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-violet-400">
               <ClipboardList className="h-5 w-5 text-violet-600" />
+            </div>
+          </div>
+
+          <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
+            <div className="space-y-1">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Overdue Tasks</p>
+              <p className="text-3xl font-black text-red-650">{adminAnalytics.overdueTasks || 0}</p>
+            </div>
+            <div className="h-11 w-11 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-500">
+              <AlertCircle className="h-5 w-5 text-red-500" />
             </div>
           </div>
 

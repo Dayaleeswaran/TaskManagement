@@ -13,8 +13,6 @@ import {
   Save, 
   RotateCcw,
   Paperclip,
-  Eye,
-  EyeOff,
   Tag,
   Upload
 } from 'lucide-react';
@@ -45,6 +43,10 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
   const [editedLabels, setEditedLabels] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
 
+  const [projectMembers, setProjectMembers] = useState([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [editedAssigneeIds, setEditedAssigneeIds] = useState([]);
+
   // Fetch full details of the task including attachments, watchers, and labels
   const fetchFullTaskDetails = async () => {
     try {
@@ -57,12 +59,29 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
       setEditedStatus(response.data.status || 'TODO');
       setEditedDueDate(response.data.dueDate ? new Date(response.data.dueDate).toISOString().split('T')[0] : '');
       setEditedLabels(response.data.labels?.map((l) => l.name) || []);
+      setEditedAssigneeIds(response.data.assignments?.map((a) => a.userId || a.user?.id) || []);
       
       if (response.data.comments) {
         setComments(response.data.comments);
       }
+
+      if (response.data.projectId) {
+        fetchProjectMembers(response.data.projectId);
+      }
     } catch (err) {
       console.error('Failed to fetch full task details:', err);
+    }
+  };
+
+  const fetchProjectMembers = async (pId) => {
+    try {
+      setLoadingMembers(true);
+      const response = await api.get(`/api/v1/projects/${pId}/members`);
+      setProjectMembers(response.data);
+    } catch (err) {
+      console.error('Failed to fetch project members:', err);
+    } finally {
+      setLoadingMembers(false);
     }
   };
 
@@ -105,6 +124,10 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
       addToast('Task title is required.', 'error');
       return;
     }
+    if (editedAssigneeIds.length === 0) {
+      addToast('At least one assignee is required.', 'error');
+      return;
+    }
     setIsSaving(true);
     try {
       const response = await api.put(`/api/v1/tasks/${task.id}`, {
@@ -114,6 +137,7 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
         status: editedStatus,
         dueDate: editedDueDate ? new Date(editedDueDate).toISOString() : null,
         labels: editedLabels,
+        assignedUserIds: editedAssigneeIds,
       });
       addToast('Task updated successfully!', 'success');
       setIsEditing(false);
@@ -174,24 +198,6 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
     }
   };
 
-  // --- WATCHERS MANAGEMENT ---
-  const isWatching = localTask.watchers?.some((w) => w.userId === user?.id);
-
-  const handleToggleWatch = async () => {
-    try {
-      if (isWatching) {
-        await api.post(`/api/v1/tasks/${task.id}/unwatch`);
-        addToast('You unwatched this task.', 'success');
-      } else {
-        await api.post(`/api/v1/tasks/${task.id}/watch`);
-        addToast('You are now watching this task.', 'success');
-      }
-      fetchFullTaskDetails();
-    } catch (err) {
-      console.error('Failed to toggle watch status:', err);
-      addToast('Failed to update watch status.', 'error');
-    }
-  };
 
   // --- ATTACHMENTS MANAGEMENT ---
   const handleUploadAttachment = async (e) => {
@@ -288,6 +294,7 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
   };
 
   const allSystemLabels = ["BUG", "FEATURE", "URGENT", "DOCUMENTATION", "REFACTOR"];
+  const isOwnerOrAdmin = user?.role === 'ADMIN' || localTask.project?.ownerId === user?.id;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
@@ -352,7 +359,7 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
           </div>
           
           <div className="flex items-center space-x-2">
-            {user?.role === 'ADMIN' && (
+            {isOwnerOrAdmin && (
               <>
                 {isEditing ? (
                   <>
@@ -518,38 +525,79 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
             )}
           </div>
 
-          {/* Watchers Section */}
-          <div className="space-y-2 border-t border-slate-100 pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Eye className="h-3.5 w-3.5" />
-                Task Watchers ({localTask.watchers?.length || 0})
-              </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Watchers receive instant notifications on status and comment updates.
-              </p>
-            </div>
-            <button
-              onClick={handleToggleWatch}
-              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 border transition-all cursor-pointer ${
-                isWatching 
-                  ? 'bg-red-50 border-red-100 text-red-600 hover:bg-red-100' 
-                  : 'bg-blue-50 border-blue-100 text-blue-600 hover:bg-blue-100'
-              }`}
-            >
-              {isWatching ? (
-                <>
-                  <EyeOff className="h-3.5 w-3.5" />
-                  <span>Unwatch Task</span>
-                </>
+          {/* Assignees Section */}
+          <div className="space-y-2 border-t border-slate-100 pt-4">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Award className="h-3.5 w-3.5" />
+              Assignees <span className="text-rose-500">*</span>
+            </h3>
+            {isEditing ? (
+              loadingMembers ? (
+                <div className="text-slate-550 text-xs py-2 flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 animate-spin text-violet-500" /> Loading project members...
+                </div>
               ) : (
-                <>
-                  <Eye className="h-3.5 w-3.5" />
-                  <span>Watch Task</span>
-                </>
-              )}
-            </button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl">
+                  {projectMembers.map((member) => {
+                    const isSelected = editedAssigneeIds.includes(member.id);
+                    return (
+                      <button
+                        key={member.id}
+                        type="button"
+                        onClick={() => {
+                          setEditedAssigneeIds((prev) =>
+                            prev.includes(member.id)
+                              ? prev.filter((id) => id !== member.id)
+                              : [...prev, member.id]
+                          );
+                        }}
+                        className={`flex items-center space-x-2.5 px-3 py-1.5 rounded-lg border text-left transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-violet-600/10 border-violet-500 text-violet-750'
+                            : 'bg-white border-slate-200 text-slate-500 hover:text-slate-800 hover:border-slate-350'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          readOnly
+                          className="accent-violet-500 pointer-events-none"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold truncate">{member.name}</p>
+                          <p className="text-[10px] text-slate-400 truncate">{member.role?.replace('_', ' ')}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )
+            ) : (
+              <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
+                {localTask.assignments && localTask.assignments.length > 0 ? (
+                  localTask.assignments.map((assignment, index) => {
+                    const userObj = assignment.user || assignment;
+                    const initials = userObj.name?.split(' ').map(n => n[0]).join('') || 'U';
+                    return (
+                      <div
+                        key={index}
+                        className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-violet-50 border border-violet-100 text-violet-750 text-xs font-bold"
+                        title={userObj.name}
+                      >
+                        <div className="h-4 w-4 rounded-full bg-violet-600 flex items-center justify-center text-[8px] font-black text-white uppercase">
+                          {initials}
+                        </div>
+                        <span>{userObj.name}</span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <span className="text-slate-400 text-xs">Unassigned</span>
+                )}
+              </div>
+            )}
           </div>
+
 
           {/* Description */}
           <div className="space-y-2 border-t border-slate-100 pt-4">

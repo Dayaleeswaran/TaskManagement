@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const prisma = require("../prisma");
 const { sendWelcomeEmail } = require("./emailService");
+const notificationService = require("./notificationService");
 
 /**
  * Helper to remove password from user object.
@@ -47,6 +48,13 @@ const createUser = async (userData) => {
       isActive: true,
     },
   });
+
+  // Create welcome notification
+  await notificationService.createNotification(
+    user.id,
+    "ACCOUNT_CREATED",
+    "Your Taskflow account has been created."
+  );
 
   // Send asynchronous welcome email notification
   sendWelcomeEmail(user.email, user.name, tempPassword).catch((err) => {

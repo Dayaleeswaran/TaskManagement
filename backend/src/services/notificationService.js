@@ -81,15 +81,39 @@ const createBulkNotifications = async (userIds, type, message) => {
 };
 
 /**
- * Retrieves all notifications for a given user, most recent first.
+ * Retrieves notifications for a given user with optional filtering and pagination.
  * @param {string} userId - The user's ID.
- * @returns {Promise<Array>} List of notification objects.
+ * @param {object} options - Filtering and pagination options.
+ * @returns {Promise<{notifications: Array, total: number}>} List of notification objects and total count.
  */
-const getNotificationsForUser = async (userId) => {
-  return prisma.notification.findMany({
-    where: { userId },
+const getNotificationsForUser = async (userId, options = {}) => {
+  const { page, limit, filter } = options;
+  const where = { userId };
+
+  if (filter === "read") {
+    where.isRead = true;
+  } else if (filter === "unread") {
+    where.isRead = false;
+  }
+
+  const queryOptions = {
+    where,
     orderBy: { createdAt: "desc" },
-  });
+  };
+
+  if (page && limit) {
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    queryOptions.skip = (pageNum - 1) * limitNum;
+    queryOptions.take = limitNum;
+  }
+
+  const [notifications, total] = await Promise.all([
+    prisma.notification.findMany(queryOptions),
+    prisma.notification.count({ where }),
+  ]);
+
+  return { notifications, total };
 };
 
 /**

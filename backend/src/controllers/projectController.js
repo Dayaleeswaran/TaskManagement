@@ -1,6 +1,7 @@
 const prisma = require("../prisma");
 const activityService = require("../services/activityService");
 const auditService = require("../services/auditService");
+const notificationService = require("../services/notificationService");
 
 const getProjects = async (req, res, next) => {
   try {
@@ -52,13 +53,34 @@ const createProject = async (req, res, next) => {
       });
     }
 
-    const { name, description } = req.body;
+    const { name, description, memberUserIds } = req.body;
 
     if (!name) {
       return res.status(400).json({
         errorCode: "BAD_REQUEST",
         message: "Project name is required.",
       });
+    }
+
+    // Process and filter memberUserIds to prevent duplicate memberships
+    const uniqueMemberUserIds = Array.from(new Set(memberUserIds || []));
+    // Filter out owner to prevent trying to insert them twice (owner is automatically added)
+    const otherMembers = uniqueMemberUserIds.filter(userId => userId !== req.user.id);
+
+    // Validate that all user IDs in otherMembers are active users
+    if (otherMembers.length > 0) {
+      const activeUsersCount = await prisma.user.count({
+        where: {
+          id: { in: otherMembers },
+          isActive: true,
+        },
+      });
+      if (activeUsersCount !== otherMembers.length) {
+        return res.status(400).json({
+          errorCode: "BAD_REQUEST",
+          message: "One or more selected members are not active users.",
+        });
+      }
     }
 
     const project = await prisma.project.create({
@@ -69,19 +91,59 @@ const createProject = async (req, res, next) => {
       },
     });
 
-    // Automatically record activity
+    // Add project owner as ProjectMember
+    await prisma.projectMember.create({
+      data: {
+        projectId: project.id,
+        userId: req.user.id,
+      },
+    });
+
+    // Add other project members
+    if (otherMembers.length > 0) {
+      await prisma.projectMember.createMany({
+        data: otherMembers.map(userId => ({
+          projectId: project.id,
+          userId,
+        })),
+      });
+    }
+
+    // Automatically record activity for project creation
     await activityService.createActivity(
       project.id,
       req.user.id,
       `${req.user.name} created project "${name}".`
     );
 
+    // Record activity and notifications for each added member
+    for (const memberId of otherMembers) {
+      const u = await prisma.user.findUnique({ where: { id: memberId } });
+      if (u) {
+        // Record Activity
+        await activityService.createActivity(
+          project.id,
+          req.user.id,
+          `${req.user.name} added ${u.name} to project.`
+        );
+      }
+    }
+
+    if (otherMembers.length > 0) {
+      // Create notifications & emit Socket.io notifications
+      await notificationService.createBulkNotifications(
+        otherMembers,
+        "PROJECT_MEMBER_ADDED",
+        `You have been added to project: ${project.name}`
+      );
+    }
+
     // Audit Log entry
     await auditService.log(
       "PROJECT_CREATE",
       req.user.id,
       project.id,
-      { projectName: name }
+      { projectName: name, memberCount: otherMembers.length + 1 }
     );
 
     return res.status(201).json(project);
@@ -374,6 +436,13 @@ const addProjectMember = async (req, res, next) => {
       projectId,
       currentUserId,
       `${req.user.name} added ${targetUser.name} to project.`
+    );
+
+    // Automatically create notification when project member added
+    await notificationService.createNotification(
+      userId,
+      "PROJECT_MEMBER_ADDED",
+      `You have been added to project: ${project.name}`
     );
 
     return res.status(201).json(membership.user);

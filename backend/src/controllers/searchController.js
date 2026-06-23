@@ -54,20 +54,28 @@ const performSearch = async (req, res, next) => {
 
     // 3. Search Tasks based on User Role access
     const taskWhere = {
-      OR: [
-        { title: { contains: searchString, mode: "insensitive" } },
-        { description: { contains: searchString, mode: "insensitive" } },
-      ],
       deletedAt: null,
+      AND: [
+        {
+          OR: [
+            { title: { contains: searchString, mode: "insensitive" } },
+            { description: { contains: searchString, mode: "insensitive" } },
+          ],
+        },
+      ],
     };
 
     if (role === "PROJECT_MANAGER") {
-      taskWhere.project = { ownerId: userId };
+      taskWhere.AND.push({
+        project: { ownerId: userId },
+      });
     } else if (role === "COLLABORATOR") {
-      taskWhere.OR = [
-        { assignments: { some: { userId } } },
-        { project: { members: { some: { userId } } } },
-      ];
+      taskWhere.AND.push({
+        OR: [
+          { assignments: { some: { userId } } },
+          { createdById: userId },
+        ],
+      });
     }
 
     const tasks = await prisma.task.findMany({

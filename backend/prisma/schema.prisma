@@ -47,7 +47,6 @@ model User {
   activities        Activity[]
   auditLogs         AuditLog[]
   attachments       Attachment[]
-  watchedTasks      TaskWatcher[]
   notificationSettings NotificationSettings?
 
   @@index([email])
@@ -111,7 +110,6 @@ model Task {
   // Enterprise additions
   labels      Label[]
   attachments Attachment[]
-  watchers    TaskWatcher[]
 
   @@index([projectId])
   @@index([createdById])
@@ -208,16 +206,6 @@ model Attachment {
   @@index([uploadedById])
 }
 
-model TaskWatcher {
-  taskId String
-  userId String
-
-  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([taskId, userId])
-  @@index([userId])
-}
 
 model NotificationSettings {
   userId          String  @id

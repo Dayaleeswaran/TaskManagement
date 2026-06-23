@@ -12,8 +12,6 @@ const {
   assignTask,
   updateTaskStatus,
   reorderTasks,
-  watchTask,
-  unwatchTask,
   uploadAttachment,
   deleteAttachment,
 } = require("../controllers/taskController");
@@ -368,9 +366,6 @@ router.put("/reorder", reorderTasks);
 // Soft Delete Restore
 router.post("/:id/restore", restoreTask);
 
-// Task Watchers
-router.post("/:id/watch", watchTask);
-router.post("/:id/unwatch", unwatchTask);
 
 // File Attachments
 router.post("/:id/attachments", upload.single("file"), uploadAttachment);
