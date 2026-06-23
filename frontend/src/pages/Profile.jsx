@@ -1,8 +1,44 @@
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, Shield, Mail, Key, ShieldAlert } from 'lucide-react';
+import { User, Shield, Mail, Key, ShieldAlert, Bell } from 'lucide-react';
+import api from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 export default function Profile() {
   const { user, token } = useAuth();
+  const { addToast } = useToast();
+  const [settings, setSettings] = useState({
+    taskAssigned: true,
+    taskCompleted: true,
+    taskCommented: true,
+    projectUpdates: true,
+  });
+
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const response = await api.get('/api/v1/settings/notifications');
+        if (response.data) {
+          setSettings(response.data);
+        }
+      } catch (err) {
+        console.error('Failed to load notification settings:', err);
+      }
+    }
+    loadSettings();
+  }, []);
+
+  const handleToggle = async (key) => {
+    const updated = { ...settings, [key]: !settings[key] };
+    setSettings(updated);
+    try {
+      await api.put('/api/v1/settings/notifications', updated);
+      addToast('Notification preferences updated.', 'success');
+    } catch (err) {
+      console.error('Failed to update notification settings:', err);
+      addToast('Failed to save settings.', 'error');
+    }
+  };
 
   // Standardized role badge colors: ADMIN=purple, PM=blue, COLLABORATOR=gray
   const getRoleColor = (role) => {
@@ -59,19 +95,66 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* Session details */}
-          <div className="p-6 rounded-2xl bg-slate-950/40 border border-slate-800 space-y-4">
-            <h3 className="text-sm font-bold text-slate-300 flex items-center uppercase tracking-wider">
-              <Key className="h-4 w-4 mr-2 text-violet-400" /> Token Credentials
+          {/* Notification Preferences */}
+          <div className="p-6 rounded-2xl bg-white border border-slate-200 space-y-4 shadow-sm">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center uppercase tracking-wider">
+              <Bell className="h-4 w-4 mr-2 text-violet-600" /> Notification Preferences
             </h3>
-            
-            <div className="space-y-2">
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Active JWT Bearer Token stored in <code className="bg-slate-900 px-1 py-0.5 rounded text-slate-300">sessionStorage</code>:
-              </p>
-              <pre className="p-3 text-[10px] font-mono leading-relaxed bg-slate-900 border border-slate-800 text-slate-400 rounded-lg overflow-x-auto select-all break-all max-h-[80px]">
-                {token || 'No token found in current session'}
-              </pre>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Choose which events trigger real-time and in-app dashboard alerts.
+            </p>
+            <div className="space-y-2.5 pt-2">
+              <label className="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100/50 transition-colors border border-slate-200/60 cursor-pointer">
+                <div className="flex flex-col pr-4">
+                  <span className="text-xs font-bold text-slate-700">Task Assigned Alerts</span>
+                  <span className="text-[10px] text-slate-400">Get notified when added to a task.</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.taskAssigned}
+                  onChange={() => handleToggle('taskAssigned')}
+                  className="h-4 w-4 rounded border-slate-350 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                />
+              </label>
+
+              <label className="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100/50 transition-colors border border-slate-200/60 cursor-pointer">
+                <div className="flex flex-col pr-4">
+                  <span className="text-xs font-bold text-slate-700">Task Completed Alerts</span>
+                  <span className="text-[10px] text-slate-400">Get notified when someone completes your tasks.</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.taskCompleted}
+                  onChange={() => handleToggle('taskCompleted')}
+                  className="h-4 w-4 rounded border-slate-350 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                />
+              </label>
+
+              <label className="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100/50 transition-colors border border-slate-200/60 cursor-pointer">
+                <div className="flex flex-col pr-4">
+                  <span className="text-xs font-bold text-slate-700">Comments Alerts</span>
+                  <span className="text-[10px] text-slate-400">Get notified on new task comments.</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.taskCommented}
+                  onChange={() => handleToggle('taskCommented')}
+                  className="h-4 w-4 rounded border-slate-350 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                />
+              </label>
+
+              <label className="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100/50 transition-colors border border-slate-200/60 cursor-pointer">
+                <div className="flex flex-col pr-4">
+                  <span className="text-xs font-bold text-slate-700">Project Updates</span>
+                  <span className="text-[10px] text-slate-400">Alert on project membership updates.</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.projectUpdates}
+                  onChange={() => handleToggle('projectUpdates')}
+                  className="h-4 w-4 rounded border-slate-350 text-violet-600 focus:ring-violet-500 cursor-pointer"
+                />
+              </label>
             </div>
           </div>
         </div>

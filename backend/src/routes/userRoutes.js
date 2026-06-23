@@ -1,5 +1,5 @@
 const express = require("express");
-const { verifyToken } = require("../middleware/authMiddleware");
+const { verifyToken, checkPasswordReset } = require("../middleware/authMiddleware");
 const { requireRole } = require("../middleware/roleMiddleware");
 const { validate } = require("../middleware/validateMiddleware");
 const {
@@ -14,12 +14,14 @@ const {
   updateUserController,
   deactivateUserController,
   assignRoleController,
+  getAuditLogsController,
 } = require("../controllers/userController");
 
 const router = express.Router();
 
-// All user routes require token verification
+// All user routes require token verification and password reset check
 router.use(verifyToken);
+router.use(checkPasswordReset);
 
 /**
  * @swagger
@@ -137,6 +139,12 @@ router.get(
   "/",
   requireRole("ADMIN"),
   getAllUsersController
+);
+
+router.get(
+  "/audit-logs",
+  requireRole("ADMIN"),
+  getAuditLogsController
 );
 
 /**

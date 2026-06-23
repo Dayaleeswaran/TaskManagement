@@ -1,5 +1,5 @@
 const express = require("express");
-const { verifyToken } = require("../middleware/authMiddleware");
+const { verifyToken, checkPasswordReset } = require("../middleware/authMiddleware");
 const {
   getNotificationsController,
   markAsReadController,
@@ -8,8 +8,9 @@ const {
 
 const router = express.Router();
 
-// All notification routes require authentication
+// All notification routes require authentication and password reset check
 router.use(verifyToken);
+router.use(checkPasswordReset);
 
 /**
  * @swagger

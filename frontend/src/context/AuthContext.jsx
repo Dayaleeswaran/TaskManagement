@@ -65,7 +65,10 @@ export const AuthProvider = ({ children }) => {
       const isDemoUser =
         (email === 'admin@taskflow.com' && password === 'admin123') ||
         (email === 'pm@taskflow.com' && password === 'pm123') ||
-        (email === 'user@taskflow.com' && password === 'user123');
+        (email === 'user@taskflow.com' && password === 'user123') ||
+        (email === 'admin@tms.com' && password === 'Admin@123!') ||
+        (email === 'pm1@tms.com' && password === 'Manager@123!') ||
+        (email === 'collab1@tms.com' && password === 'Collab@123!');
 
       const isNetworkOrMissingRoute =
         !err.response || err.response.status === 404 || err.response.status === 502;
@@ -76,10 +79,10 @@ export const AuthProvider = ({ children }) => {
         let mockRole = 'COLLABORATOR';
         let mockName = 'Collaborator User';
 
-        if (email === 'admin@taskflow.com') {
+        if (email === 'admin@taskflow.com' || email === 'admin@tms.com') {
           mockRole = 'ADMIN';
           mockName = 'Admin User';
-        } else if (email === 'pm@taskflow.com') {
+        } else if (email === 'pm@taskflow.com' || email === 'pm1@tms.com') {
           mockRole = 'PROJECT_MANAGER';
           mockName = 'Project Manager User';
         }
@@ -152,6 +155,20 @@ export const AuthProvider = ({ children }) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
+  const changePassword = async (newPassword) => {
+    setLoading(true);
+    try {
+      const response = await api.post('/api/v1/auth/reset-password', { newPassword });
+      const updatedUser = { ...user, mustResetPassword: false };
+      setSession(token, updatedUser);
+      setLoading(false);
+      return response.data;
+    } catch (err) {
+      setLoading(false);
+      throw err;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -164,6 +181,7 @@ export const AuthProvider = ({ children }) => {
         logout,
         forgotPassword,
         resetPassword,
+        changePassword,
         dismissNotification,
       }}
     >

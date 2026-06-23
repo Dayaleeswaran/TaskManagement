@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import NotificationPanel from './NotificationPanel';
+import GlobalSearch from './GlobalSearch';
 import {
   LayoutDashboard,
   Users,
@@ -29,7 +30,9 @@ export default function MainLayout() {
     ADMIN: [
       { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
       { name: 'Users', path: '/users', icon: Users },
+      { name: 'Projects', path: '/projects', icon: FolderKanban },
       { name: 'Tasks', path: '/tasks', icon: CheckSquare },
+      { name: 'Audit Logs', path: '/audit-logs', icon: ClipboardList },
       { name: 'Notifications', path: '/notifications', icon: Bell },
     ],
     PROJECT_MANAGER: [
@@ -39,6 +42,7 @@ export default function MainLayout() {
       { name: 'Notifications', path: '/notifications', icon: Bell },
     ],
     COLLABORATOR: [
+      { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
       { name: 'My Tasks', path: '/my-tasks', icon: ClipboardList },
       { name: 'Notifications', path: '/notifications', icon: Bell },
       { name: 'Profile', path: '/profile', icon: User },
@@ -133,6 +137,11 @@ export default function MainLayout() {
               TaskFlow
             </span>
           </div>
+        </div>
+
+        {/* Global Search */}
+        <div className="hidden md:block flex-1 max-w-xs mx-4">
+          <GlobalSearch />
         </div>
 
         {/* User profile details & Logout */}

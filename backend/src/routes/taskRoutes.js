@@ -1,9 +1,26 @@
 const express = require("express");
 const router = express.Router();
-const { verifyToken } = require("../middleware/authMiddleware");
+const { verifyToken, checkPasswordReset } = require("../middleware/authMiddleware");
+const upload = require("../middleware/uploadMiddleware");
+const {
+  getTasks,
+  getTaskById,
+  createTask,
+  updateTask,
+  deleteTask,
+  restoreTask,
+  assignTask,
+  updateTaskStatus,
+  reorderTasks,
+  watchTask,
+  unwatchTask,
+  uploadAttachment,
+  deleteAttachment,
+} = require("../controllers/taskController");
 
-// All task routes require authentication
+// All task routes require authentication and password reset check
 router.use(verifyToken);
+router.use(checkPasswordReset);
 
 /**
  * @swagger
@@ -83,9 +100,7 @@ router.use(verifyToken);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponseSchema'
  */
-router.get("/", (req, res) => {
-  res.status(501).json({ message: "Not Implemented" });
-});
+router.get("/", getTasks);
 
 /**
  * @swagger
@@ -143,9 +158,7 @@ router.get("/", (req, res) => {
  *       500:
  *         description: Server error
  */
-router.post("/", (req, res) => {
-  res.status(501).json({ message: "Not Implemented" });
-});
+router.post("/", createTask);
 
 /**
  * @swagger
@@ -177,9 +190,7 @@ router.post("/", (req, res) => {
  *       500:
  *         description: Server error
  */
-router.get("/:id", (req, res) => {
-  res.status(501).json({ message: "Not Implemented" });
-});
+router.get("/:id", getTaskById);
 
 /**
  * @swagger
@@ -233,9 +244,7 @@ router.get("/:id", (req, res) => {
  *       500:
  *         description: Server error
  */
-router.put("/:id", (req, res) => {
-  res.status(501).json({ message: "Not Implemented" });
-});
+router.put("/:id", updateTask);
 
 /**
  * @swagger
@@ -263,9 +272,7 @@ router.put("/:id", (req, res) => {
  *       500:
  *         description: Server error
  */
-router.delete("/:id", (req, res) => {
-  res.status(501).json({ message: "Not Implemented" });
-});
+router.delete("/:id", deleteTask);
 
 /**
  * @swagger
@@ -307,9 +314,7 @@ router.delete("/:id", (req, res) => {
  *       500:
  *         description: Server error
  */
-router.patch("/:id/assign", (req, res) => {
-  res.status(501).json({ message: "Not Implemented" });
-});
+router.patch("/:id/assign", assignTask);
 
 /**
  * @swagger
@@ -355,8 +360,20 @@ router.patch("/:id/assign", (req, res) => {
  *       500:
  *         description: Server error
  */
-router.patch("/:id/status", (req, res) => {
-  res.status(501).json({ message: "Not Implemented" });
-});
+router.patch("/:id/status", updateTaskStatus);
+
+// Reordering Kanban tasks
+router.put("/reorder", reorderTasks);
+
+// Soft Delete Restore
+router.post("/:id/restore", restoreTask);
+
+// Task Watchers
+router.post("/:id/watch", watchTask);
+router.post("/:id/unwatch", unwatchTask);
+
+// File Attachments
+router.post("/:id/attachments", upload.single("file"), uploadAttachment);
+router.delete("/attachments/:id", deleteAttachment);
 
 module.exports = router;

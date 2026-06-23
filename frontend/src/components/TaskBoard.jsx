@@ -11,9 +11,11 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
-import { Search, Filter, RefreshCw } from 'lucide-react';
+import { Search, Filter, RefreshCw, Plus } from 'lucide-react';
 
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import CreateTaskModal from './CreateTaskModal';
 import TaskCard from './TaskCard';
 import TaskDetailModal from './TaskDetailModal';
 import SkeletonCard from './SkeletonCard';
@@ -93,9 +95,11 @@ function BoardSkeleton() {
  * Main TaskBoard Kanban Component
  */
 export default function TaskBoard() {
+  const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { addToast } = useToast();
 
   // Configure sensors for Drag and Drop
@@ -188,54 +192,119 @@ export default function TaskBoard() {
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [tasks]);
 
-  // Handle Drag End event
+  // Extract unique labels dynamically from loaded tasks list
+  const uniqueLabels = useMemo(() => {
+    const set = new Set();
+    tasks.forEach((task) => {
+      task.labels?.forEach((lbl) => {
+        if (lbl.name) {
+          set.add(lbl.name);
+        }
+      });
+    });
+    return Array.from(set).sort();
+  }, [tasks]);
+
+  // Handle Drag End event with reordering persistence
   const handleDragEnd = async (event) => {
     const { active, over } = event;
     if (!over) return;
 
-    const taskId = active.id;
-    const activeTask = tasks.find((t) => t.id === taskId);
+    const activeId = active.id;
+    const overId = over.id;
+
+    const activeTask = tasks.find((t) => t.id === activeId);
     if (!activeTask) return;
 
-    let targetStatus = null;
+    let targetStatus = activeTask.status;
+    let overTask = null;
 
-    // Check if over element represents a column ID
-    const columnIds = COLUMNS.map((col) => col.id);
-    if (columnIds.includes(over.id)) {
-      targetStatus = over.id;
+    if (COLUMNS.some((col) => col.id === overId)) {
+      targetStatus = overId;
     } else {
-      // Over element represents another task card, extract its status
-      const overTask = tasks.find((t) => t.id === over.id);
+      overTask = tasks.find((t) => t.id === overId);
       if (overTask) {
         targetStatus = overTask.status;
       }
     }
 
-    if (!targetStatus || activeTask.status === targetStatus) return;
-
-    // Save previous state for rollback in case of error
+    // Save previous state for rollback
     const previousTasks = [...tasks];
 
-    // Format status name for toast
-    const statusLabel = targetStatus.replace('_', ' ').toLowerCase();
+    // Find the tasks currently in the target column (excluding the active one if it was already there)
+    const targetTasks = tasks
+      .filter((t) => t.status === targetStatus && t.id !== activeId)
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
-    // 1. Optimistic UI Update (Update local state instantly)
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === taskId ? { ...task, status: targetStatus, updatedAt: new Date().toISOString() } : task
-      )
-    );
+    let updatedTargetTasks = [];
+    if (overTask) {
+      const overIndex = targetTasks.findIndex((t) => t.id === overId);
+      updatedTargetTasks = [...targetTasks];
+      updatedTargetTasks.splice(overIndex, 0, { ...activeTask, status: targetStatus });
+    } else {
+      updatedTargetTasks = [...targetTasks, { ...activeTask, status: targetStatus }];
+    }
 
-    // 2. Perform Backend PATCH API Request
+    // Re-index target positions
+    const reindexedTargetTasks = updatedTargetTasks.map((t, idx) => ({
+      ...t,
+      position: idx,
+    }));
+
+    // If source column is different, update its positions too
+    let reindexedSourceTasks = [];
+    if (activeTask.status !== targetStatus) {
+      const sourceTasks = tasks
+        .filter((t) => t.status === activeTask.status && t.id !== activeId)
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      reindexedSourceTasks = sourceTasks.map((t, idx) => ({
+        ...t,
+        position: idx,
+      }));
+    }
+
+    // Combine into new state
+    const newTasks = tasks.map((t) => {
+      const targetMatch = reindexedTargetTasks.find((item) => item.id === t.id);
+      if (targetMatch) return targetMatch;
+
+      const sourceMatch = reindexedSourceTasks.find((item) => item.id === t.id);
+      if (sourceMatch) return sourceMatch;
+
+      if (t.id === activeId) {
+        return {
+          ...t,
+          status: targetStatus,
+          position: reindexedTargetTasks.findIndex((item) => item.id === activeId),
+        };
+      }
+      return t;
+    });
+
+    setTasks(newTasks);
+
     try {
-      await api.patch(`/api/v1/tasks/${taskId}/status`, { status: targetStatus });
-      console.log(`[Optimistic OK] Task ${taskId} status updated to: ${targetStatus}`);
-      addToast(`Task moved to ${statusLabel}`, 'success');
+      const targetIds = reindexedTargetTasks.map((t) => t.id);
+      await api.put('/api/v1/tasks/reorder', {
+        projectId: activeTask.projectId,
+        status: targetStatus,
+        taskIds: targetIds,
+      });
+
+      if (activeTask.status !== targetStatus) {
+        const sourceIds = reindexedSourceTasks.map((t) => t.id);
+        await api.put('/api/v1/tasks/reorder', {
+          projectId: activeTask.projectId,
+          status: activeTask.status,
+          taskIds: sourceIds,
+        });
+      }
+
+      addToast(`Task moved successfully`, 'success');
     } catch (err) {
-      console.error('[Optimistic Fail] Reverting task status update:', err);
-      // Revert state on error
+      console.error('Reordering failed:', err);
       setTasks(previousTasks);
-      addToast('Failed to update task status. Changes reverted.', 'error');
+      addToast('Failed to save task reordering', 'error');
     }
   };
 
@@ -253,6 +322,18 @@ export default function TaskBoard() {
         return task;
       })
     );
+  };
+
+  const handleTaskUpdated = (updatedTask) => {
+    setTasks((prevTasks) =>
+      prevTasks.map((t) => (t.id === updatedTask.id ? updatedTask : t))
+    );
+    setSelectedTask(null);
+  };
+
+  const handleTaskDeleted = (deletedTaskId) => {
+    setTasks((prevTasks) => prevTasks.filter((t) => t.id !== deletedTaskId));
+    setSelectedTask(null);
   };
 
   // Group tasks by status for columns
@@ -299,6 +380,20 @@ export default function TaskBoard() {
             </select>
           </div>
 
+          {/* Label filter */}
+          <select
+            value={filters.label}
+            onChange={(e) => updateFilter('label', e.target.value)}
+            className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+          >
+            <option value="">All Labels</option>
+            {uniqueLabels.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+
           {/* Assignee filter */}
           <select
             value={filters.assignedTo}
@@ -314,12 +409,23 @@ export default function TaskBoard() {
           </select>
 
           {/* Reset Filters */}
-          {(filters.search || filters.priority || filters.assignedTo) && (
+          {(filters.search || filters.priority || filters.assignedTo || filters.label) && (
             <button
               onClick={resetFilters}
               className="px-3 py-2 border border-slate-800 rounded-xl text-xs text-violet-400 hover:text-white hover:bg-slate-950 transition-colors cursor-pointer"
             >
               Reset
+            </button>
+          )}
+
+          {/* Create Task Button */}
+          {(user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER') && (
+            <button
+              onClick={() => setIsCreateOpen(true)}
+              className="px-3 py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-violet-600/15 transition-all duration-200 flex items-center space-x-1.5 cursor-pointer"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Create Task</span>
             </button>
           )}
 
@@ -361,9 +467,9 @@ export default function TaskBoard() {
                     <div className="flex flex-col gap-3.5">
                       {columnTasks.map((task) => (
                         <TaskCard
-                          key={task.id}
-                          task={task}
-                          onClick={() => setSelectedTask(task)}
+                           key={task.id}
+                           task={task}
+                           onClick={() => setSelectedTask(task)}
                         />
                       ))}
                     </div>
@@ -386,6 +492,16 @@ export default function TaskBoard() {
           task={selectedTask}
           onClose={() => setSelectedTask(null)}
           onCommentAdded={handleCommentAddedLocally}
+          onTaskUpdated={handleTaskUpdated}
+          onTaskDeleted={handleTaskDeleted}
+        />
+      )}
+
+      {/* Create Task Modal overlay */}
+      {isCreateOpen && (
+        <CreateTaskModal
+          onClose={() => setIsCreateOpen(false)}
+          onTaskCreated={fetchTasks}
         />
       )}
     </div>

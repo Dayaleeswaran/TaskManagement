@@ -128,4 +128,45 @@ exports.logout = (req, res, next) => {
   } catch (err) {
     next(err);
   }
+};
+
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { newPassword } = req.body;
+
+    if (!newPassword) {
+      const error = new Error("New password is required.");
+      error.statusCode = 400;
+      error.errorCode = "BAD_REQUEST";
+      throw error;
+    }
+
+    // Validate password complexity
+    const hasMinLength = newPassword.length >= 8;
+    const hasUppercase = /[A-Z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword);
+    if (!(hasMinLength && hasUppercase && hasNumber && hasSpecialChar)) {
+      const error = new Error("Password does not meet complexity requirements.");
+      error.statusCode = 400;
+      error.errorCode = "BAD_REQUEST";
+      throw error;
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        password: hashedPassword,
+        mustResetPassword: false,
+      },
+    });
+
+    return res.status(200).json({
+      message: "Password reset successfully. You now have full access.",
+    });
+  } catch (err) {
+    next(err);
+  }
 };

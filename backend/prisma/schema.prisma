@@ -42,6 +42,14 @@ model User {
   comments          Comment[]        @relation("CommentAuthor")
   notifications     Notification[]
 
+  // Enterprise additions
+  projectMemberships ProjectMember[]
+  activities        Activity[]
+  auditLogs         AuditLog[]
+  attachments       Attachment[]
+  watchedTasks      TaskWatcher[]
+  notificationSettings NotificationSettings?
+
   @@index([email])
   @@index([role])
 }
@@ -51,13 +59,30 @@ model Project {
   name        String
   description String
   createdAt   DateTime @default(now())
+  deletedAt   DateTime? // Soft delete
 
   ownerId     String
   owner       User     @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
   tasks       Task[]
+  
+  // Enterprise additions
+  members     ProjectMember[]
+  activities  Activity[]
 
   @@index([ownerId])
+}
+
+model ProjectMember {
+  projectId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, userId])
+  @@index([userId])
 }
 
 model Task {
@@ -67,6 +92,10 @@ model Task {
   status      Status
   priority    Priority
   dueDate     DateTime
+  startDate   DateTime?        // Enterprise: Start Date
+  estimatedHours Float?        // Enterprise: Estimated Hours
+  position    Int              @default(0) // Enterprise: Kanban Card position ordering
+  deletedAt   DateTime?        // Enterprise: Soft delete
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
@@ -78,6 +107,11 @@ model Task {
 
   assignments TaskAssignment[]
   comments    Comment[]
+  
+  // Enterprise additions
+  labels      Label[]
+  attachments Attachment[]
+  watchers    TaskWatcher[]
 
   @@index([projectId])
   @@index([createdById])
@@ -121,5 +155,75 @@ model Notification {
 
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
   @@index([userId, isRead])
+}
+
+model Activity {
+  id        String   @id @default(uuid())
+  projectId String
+  userId    String
+  action    String
+  createdAt DateTime @default(now())
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([userId])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  action      String
+  performedBy String
+  performer   User     @relation(fields: [performedBy], references: [id], onDelete: Cascade)
+  targetId    String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([performedBy])
+}
+
+model Label {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  color     String   @default("blue")
+  tasks     Task[]
+
+  @@index([name])
+}
+
+model Attachment {
+  id           String   @id @default(uuid())
+  fileName     String
+  fileUrl      String
+  uploadedById String
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  taskId       String
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@index([taskId])
+  @@index([uploadedById])
+}
+
+model TaskWatcher {
+  taskId String
+  userId String
+
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, userId])
+  @@index([userId])
+}
+
+model NotificationSettings {
+  userId          String  @id
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskAssigned    Boolean @default(true)
+  taskCompleted   Boolean @default(true)
+  taskCommented   Boolean @default(true)
+  projectUpdates  Boolean @default(true)
 }

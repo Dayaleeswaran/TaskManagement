@@ -1,5 +1,5 @@
 const express = require("express");
-const { verifyToken } = require("../middleware/authMiddleware");
+const { verifyToken, checkPasswordReset } = require("../middleware/authMiddleware");
 const { validate } = require("../middleware/validateMiddleware");
 const { createCommentSchema } = require("../validators/commentSchemas");
 const {
@@ -10,8 +10,9 @@ const {
 
 const router = express.Router();
 
-// All comment routes require authentication
+// All comment routes require authentication and password reset check
 router.use(verifyToken);
+router.use(checkPasswordReset);
 
 /**
  * @swagger

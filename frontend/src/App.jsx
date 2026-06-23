@@ -17,6 +17,9 @@ import MyTasks from './pages/MyTasks';
 import Projects from './pages/Projects';
 import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
+import Dashboard from './pages/Dashboard';
+import ChangePassword from './pages/ChangePassword';
+import AuditLogs from './pages/AuditLogs';
 
 import { X } from 'lucide-react';
 
@@ -109,8 +112,9 @@ function AppContent() {
               </ProtectedRoute>
             }
           >
-            {/* Dashboard path handles redirection to role landing view */}
-            <Route path="/dashboard" element={<DashboardRedirect />} />
+            {/* Dashboard path renders the main stats dashboard view */}
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/change-password" element={<ChangePassword />} />
             
             {/* Access control pages */}
             <Route
@@ -118,6 +122,15 @@ function AppContent() {
               element={
                 <ProtectedRoute role="ADMIN">
                   <Users />
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
+              path="/audit-logs"
+              element={
+                <ProtectedRoute role="ADMIN">
+                  <AuditLogs />
                 </ProtectedRoute>
               }
             />
@@ -134,7 +147,7 @@ function AppContent() {
             <Route
               path="/projects"
               element={
-                <ProtectedRoute role="PROJECT_MANAGER">
+                <ProtectedRoute role={['ADMIN', 'PROJECT_MANAGER']}>
                   <Projects />
                 </ProtectedRoute>
               }

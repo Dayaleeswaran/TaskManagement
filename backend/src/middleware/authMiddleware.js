@@ -81,6 +81,18 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
+const checkPasswordReset = (req, res, next) => {
+  if (req.user && req.user.mustResetPassword) {
+    return res.status(403).json({
+      errorCode: "PASSWORD_RESET_REQUIRED",
+      message: "You must reset your password before accessing the system.",
+      details: null,
+    });
+  }
+  next();
+};
+
 module.exports = {
   verifyToken,
+  checkPasswordReset,
 };

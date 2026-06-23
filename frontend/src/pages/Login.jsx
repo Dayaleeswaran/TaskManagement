@@ -95,8 +95,9 @@ export default function Login() {
         <Info className="h-5 w-5 text-violet-400 shrink-0 mt-0.5" />
         <div className="text-xs space-y-1">
           <p className="font-semibold text-slate-200">Demo Accounts Available:</p>
-          <p>• <strong className="text-violet-300 font-mono">admin@taskflow.com</strong> / <span className="font-mono text-violet-300">admin123</span> (Admin Role)</p>
-          <p>• <strong className="text-violet-300 font-mono">user@taskflow.com</strong> / <span className="font-mono text-violet-300">user123</span> (User Role)</p>
+          <p>• <strong className="text-violet-300 font-mono">admin@tms.com</strong> / <span className="font-mono text-violet-300">Admin@123!</span> (Admin Role)</p>
+          <p>• <strong className="text-violet-300 font-mono">pm1@tms.com</strong> / <span className="font-mono text-violet-300">Manager@123!</span> (Project Manager)</p>
+          <p>• <strong className="text-violet-300 font-mono">collab1@tms.com</strong> / <span className="font-mono text-violet-300">Collab@123!</span> (Collaborator)</p>
         </div>
       </div>
 

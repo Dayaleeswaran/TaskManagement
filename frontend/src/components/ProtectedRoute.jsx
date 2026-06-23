@@ -4,7 +4,7 @@ import LoadingSpinner from './LoadingSpinner';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
 
 export default function ProtectedRoute({ children, role }) {
-  const { token, role: userRole, loading } = useAuth();
+  const { token, user, role: userRole, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -19,6 +19,11 @@ export default function ProtectedRoute({ children, role }) {
   if (!token) {
     // Redirect to login page and keep the current URL they tried to access
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  // Force password reset if flagged
+  if (user?.mustResetPassword && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
   }
 
   // If a role limit is specified, check access

@@ -12,15 +12,18 @@ const prisma = require("../prisma");
  * @param {number} [params.limit=10] - Pagination limit
  * @returns {Promise<Object>} Paginated task results with total count metadata
  */
-async function getTasksWithFilters({ status, priority, assigneeId, page = 1, limit = 10 } = {}) {
+async function getTasksWithFilters({ status, priority, assigneeId, projectId, page = 1, limit = 10 } = {}) {
   const skip = (page - 1) * limit;
-  const where = {};
+  const where = { deletedAt: null }; // Soft delete filter
 
   if (status) {
     where.status = status;
   }
   if (priority) {
     where.priority = priority;
+  }
+  if (projectId) {
+    where.projectId = projectId;
   }
   if (assigneeId) {
     where.assignments = {
@@ -54,11 +57,13 @@ async function getTasksWithFilters({ status, priority, assigneeId, page = 1, lim
             id: true,
             name: true
           }
-        }
+        },
+        labels: true
       },
-      orderBy: {
-        createdAt: "desc"
-      }
+      orderBy: [
+        { position: "asc" },
+        { createdAt: "desc" }
+      ]
     }),
     prisma.task.count({ where })
   ]);
@@ -134,6 +139,31 @@ async function getTaskWithFullDetails(taskId) {
               name: true,
               email: true,
               role: true
+            }
+          }
+        }
+      },
+      labels: true,
+      attachments: {
+        include: {
+          uploadedBy: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: "desc"
+        }
+      },
+      watchers: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true
             }
           }
         }

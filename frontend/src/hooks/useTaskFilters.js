@@ -12,6 +12,7 @@ export default function useTaskFilters(initialTasks = []) {
     priority: '',     // 'LOW', 'MEDIUM', 'HIGH'
     assignedTo: '',   // User ID
     search: '',       // Title or description text
+    label: '',        // Label name
   });
 
   // Perform filtering using useMemo for performance optimization
@@ -51,6 +52,14 @@ export default function useTaskFilters(initialTasks = []) {
         if (!matchesTitle && !matchesDesc) return false;
       }
 
+      // 5. Client-side Search by Label
+      if (filters.label) {
+        const hasLabel = task.labels?.some(
+          (lbl) => lbl.name.toUpperCase() === filters.label.toUpperCase()
+        );
+        if (!hasLabel) return false;
+      }
+
       return true;
     });
   }, [initialTasks, filters]);
@@ -70,6 +79,7 @@ export default function useTaskFilters(initialTasks = []) {
       priority: '',
       assignedTo: '',
       search: '',
+      label: '',
     });
   };
 

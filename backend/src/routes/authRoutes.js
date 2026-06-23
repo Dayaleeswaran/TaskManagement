@@ -1,5 +1,5 @@
 const express = require("express");
-const { register, login, logout } = require("../controllers/authController");
+const { register, login, logout, resetPassword } = require("../controllers/authController");
 const { validate } = require("../middleware/validateMiddleware");
 const { registerSchema, loginSchema } = require("../validators/authSchemas");
 const { verifyToken } = require("../middleware/authMiddleware");
@@ -140,8 +140,6 @@ router.post("/logout", verifyToken, logout);
  *       500:
  *         description: Server error
  */
-router.post("/reset-password", (req, res) => {
-  res.status(501).json({ message: "Not Implemented" });
-});
+router.post("/reset-password", verifyToken, resetPassword);
 
 module.exports = router;

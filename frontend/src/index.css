@@ -1,5 +1,319 @@
 @import "tailwindcss";
 
+@theme {
+  /* Redefine base slate colors for white/light minimalistic look */
+  --color-slate-950: #f8fafc;
+  --color-slate-900: #ffffff;
+  --color-slate-905: #f1f5f9;
+  --color-slate-850: #e2e8f0;
+  --color-slate-800: #cbd5e1;
+  --color-slate-700: #94a3b8;
+  --color-slate-600: #475569;
+  --color-slate-550: #334155;
+  --color-slate-500: #334155;
+  --color-slate-450: #1e293b;
+  --color-slate-400: #1e293b;
+  --color-slate-350: #0f172a;
+  --color-slate-300: #0f172a;
+  --color-slate-200: #0f172a;
+  --color-slate-100: #0f172a;
+  
+  /* Primary blue colors for buttons, links, accents */
+  --color-violet-950: #eff6ff;
+  --color-violet-900: #dbeafe;
+  --color-violet-650: #1d4ed8;
+  --color-violet-600: #2563eb;
+  --color-violet-500: #3b82f6;
+  --color-violet-400: #2563eb;
+  --color-violet-300: #1e3a8a;
+  --color-violet-200: #1e3a8a;
+  
+  --color-fuchsia-600: #0284c7;
+  --color-fuchsia-500: #0ea5e9;
+  --color-fuchsia-400: #0ea5e9;
+  
+  --color-indigo-500: #2563eb;
+  --color-indigo-400: #2563eb;
+  --color-indigo-600: #1d4ed8;
+}
+
+/* ===== Global Element Overrides ===== */
+html, body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* Force headings to render in dark slate rather than gradient/white text styles */
+h1, h2, h3, h4, h5, h6 {
+  color: #0f172a !important;
+  background-image: none !important;
+  -webkit-text-fill-color: initial !important;
+  background-clip: border-box !important;
+}
+
+.text-transparent {
+  color: inherit !important;
+  -webkit-text-fill-color: initial !important;
+}
+
+/* Globally change text-white to dark slate for general readability on light backgrounds */
+.text-white {
+  color: #0f172a !important;
+}
+
+/* Explicitly preserve white text for elements on solid blue/dark backgrounds */
+a.bg-gradient-to-r,
+a.bg-gradient-to-r *,
+.bg-gradient-to-r.from-violet-600.to-fuchsia-600,
+.bg-gradient-to-r.from-violet-600.to-fuchsia-600 *,
+.bg-gradient-to-r.from-violet-600.to-fuchsia-500,
+.bg-gradient-to-r.from-violet-600.to-fuchsia-500 *,
+.bg-gradient-to-r.from-violet-600.to-purple-600,
+.bg-gradient-to-r.from-violet-600.to-purple-600 *,
+.bg-gradient-to-r.from-slate-900\/60.to-purple-950\/20,
+.bg-gradient-to-r.from-slate-900\/60.to-purple-950\/20 *,
+.bg-gradient-to-br.from-violet-600.to-fuchsia-600,
+.bg-gradient-to-br.from-violet-600.to-fuchsia-600 *,
+.bg-gradient-to-tr.from-violet-600.to-fuchsia-600,
+.bg-gradient-to-tr.from-violet-600.to-fuchsia-600 *,
+.bg-violet-650,
+.bg-violet-650 * {
+  color: #ffffff !important;
+}
+
+/* Ensure table headers and cells are dark/readable */
+th {
+  color: #475569 !important;
+}
+td {
+  color: #1e293b !important;
+}
+
+/* ===== Component Overrides ===== */
+
+/* Card panels */
+.bg-slate-950\/40,
+.bg-slate-900\/40,
+.bg-slate-900\/30 {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Sidebar & headers background overrides */
+aside,
+.bg-slate-950 {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+header,
+.bg-slate-950\/80 {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Kanban board column backgrounds */
+.bg-slate-950\/30 {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Border overrides */
+.border-slate-900,
+.border-slate-850,
+.border-slate-800 {
+  border-color: #cbd5e1 !important;
+}
+
+.border-slate-900\/40,
+.border-slate-800\/80,
+.border-slate-800\/60,
+.border-slate-850\/30 {
+  border-color: #e2e8f0 !important;
+}
+
+.divide-slate-850,
+.divide-slate-800 {
+  border-color: #cbd5e1 !important;
+}
+
+/* Welcome banner light blue styling */
+.bg-gradient-to-r.from-slate-900\/60.to-purple-950\/20 {
+  background-image: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%) !important;
+  border-color: #1d4ed8 !important;
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.1), 0 2px 4px -2px rgba(37, 99, 235, 0.1) !important;
+}
+
+.bg-gradient-to-r.from-slate-900\/60.to-purple-950\/20 h1,
+.bg-gradient-to-r.from-slate-900\/60.to-purple-950\/20 p {
+  color: #ffffff !important;
+}
+
+/* Background blur decorative circles */
+.bg-purple-600\/10,
+.bg-fuchsia-600\/10 {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Active Nav sidebar links */
+.bg-gradient-to-r.from-violet-600\/20.to-fuchsia-600\/10 {
+  background-image: none !important;
+  background-color: #eff6ff !important;
+  border-left-color: #2563eb !important;
+  color: #1d4ed8 !important;
+}
+
+.text-violet-400 {
+  color: #2563eb !important;
+}
+
+/* Inputs, textareas, selects */
+input,
+textarea,
+select {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15) !important;
+}
+
+.bg-slate-905,
+.bg-slate-900 {
+  background-color: #f8fafc !important;
+}
+
+/* Buttons Solid Blue/White transitions */
+.bg-gradient-to-r.from-violet-600.to-fuchsia-600,
+.bg-gradient-to-r.from-violet-600.to-fuchsia-500,
+.bg-gradient-to-r.from-violet-600.to-purple-600 {
+  background-image: none !important;
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
+.bg-gradient-to-r.from-violet-600.to-fuchsia-600:hover,
+.bg-gradient-to-r.from-violet-600.to-fuchsia-500:hover {
+  background-color: #1d4ed8 !important;
+}
+
+.bg-gradient-to-r.from-violet-600.to-fuchsia-600 *,
+.bg-gradient-to-r.from-violet-600.to-fuchsia-500 * {
+  color: #ffffff !important;
+}
+
+/* Modal Backdrops */
+.fixed.inset-0.bg-black\/60 {
+  background-color: rgba(15, 23, 42, 0.45) !important;
+}
+
+/* ===== Toast and Badge Colors ===== */
+
+.text-purple-400 {
+  color: #7c3aed !important;
+}
+.bg-purple-500\/10 {
+  background-color: #f5f3ff !important;
+}
+.border-purple-500\/20,
+.border-purple-500\/30 {
+  border-color: #ddd6fe !important;
+}
+
+.text-blue-400 {
+  color: #2563eb !important;
+}
+.bg-blue-500\/10 {
+  background-color: #eff6ff !important;
+}
+.border-blue-500\/20,
+.border-blue-500\/30 {
+  border-color: #bfdbfe !important;
+}
+
+.text-slate-400 {
+  color: #475569 !important;
+}
+.bg-slate-500\/10 {
+  background-color: #f1f5f9 !important;
+}
+.border-slate-600\/20,
+.border-slate-650\/30,
+.border-slate-800\/80 {
+  border-color: #cbd5e1 !important;
+}
+
+/* Success / Alert / Priority Badge overrides */
+.text-emerald-450,
+.text-emerald-400 {
+  color: #047857 !important;
+}
+.bg-emerald-500\/10,
+.bg-emerald-500\/15 {
+  background-color: #ecfdf5 !important;
+}
+.border-emerald-500\/20,
+.border-emerald-500\/25 {
+  border-color: #a7f3d0 !important;
+}
+
+.text-rose-450,
+.text-rose-400 {
+  color: #b91c1c !important;
+}
+.bg-rose-500\/10,
+.bg-rose-500\/15 {
+  background-color: #fff1f2 !important;
+}
+.border-rose-500\/20,
+.border-rose-550,
+.border-rose-500\/25 {
+  border-color: #fecdd3 !important;
+}
+
+.text-amber-450,
+.text-amber-400 {
+  color: #b45309 !important;
+}
+.bg-amber-500\/10,
+.bg-amber-500\/15 {
+  background-color: #fef3c7 !important;
+}
+.border-amber-500\/20 {
+  border-color: #fde68a !important;
+}
+
+/* Demo Credentials Box on Login Page */
+.text-violet-300 {
+  color: #1d4ed8 !important;
+}
+.bg-slate-900\/60 {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+.bg-violet-600\/10 {
+  background-color: #eff6ff !important;
+  border-color: #bfdbfe !important;
+}
+.bg-gradient-to-r.from-violet-600.via-fuchsia-600.to-violet-600 {
+  background-image: linear-gradient(to right, #2563eb, #0ea5e9, #2563eb) !important;
+}
+
+/* Reset / Active filter button */
+.text-violet-400 {
+  color: #2563eb !important;
+}
+.bg-violet-650 {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
 /* ===== Mobile Sidebar Animations ===== */
 @keyframes slideInLeft {
   from {
@@ -66,9 +380,9 @@
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
-    rgba(148, 163, 184, 0.06) 25%,
-    rgba(148, 163, 184, 0.12) 50%,
-    rgba(148, 163, 184, 0.06) 75%
+    rgba(148, 163, 184, 0.1) 25%,
+    rgba(148, 163, 184, 0.2) 50%,
+    rgba(148, 163, 184, 0.1) 75%
   );
   background-size: 800px 100%;
   animation: shimmer 1.8s ease-in-out infinite;
@@ -121,7 +435,7 @@
 /* ===== Kanban Horizontal Scroll (mobile) ===== */
 .kanban-scroll-container {
   scrollbar-width: thin;
-  scrollbar-color: rgba(139, 92, 246, 0.3) transparent;
+  scrollbar-color: rgba(37, 99, 235, 0.3) transparent !important;
 }
 
 .kanban-scroll-container::-webkit-scrollbar {
@@ -134,15 +448,40 @@
 }
 
 .kanban-scroll-container::-webkit-scrollbar-thumb {
-  background: rgba(139, 92, 246, 0.3);
+  background: rgba(37, 99, 235, 0.3) !important;
   border-radius: 8px;
 }
 
 .kanban-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(139, 92, 246, 0.5);
+  background: rgba(37, 99, 235, 0.5) !important;
 }
 
 /* ===== Body scroll lock for mobile sidebar ===== */
 body.sidebar-open {
   overflow: hidden;
+}
+
+/* Toast Overrides for Minimalistic Design */
+.bg-emerald-950\/90 {
+  background-color: #ffffff !important;
+  border-color: #a7f3d0 !important;
+}
+.bg-red-950\/90 {
+  background-color: #ffffff !important;
+  border-color: #fecdd3 !important;
+}
+.bg-amber-950\/90 {
+  background-color: #ffffff !important;
+  border-color: #fde68a !important;
+}
+.bg-blue-950\/90 {
+  background-color: #ffffff !important;
+  border-color: #bfdbfe !important;
+}
+
+.text-emerald-100,
+.text-red-100,
+.text-amber-100,
+.text-blue-100 {
+  color: #1e293b !important;
 }
