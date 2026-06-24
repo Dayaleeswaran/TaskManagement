@@ -80,12 +80,12 @@ export default function Profile() {
             <div className="border-t border-slate-900 pt-5 space-y-4">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-400 flex items-center"><User className="h-4 w-4 mr-2 text-slate-500" /> Full Name</span>
-                <span className="font-semibold text-white">{user?.name}</span>
+                <span className="font-semibold text-slate-100">{user?.name}</span>
               </div>
               
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-400 flex items-center"><Mail className="h-4 w-4 mr-2 text-slate-500" /> Email Address</span>
-                <span className="font-semibold text-white">{user?.email}</span>
+                <span className="font-semibold text-slate-100">{user?.email}</span>
               </div>
 
               <div className="flex items-center justify-between text-sm">
