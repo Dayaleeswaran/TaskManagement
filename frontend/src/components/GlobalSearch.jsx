@@ -27,12 +27,16 @@ export default function GlobalSearch() {
   // Debounced search logic
   useEffect(() => {
     if (!query.trim()) {
-      setResults({ users: [], projects: [], tasks: [] });
-      setLoading(false);
+      Promise.resolve().then(() => {
+        setResults({ users: [], projects: [], tasks: [] });
+        setLoading(false);
+      });
       return;
     }
 
-    setLoading(true);
+    Promise.resolve().then(() => {
+      setLoading(true);
+    });
     const delayDebounceFn = setTimeout(async () => {
       try {
         const response = await api.get(`/api/v1/search?q=${encodeURIComponent(query)}`);
@@ -58,7 +62,7 @@ export default function GlobalSearch() {
     setQuery('');
   };
 
-  const handleProjectClick = (proj) => {
+  const handleProjectClick = () => {
     navigate('/projects');
     setOpen(false);
     setQuery('');

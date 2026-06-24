@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { useNotifications } from '../context/NotificationContext';
 import NotificationItem from './NotificationItem';

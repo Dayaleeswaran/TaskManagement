@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
@@ -47,7 +47,7 @@ export default function Users() {
   const [editRole, setEditRole] = useState('COLLABORATOR');
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       let query = `/api/v1/users?page=${page}&limit=${limit}`;
@@ -71,13 +71,16 @@ export default function Users() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, limit, appliedSearch, roleFilter, isActiveFilter, addToast]);
 
   useEffect(() => {
     if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') {
-      fetchUsers();
+      const timer = setTimeout(() => {
+        fetchUsers();
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [page, appliedSearch, roleFilter, isActiveFilter, user]);
+  }, [user, fetchUsers]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();

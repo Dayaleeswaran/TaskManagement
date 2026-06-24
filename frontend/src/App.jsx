@@ -25,21 +25,6 @@ import AuditLogs from './pages/AuditLogs';
 
 import { X } from 'lucide-react';
 
-// Redirect helper component for `/dashboard` or root entry points
-function DashboardRedirect() {
-  const { role } = useAuth();
-
-  if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
-    return <Navigate to="/users" replace />;
-  } else if (role === 'PROJECT_MANAGER') {
-    return <Navigate to="/tasks" replace />;
-  } else if (role === 'COLLABORATOR') {
-    return <Navigate to="/my-tasks" replace />;
-  } else {
-    return <Navigate to="/profile" replace />;
-  }
-}
-
 function AppContent() {
   const { notifications, dismissNotification } = useAuth();
 

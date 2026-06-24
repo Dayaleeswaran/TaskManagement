@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
@@ -15,7 +15,6 @@ import {
   UserPlus, 
   UserMinus,
   Search,
-  Calendar,
   Clock
 } from 'lucide-react';
 
@@ -40,7 +39,7 @@ export default function Projects() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [selectedMemberIds, setSelectedMemberIds] = useState([]);
 
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     try {
       setLoading(false);
       const response = await api.get('/api/v1/projects');
@@ -51,9 +50,9 @@ export default function Projects() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast]);
 
-  const fetchSystemUsers = async () => {
+  const fetchSystemUsers = useCallback(async () => {
     try {
       setLoadingUsers(true);
       const response = await api.get('/api/v1/users?limit=100&isActive=true');
@@ -64,14 +63,17 @@ export default function Projects() {
     } finally {
       setLoadingUsers(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchProjects();
-    if (user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER') {
-      fetchSystemUsers();
-    }
-  }, [user]);
+    const timer = setTimeout(() => {
+      fetchProjects();
+      if (user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER') {
+        fetchSystemUsers();
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [user, fetchProjects, fetchSystemUsers]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -391,7 +393,7 @@ function ProjectDetailsModal({ project, onClose }) {
   const [searchResults, setSearchResults] = useState([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
 
-  const fetchMembersAndTimeline = async () => {
+  const fetchMembersAndTimeline = useCallback(async () => {
     setLoadingDetails(true);
     try {
       const [membersRes, timelineRes] = await Promise.all([
@@ -406,19 +408,26 @@ function ProjectDetailsModal({ project, onClose }) {
     } finally {
       setLoadingDetails(false);
     }
-  };
+  }, [project.id, addToast]);
 
   useEffect(() => {
-    fetchMembersAndTimeline();
-  }, [project.id]);
+    const timer = setTimeout(() => {
+      fetchMembersAndTimeline();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchMembersAndTimeline]);
 
   // Debounced search for users to add
   useEffect(() => {
     if (!userQuery.trim()) {
-      setSearchResults([]);
+      Promise.resolve().then(() => {
+        setSearchResults([]);
+      });
       return;
     }
-    setSearchingUsers(true);
+    Promise.resolve().then(() => {
+      setSearchingUsers(true);
+    });
     const delayDebounceFn = setTimeout(async () => {
       try {
         const response = await api.get(`/api/v1/search?q=${encodeURIComponent(userQuery)}`);

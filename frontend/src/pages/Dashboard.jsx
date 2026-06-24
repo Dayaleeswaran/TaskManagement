@@ -3,10 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { 
   CheckSquare, 
-  Clock, 
   AlertCircle, 
   User, 
-  TrendingUp, 
   FolderKanban, 
   ClipboardList,
   Users as UsersIcon,

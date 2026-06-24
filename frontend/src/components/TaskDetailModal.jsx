@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   X, 
   Calendar, 
@@ -47,8 +47,20 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [editedAssigneeIds, setEditedAssigneeIds] = useState([]);
 
+  const fetchProjectMembers = useCallback(async (pId) => {
+    try {
+      setLoadingMembers(true);
+      const response = await api.get(`/api/v1/projects/${pId}/members`);
+      setProjectMembers(response.data);
+    } catch (err) {
+      console.error('Failed to fetch project members:', err);
+    } finally {
+      setLoadingMembers(false);
+    }
+  }, []);
+
   // Fetch full details of the task including attachments, watchers, and labels
-  const fetchFullTaskDetails = async () => {
+  const fetchFullTaskDetails = useCallback(async () => {
     try {
       const response = await api.get(`/api/v1/tasks/${task.id}`);
       setLocalTask(response.data);
@@ -71,25 +83,16 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
     } catch (err) {
       console.error('Failed to fetch full task details:', err);
     }
-  };
-
-  const fetchProjectMembers = async (pId) => {
-    try {
-      setLoadingMembers(true);
-      const response = await api.get(`/api/v1/projects/${pId}/members`);
-      setProjectMembers(response.data);
-    } catch (err) {
-      console.error('Failed to fetch project members:', err);
-    } finally {
-      setLoadingMembers(false);
-    }
-  };
+  }, [task.id, fetchProjectMembers]);
 
   useEffect(() => {
     if (task?.id) {
-      fetchFullTaskDetails();
+      const timer = setTimeout(() => {
+        fetchFullTaskDetails();
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [task]);
+  }, [task?.id, fetchFullTaskDetails]);
 
   // Close modal when Escape key is pressed
   useEffect(() => {
@@ -105,7 +108,7 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
     if (!task?.id) return;
 
     const fetchComments = async () => {
-      setIsLoadingComments(true);
+      Promise.resolve().then(() => setIsLoadingComments(true));
       try {
         const response = await api.get(`/api/v1/tasks/${task.id}/comments`);
         setComments(response.data.comments || response.data || []);
@@ -117,7 +120,7 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
     };
 
     fetchComments();
-  }, [task]);
+  }, [task?.id]);
 
   const handleSaveTask = async () => {
     if (!editedTitle.trim()) {

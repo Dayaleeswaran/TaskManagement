@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import useSocket from '../hooks/useSocket';
@@ -35,7 +36,10 @@ export const NotificationProvider = ({ children }) => {
   }, [token, user]);
 
   useEffect(() => {
-    fetchNotifications();
+    const timer = setTimeout(() => {
+      fetchNotifications();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [fetchNotifications]);
 
   // Sync Socket.io real-time notifications

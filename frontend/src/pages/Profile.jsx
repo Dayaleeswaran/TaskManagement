@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, Shield, Mail, Key, ShieldAlert, Bell } from 'lucide-react';
+import { User, Shield, Mail, ShieldAlert, Bell } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 
 export default function Profile() {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const { addToast } = useToast();
   const [settings, setSettings] = useState({
     taskAssigned: true,

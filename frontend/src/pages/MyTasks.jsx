@@ -1,18 +1,16 @@
-import { useEffect, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useEffect, useState, useCallback } from 'react';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import { CheckSquare, Clock, AlertTriangle, Play, CheckCircle2 } from 'lucide-react';
 
 export default function MyTasks() {
-  const { user } = useAuth();
   const { addToast } = useToast();
   
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL'); // ALL, PENDING, COMPLETED
 
-  const fetchMyTasks = async () => {
+  const fetchMyTasks = useCallback(async () => {
     try {
       const response = await api.get('/api/v1/tasks?limit=100');
       const tasksData = response.data.tasks || response.data || [];
@@ -23,11 +21,14 @@ export default function MyTasks() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast]);
 
   useEffect(() => {
-    fetchMyTasks();
-  }, []);
+    const timer = setTimeout(() => {
+      fetchMyTasks();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchMyTasks]);
 
   const handleStatusChange = async (taskId, newStatus) => {
     try {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { KeyRound, CheckCircle2, AlertCircle, Loader2, Lock, ArrowLeft, Check, X } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2, Lock, ArrowLeft, Check, X } from 'lucide-react';
 
 export default function ResetPassword() {
   const { resetPassword } = useAuth();

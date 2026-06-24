@@ -236,7 +236,7 @@ export default function TaskBoard() {
       .filter((t) => t.status === targetStatus && t.id !== activeId)
       .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
-    let updatedTargetTasks = [];
+    let updatedTargetTasks;
     if (overTask) {
       const overIndex = targetTasks.findIndex((t) => t.id === overId);
       updatedTargetTasks = [...targetTasks];

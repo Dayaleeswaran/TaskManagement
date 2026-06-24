@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, ChevronLeft, ChevronRight, Loader2, Calendar, ClipboardList, Info } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
@@ -13,10 +13,15 @@ export default function AuditLogs() {
   const [selectedLog, setSelectedLog] = useState(null);
   const { addToast } = useToast();
 
-  const fetchLogs = async () => {
+  const searchRef = useRef('');
+  useEffect(() => {
+    searchRef.current = search;
+  }, [search]);
+
+  const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await api.get(`/api/v1/users/audit-logs?page=${page}&limit=10&search=${encodeURIComponent(search)}`);
+      const response = await api.get(`/api/v1/users/audit-logs?page=${page}&limit=10&search=${encodeURIComponent(searchRef.current)}`);
       setLogs(response.data.logs || []);
       setTotal(response.data.pagination?.total || 0);
       setTotalPages(response.data.pagination?.totalPages || 1);
@@ -26,11 +31,14 @@ export default function AuditLogs() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, addToast]);
 
   useEffect(() => {
-    fetchLogs();
-  }, [page]);
+    const timer = setTimeout(() => {
+      fetchLogs();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [page, fetchLogs]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();

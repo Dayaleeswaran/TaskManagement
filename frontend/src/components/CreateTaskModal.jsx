@@ -50,7 +50,7 @@ export default function CreateTaskModal({ onClose, onTaskCreated }) {
     };
 
     fetchProjects();
-  }, []);
+  }, [addToast]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -68,7 +68,7 @@ export default function CreateTaskModal({ onClose, onTaskCreated }) {
       }
     };
     fetchMembers();
-  }, [projectId]);
+  }, [projectId, addToast]);
 
   // Close modal when Escape key is pressed
   useEffect(() => {

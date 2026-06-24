@@ -119,7 +119,7 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post('/api/v1/auth/forgot-password', { email });
       return response.data;
     } catch (err) {
-      throw new Error(err.response?.data?.message || 'Failed to send verification code.');
+      throw new Error(err.response?.data?.message || 'Failed to send verification code.', { cause: err });
     }
   };
 
@@ -128,7 +128,7 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post('/api/v1/auth/verify-reset-code', { email, code });
       return response.data;
     } catch (err) {
-      throw new Error(err.response?.data?.message || 'Invalid or expired verification code.');
+      throw new Error(err.response?.data?.message || 'Invalid or expired verification code.', { cause: err });
     }
   };
 
@@ -138,7 +138,7 @@ export const AuthProvider = ({ children }) => {
       setNotifications([]);
       return response.data;
     } catch (err) {
-      throw new Error(err.response?.data?.message || 'Failed to reset password.');
+      throw new Error(err.response?.data?.message || 'Failed to reset password.', { cause: err });
     }
   };
 

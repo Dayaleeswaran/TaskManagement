@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Bell, Info, Check, Loader2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Bell, Check, Loader2 } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
 import NotificationItem from '../components/NotificationItem';
 import api from '../services/api';
@@ -38,7 +38,10 @@ export default function Notifications() {
 
   // Fetch when page or filter changes
   useEffect(() => {
-    fetchPage(page, filter, page > 1);
+    const timer = setTimeout(() => {
+      fetchPage(page, filter, page > 1);
+    }, 0);
+    return () => clearTimeout(timer);
   }, [page, filter, fetchPage]);
 
   // Handle filter changes

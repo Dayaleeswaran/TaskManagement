@@ -1,4 +1,3 @@
-import React from 'react';
 import { formatTimeAgo } from '../utils/dateUtils';
 
 export default function NotificationItem({ notification, onClick }) {
