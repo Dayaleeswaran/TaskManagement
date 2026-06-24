@@ -7,16 +7,20 @@ const JWT_SECRET = process.env.JWT_SECRET || "your-jwt-secret-key-change-me-in-p
 
 const verifyToken = async (req, res, next) => {
   try {
+    let token = req.query.token;
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    }
+
+    if (!token) {
       return res.status(401).json({
         errorCode: "UNAUTHORIZED",
         message: "Access token is missing or invalid.",
         details: null,
       });
     }
-
-    const token = authHeader.split(" ")[1];
 
     // Check if token has been revoked / blacklisted (logout)
     if (isBlacklisted(token)) {

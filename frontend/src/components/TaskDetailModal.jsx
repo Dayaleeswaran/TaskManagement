@@ -290,7 +290,9 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
   // Get full download link
   const getDownloadUrl = (path) => {
     if (!path) return '';
-    return path.startsWith('http') ? path : `${api.defaults.baseURL || 'http://localhost:3000'}${path}`;
+    const token = sessionStorage.getItem('taskflow_token') || '';
+    const base = path.startsWith('http') ? path : `${api.defaults.baseURL || 'http://localhost:3000'}${path}`;
+    return token ? `${base}?token=${token}` : base;
   };
 
   const allSystemLabels = ["BUG", "FEATURE", "URGENT", "DOCUMENTATION", "REFACTOR"];

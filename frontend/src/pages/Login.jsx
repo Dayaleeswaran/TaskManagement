@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Mail, Lock, Loader2, AlertCircle, Info, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
 
 export default function Login() {
   const { login, user } = useAuth();
@@ -90,16 +90,6 @@ export default function Login() {
 
   return (
     <div className="max-w-md w-full mx-auto py-8 px-4">
-      {/* Demo Credentials Box */}
-      <div className="mb-6 p-4 rounded-xl bg-slate-900 border border-slate-850 text-slate-500 flex items-start space-x-3 shadow-sm">
-        <Info className="h-5 w-5 text-slate-400 shrink-0 mt-0.5" />
-        <div className="text-xs space-y-1">
-          <p className="font-semibold text-slate-350">Demo Accounts Available:</p>
-          <p>• <strong className="text-slate-400 font-mono">admin@tms.com</strong> / <span className="font-mono text-slate-400">Admin@123!</span> (Admin Role)</p>
-          <p>• <strong className="text-slate-400 font-mono">pm1@tms.com</strong> / <span className="font-mono text-slate-400">Manager@123!</span> (Project Manager)</p>
-          <p>• <strong className="text-slate-400 font-mono">collab1@tms.com</strong> / <span className="font-mono text-slate-400">Collab@123!</span> (Collaborator)</p>
-        </div>
-      </div>
 
       <div className="bg-slate-900 border border-slate-850 rounded-2xl p-8 shadow-md relative overflow-hidden">
         <div className="text-center mb-8">

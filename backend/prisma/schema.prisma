@@ -99,6 +99,7 @@ model Task {
   estimatedHours Float?        // Enterprise: Estimated Hours
   position    Int              @default(0) // Enterprise: Kanban Card position ordering
   deletedAt   DateTime?        // Enterprise: Soft delete
+  completedAt DateTime?        // Task completion timestamp
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 

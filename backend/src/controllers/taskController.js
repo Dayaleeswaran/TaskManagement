@@ -9,23 +9,43 @@ const path = require("path");
 const getTasks = async (req, res, next) => {
   try {
     let { status, priority, assigneeId, page, limit, projectId } = req.query;
+    const { role, id: userId } = req.user;
 
-    if (req.user.role === "COLLABORATOR") {
-      assigneeId = req.user.id;
+    if (role === "COLLABORATOR") {
+      assigneeId = userId;
+    }
+
+    if (role === "PROJECT_MANAGER") {
+      const pmProjects = await prisma.project.findMany({
+        where: { ownerId: userId, deletedAt: null },
+        select: { id: true },
+      });
+      const pmProjectIds = pmProjects.map((p) => p.id);
+
+      if (projectId) {
+        if (!pmProjectIds.includes(projectId)) {
+          return res.status(403).json({
+            errorCode: "FORBIDDEN",
+            message: "Only project managers of this project can access its tasks.",
+          });
+        }
+      } else {
+        projectId = { in: pmProjectIds };
+      }
     }
 
     // Verify project members access restriction
-    if (projectId && req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN") {
+    if (projectId && typeof projectId === "string" && role !== "ADMIN" && role !== "SUPER_ADMIN") {
       const project = await prisma.project.findUnique({
         where: { id: projectId },
       });
       if (!project || project.deletedAt) {
         return res.status(404).json({ errorCode: "PROJECT_NOT_FOUND", message: "Project not found." });
       }
-      if (project.ownerId !== req.user.id) {
+      if (project.ownerId !== userId) {
         const isMember = await prisma.projectMember.findUnique({
           where: {
-            projectId_userId: { projectId, userId: req.user.id },
+            projectId_userId: { projectId, userId },
           },
         });
         if (!isMember) {
@@ -67,20 +87,14 @@ const getTaskById = async (req, res, next) => {
     // Verify access permission
     if (req.user.role === "COLLABORATOR") {
       const isAssigned = task.assignments.some((a) => a.userId === req.user.id);
-      if (!isAssigned && task.createdById !== req.user.id) {
+      if (!isAssigned) {
         const error = new Error("You do not have permission to view this task.");
         error.statusCode = 403;
         error.errorCode = "FORBIDDEN";
         throw error;
       }
-    } else if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && task.project.ownerId !== req.user.id) {
-      const isMember = await prisma.projectMember.findUnique({
-        where: {
-          projectId_userId: { projectId: task.projectId, userId: req.user.id },
-        },
-      });
-      
-      if (!isMember) {
+    } else if (req.user.role === "PROJECT_MANAGER") {
+      if (task.project.ownerId !== req.user.id) {
         const error = new Error("You do not have permission to view this task.");
         error.statusCode = 403;
         error.errorCode = "FORBIDDEN";
@@ -150,7 +164,7 @@ const createTask = async (req, res, next) => {
     if (membersCount !== assignedUserIds.length) {
       return res.status(400).json({
         errorCode: "BAD_REQUEST",
-        message: "All assignees must be members of the project.",
+        message: "Selected user is not a member of this project.",
       });
     }
 
@@ -175,6 +189,7 @@ const createTask = async (req, res, next) => {
         title,
         description: description || "",
         status: status || "TODO",
+        completedAt: (status === "COMPLETED") ? new Date() : null,
         priority: priority || "MEDIUM",
         dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         startDate: startDate ? new Date(startDate) : null,
@@ -248,7 +263,14 @@ const updateTask = async (req, res, next) => {
     const updateData = {};
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description;
-    if (status !== undefined) updateData.status = status;
+    if (status !== undefined) {
+      updateData.status = status;
+      if (status === "COMPLETED") {
+        updateData.completedAt = new Date();
+      } else {
+        updateData.completedAt = null;
+      }
+    }
     if (priority !== undefined) updateData.priority = priority;
     if (dueDate !== undefined) updateData.dueDate = new Date(dueDate);
     if (startDate !== undefined) updateData.startDate = startDate ? new Date(startDate) : null;
@@ -287,7 +309,7 @@ const updateTask = async (req, res, next) => {
       if (membersCount !== assignedUserIds.length) {
         return res.status(400).json({
           errorCode: "BAD_REQUEST",
-          message: "All assignees must be members of the project.",
+          message: "Selected user is not a member of this project.",
         });
       }
 
@@ -521,9 +543,16 @@ const updateTaskStatus = async (req, res, next) => {
       }
     }
 
+    const updateData = { status };
+    if (status === "COMPLETED") {
+      updateData.completedAt = new Date();
+    } else {
+      updateData.completedAt = null;
+    }
+
     const updatedTask = await prisma.task.update({
       where: { id },
-      data: { status },
+      data: updateData,
     });
 
     const statusLabel = status.replace("_", " ").toLowerCase();
@@ -624,9 +653,28 @@ const uploadAttachment = async (req, res, next) => {
       });
     }
 
-    const task = await prisma.task.findUnique({ where: { id: taskId } });
+    const task = await prisma.task.findUnique({
+      where: { id: taskId },
+      include: { project: true },
+    });
     if (!task || task.deletedAt) {
       return res.status(404).json({ errorCode: "TASK_NOT_FOUND", message: "Task not found." });
+    }
+
+    // Upload Permission check: Allowed only for users who belong to the project (or admins)
+    const { role, id: userId } = req.user;
+    if (role !== "ADMIN" && role !== "SUPER_ADMIN" && task.project.ownerId !== userId) {
+      const isMember = await prisma.projectMember.findUnique({
+        where: {
+          projectId_userId: { projectId: task.projectId, userId },
+        },
+      });
+      if (!isMember) {
+        return res.status(403).json({
+          errorCode: "FORBIDDEN",
+          message: "Only project members can upload attachments.",
+        });
+      }
     }
 
     const attachment = await prisma.attachment.create({
@@ -663,13 +711,32 @@ const deleteAttachment = async (req, res, next) => {
 
     const attachment = await prisma.attachment.findUnique({
       where: { id },
-      include: { task: true },
+      include: {
+        task: {
+          include: {
+            project: true,
+          },
+        },
+      },
     });
 
     if (!attachment) {
       return res.status(404).json({
         errorCode: "ATTACHMENT_NOT_FOUND",
         message: "File attachment not found.",
+      });
+    }
+
+    // Delete Permission check: uploader, project owner, or admin only
+    const { role, id: userId } = req.user;
+    const isUploader = attachment.uploadedById === userId;
+    const isProjectOwner = attachment.task.project.ownerId === userId;
+    const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
+
+    if (!isUploader && !isProjectOwner && !isAdmin) {
+      return res.status(403).json({
+        errorCode: "FORBIDDEN",
+        message: "You do not have permission to delete this attachment.",
       });
     }
 

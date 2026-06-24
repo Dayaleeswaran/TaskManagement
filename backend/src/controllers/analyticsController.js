@@ -2,57 +2,68 @@ const prisma = require("../prisma");
 
 /**
  * Controller to fetch dashboard analytics custom-tailored to the user's role.
+ * Matches Business Logic 12 specifications.
  */
 const getDashboardAnalytics = async (req, res, next) => {
   try {
     const { role, id: userId } = req.user;
-    
-    if (role === "ADMIN" || role === "SUPER_ADMIN") {
+
+    // 1. SUPER_ADMIN: Total Users, Active Users, Total Projects, Total Tasks, Audit Logs Count
+    if (role === "SUPER_ADMIN") {
       const [
         totalUsers,
         activeUsers,
         projects,
-        totalTasks,
-        completedTasks,
-        overdueTasks
+        tasks,
+        auditLogsCount
       ] = await Promise.all([
         prisma.user.count(),
         prisma.user.count({ where: { isActive: true } }),
         prisma.project.count({ where: { deletedAt: null } }),
         prisma.task.count({ where: { deletedAt: null } }),
-        prisma.task.count({ where: { status: "COMPLETED", deletedAt: null } }),
-        prisma.task.count({
-          where: {
-            dueDate: { lt: new Date() },
-            status: { not: "COMPLETED" },
-            deletedAt: null,
-          },
-        })
+        prisma.auditLog.count(),
       ]);
-      
-      const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-      
+
       return res.status(200).json({
         totalUsers,
         activeUsers,
         projects,
-        tasks: totalTasks,
-        completionRate,
-        overdueTasks,
+        tasks,
+        auditLogsCount,
       });
-    } 
-    
+    }
+
+    // 2. ADMIN: Users, Projects, Tasks
+    if (role === "ADMIN") {
+      const [
+        totalUsers,
+        projects,
+        tasks
+      ] = await Promise.all([
+        prisma.user.count(),
+        prisma.project.count({ where: { deletedAt: null } }),
+        prisma.task.count({ where: { deletedAt: null } }),
+      ]);
+
+      return res.status(200).json({
+        totalUsers, // Users
+        projects,   // Projects
+        tasks,      // Tasks
+      });
+    }
+
+    // 3. PROJECT_MANAGER: My Projects, Team Members, Active Tasks, Overdue Tasks
     if (role === "PROJECT_MANAGER") {
       const pmProjects = await prisma.project.findMany({
         where: { ownerId: userId, deletedAt: null },
         select: { id: true },
       });
       const pmProjectIds = pmProjects.map((p) => p.id);
-      const activeProjects = pmProjects.length;
-      
+      const myProjects = pmProjects.length;
+
       const [
         projectMembers,
-        tasksCompleted,
+        activeTasks,
         overdueTasks
       ] = await Promise.all([
         prisma.projectMember.findMany({
@@ -62,7 +73,7 @@ const getDashboardAnalytics = async (req, res, next) => {
         prisma.task.count({
           where: {
             projectId: { in: pmProjectIds },
-            status: "COMPLETED",
+            status: { not: "COMPLETED" },
             deletedAt: null,
           },
         }),
@@ -73,35 +84,31 @@ const getDashboardAnalytics = async (req, res, next) => {
             status: { not: "COMPLETED" },
             deletedAt: null,
           },
-        })
+        }),
       ]);
-      
+
       const uniqueMembers = new Set(projectMembers.map((m) => m.userId));
       const teamMembers = uniqueMembers.size;
-      
+
       return res.status(200).json({
-        activeProjects,
+        myProjects,
         teamMembers,
-        tasksCompleted,
+        activeTasks,
         overdueTasks,
       });
     }
-    
+
+    // 4. COLLABORATOR: Assigned Tasks, Due Today, Completed Tasks
     if (role === "COLLABORATOR") {
       const startOfToday = new Date();
       startOfToday.setHours(0, 0, 0, 0);
       const endOfToday = new Date();
       endOfToday.setHours(23, 59, 59, 999);
-      
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-      
+
       const [
-        myTasks,
+        assignedTasks,
         dueToday,
-        overdue,
-        completedThisMonth
+        completedTasks
       ] = await Promise.all([
         prisma.task.count({
           where: {
@@ -119,29 +126,19 @@ const getDashboardAnalytics = async (req, res, next) => {
         prisma.task.count({
           where: {
             assignments: { some: { userId } },
-            dueDate: { lt: new Date() },
-            status: { not: "COMPLETED" },
+            status: "COMPLETED",
             deletedAt: null,
           },
         }),
-        prisma.task.count({
-          where: {
-            assignments: { some: { userId } },
-            status: "COMPLETED",
-            updatedAt: { gte: startOfMonth },
-            deletedAt: null,
-          },
-        })
       ]);
-      
+
       return res.status(200).json({
-        myTasks,
+        assignedTasks,
         dueToday,
-        overdue,
-        completedThisMonth,
+        completedTasks,
       });
     }
-    
+
     return res.status(400).json({ errorCode: "BAD_REQUEST", message: "Invalid role structure." });
   } catch (err) {
     next(err);

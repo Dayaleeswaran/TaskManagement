@@ -89,15 +89,15 @@ export default function Dashboard() {
 
   // --- COLLABORATOR VIEW ---
   const renderCollaboratorView = () => {
-    const collAnalytics = analytics || { myTasks: totalTasks, dueToday: 0, overdue: 0, completedThisMonth: 0 };
+    const collAnalytics = analytics || { assignedTasks: totalTasks, dueToday: 0, completedTasks: 0 };
     return (
       <div className="space-y-8">
         {/* Stat Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
             <div className="space-y-1">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">My Assigned Tasks</p>
-              <p className="text-3xl font-black text-slate-800">{collAnalytics.myTasks}</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assigned Tasks</p>
+              <p className="text-3xl font-black text-slate-800">{collAnalytics.assignedTasks}</p>
             </div>
             <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400">
               <ClipboardList className="h-5 w-5 text-blue-500" />
@@ -116,18 +116,8 @@ export default function Dashboard() {
 
           <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
             <div className="space-y-1">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Overdue Tasks</p>
-              <p className="text-3xl font-black text-red-600">{collAnalytics.overdue}</p>
-            </div>
-            <div className="h-11 w-11 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-500">
-              <AlertCircle className="h-5 w-5 text-red-500" />
-            </div>
-          </div>
-
-          <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
-            <div className="space-y-1">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Completed This Month</p>
-              <p className="text-3xl font-black text-slate-800">{collAnalytics.completedThisMonth}</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Completed Tasks</p>
+              <p className="text-3xl font-black text-slate-800">{collAnalytics.completedTasks}</p>
             </div>
             <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-emerald-500">
               <CheckSquare className="h-5 w-5 text-emerald-500" />
@@ -283,7 +273,7 @@ export default function Dashboard() {
 
   // --- PROJECT MANAGER VIEW ---
   const renderPMView = () => {
-    const pmAnalytics = analytics || { activeProjects: projects.length, teamMembers: 0, tasksCompleted: 0, overdueTasks: 0 };
+    const pmAnalytics = analytics || { myProjects: projects.length, teamMembers: 0, activeTasks: 0, overdueTasks: 0 };
     
     // Compile PM collaborator task list
     const teamAssignments = [];
@@ -308,10 +298,10 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
             <div className="space-y-1">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">My Active Projects</p>
-              <p className="text-3xl font-black text-slate-800">{pmAnalytics.activeProjects}</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">My Projects</p>
+              <p className="text-3xl font-black text-slate-800">{pmAnalytics.myProjects}</p>
             </div>
-            <div className="h-11 w-11 rounded-xl bg-slate-55 border border-slate-100 flex items-center justify-center text-slate-400">
+            <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400">
               <FolderKanban className="h-5 w-5 text-blue-500" />
             </div>
           </div>
@@ -328,8 +318,8 @@ export default function Dashboard() {
 
           <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
             <div className="space-y-1">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tasks Completed</p>
-              <p className="text-3xl font-black text-slate-800">{pmAnalytics.tasksCompleted}</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Tasks</p>
+              <p className="text-3xl font-black text-slate-800">{pmAnalytics.activeTasks}</p>
             </div>
             <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-emerald-400">
               <CheckCircle className="h-5 w-5 text-emerald-500" />
@@ -468,62 +458,112 @@ export default function Dashboard() {
   const renderAdminView = () => {
     const managersList = users.filter(u => u.role === 'PROJECT_MANAGER');
     const collaboratorsList = users.filter(u => u.role === 'COLLABORATOR');
-    const adminAnalytics = analytics || { totalUsers: users.length, activeUsers: users.filter(u => u.isActive).length, projects: projects.length, tasks: totalTasks, completionRate: completionRate, overdueTasks: 0 };
+    const adminAnalytics = analytics || { 
+      totalUsers: users.length, 
+      activeUsers: users.filter(u => u.isActive).length, 
+      projects: projects.length, 
+      tasks: totalTasks, 
+      auditLogsCount: 0 
+    };
+
+    const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
     return (
       <div className="space-y-8">
         {/* Global Admin Stat Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-          <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
-            <div className="space-y-1">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">System Projects</p>
-              <p className="text-3xl font-black text-slate-800">{adminAnalytics.projects}</p>
+        {isSuperAdmin ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+            {/* Projects */}
+            <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Projects</p>
+                <p className="text-3xl font-black text-slate-800">{adminAnalytics.projects}</p>
+              </div>
+              <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400">
+                <FolderKanban className="h-5 w-5 text-blue-500" />
+              </div>
             </div>
-            <div className="h-11 w-11 rounded-xl bg-slate-55 border border-slate-100 flex items-center justify-center text-slate-400">
-              <FolderKanban className="h-5 w-5 text-blue-500" />
-            </div>
-          </div>
 
-          <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
-            <div className="space-y-1">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">System Tasks</p>
-              <p className="text-3xl font-black text-slate-800">{adminAnalytics.tasks}</p>
+            {/* Tasks */}
+            <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tasks</p>
+                <p className="text-3xl font-black text-slate-800">{adminAnalytics.tasks}</p>
+              </div>
+              <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-violet-400">
+                <ClipboardList className="h-5 w-5 text-violet-600" />
+              </div>
             </div>
-            <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-violet-400">
-              <ClipboardList className="h-5 w-5 text-violet-600" />
-            </div>
-          </div>
 
-          <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
-            <div className="space-y-1">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Overdue Tasks</p>
-              <p className="text-3xl font-black text-red-650">{adminAnalytics.overdueTasks || 0}</p>
+            {/* Total Users */}
+            <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Users</p>
+                <p className="text-3xl font-black text-slate-800">{adminAnalytics.totalUsers}</p>
+              </div>
+              <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-blue-500">
+                <UsersIcon className="h-5 w-5 text-blue-600" />
+              </div>
             </div>
-            <div className="h-11 w-11 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-500">
-              <AlertCircle className="h-5 w-5 text-red-500" />
-            </div>
-          </div>
 
-          <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
-            <div className="space-y-1">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Project Managers</p>
-              <p className="text-3xl font-black text-slate-800">{managersList.length}</p>
+            {/* Active Users */}
+            <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Users</p>
+                <p className="text-3xl font-black text-slate-800">{adminAnalytics.activeUsers}</p>
+              </div>
+              <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-emerald-500">
+                <User className="h-5 w-5 text-emerald-500" />
+              </div>
             </div>
-            <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-blue-500">
-              <UsersIcon className="h-5 w-5 text-blue-600" />
-            </div>
-          </div>
 
-          <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
-            <div className="space-y-1">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Collaborators</p>
-              <p className="text-3xl font-black text-slate-800">{collaboratorsList.length}</p>
-            </div>
-            <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-emerald-400">
-              <User className="h-5 w-5 text-emerald-500" />
+            {/* Audit Logs */}
+            <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Audit Logs</p>
+                <p className="text-3xl font-black text-slate-800">{adminAnalytics.auditLogsCount}</p>
+              </div>
+              <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-rose-500">
+                <Activity className="h-5 w-5 text-rose-500" />
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {/* Projects */}
+            <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Projects</p>
+                <p className="text-3xl font-black text-slate-800">{adminAnalytics.projects}</p>
+              </div>
+              <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400">
+                <FolderKanban className="h-5 w-5 text-blue-500" />
+              </div>
+            </div>
+
+            {/* Tasks */}
+            <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tasks</p>
+                <p className="text-3xl font-black text-slate-800">{adminAnalytics.tasks}</p>
+              </div>
+              <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-violet-400">
+                <ClipboardList className="h-5 w-5 text-violet-600" />
+              </div>
+            </div>
+
+            {/* Users */}
+            <div className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between shadow-sm">
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Users</p>
+                <p className="text-3xl font-black text-slate-800">{adminAnalytics.totalUsers}</p>
+              </div>
+              <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-blue-500">
+                <UsersIcon className="h-5 w-5 text-blue-600" />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Visual Charts section */}
         <div className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-6">
@@ -531,30 +571,32 @@ export default function Dashboard() {
             <BarChart2 className="h-4 w-4 text-violet-600" />
             Global System Compliance Metrics
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className={`grid grid-cols-1 ${isSuperAdmin ? 'md:grid-cols-2' : ''} gap-6`}>
             <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-col justify-between">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-3">Overall System Task Completion Rate</span>
               <div className="w-full bg-slate-200 h-6 rounded-full overflow-hidden relative flex items-center justify-center">
                 <div
                   className="bg-emerald-500 h-full absolute left-0 top-0 transition-all duration-1000"
-                  style={{ width: `${adminAnalytics.completionRate}%` }}
+                  style={{ width: `${completionRate}%` }}
                 ></div>
-                <span className="z-10 text-xs font-extrabold text-white">{adminAnalytics.completionRate}% (Completed / Total)</span>
+                <span className="z-10 text-xs font-extrabold text-white">{completionRate}% (Completed / Total)</span>
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">User Directory Activation Ratio</span>
-              <div className="w-full bg-slate-200 h-6 rounded-full overflow-hidden relative flex items-center justify-center">
-                <div
-                  className="bg-indigo-600 h-full absolute left-0 top-0 transition-all"
-                  style={{ width: `${adminAnalytics.totalUsers > 0 ? (adminAnalytics.activeUsers / adminAnalytics.totalUsers) * 100 : 0}%` }}
-                ></div>
-                <span className="z-10 text-xs font-extrabold text-white">
-                  {adminAnalytics.activeUsers} Active of {adminAnalytics.totalUsers} registered users
-                </span>
+            {isSuperAdmin && (
+              <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">User Directory Activation Ratio</span>
+                <div className="w-full bg-slate-200 h-6 rounded-full overflow-hidden relative flex items-center justify-center">
+                  <div
+                    className="bg-indigo-600 h-full absolute left-0 top-0 transition-all"
+                    style={{ width: `${adminAnalytics.totalUsers > 0 ? (adminAnalytics.activeUsers / adminAnalytics.totalUsers) * 100 : 0}%` }}
+                  ></div>
+                  <span className="z-10 text-xs font-extrabold text-white">
+                    {adminAnalytics.activeUsers} Active of {adminAnalytics.totalUsers} registered users
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 

@@ -9,12 +9,12 @@ const getProjects = async (req, res, next) => {
     let where = { deletedAt: null }; // Exclude soft-deleted projects
     
     if (role === "PROJECT_MANAGER") {
-      where.ownerId = userId;
-    } else if (role === "COLLABORATOR") {
       where.OR = [
         { ownerId: userId },
         { members: { some: { userId } } },
       ];
+    } else if (role === "COLLABORATOR") {
+      where.members = { some: { userId } };
     }
 
     const projects = await prisma.project.findMany({
@@ -464,6 +464,13 @@ const removeProjectMember = async (req, res, next) => {
       return res.status(404).json({
         errorCode: "PROJECT_NOT_FOUND",
         message: "Project not found.",
+      });
+    }
+
+    if (userId === project.ownerId) {
+      return res.status(400).json({
+        errorCode: "BAD_REQUEST",
+        message: "Project owner cannot be removed from project members.",
       });
     }
 
