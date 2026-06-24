@@ -12,6 +12,11 @@ services:
       POSTGRES_DB: tms_dev_db
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tms_dev_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
     build: ./backend
@@ -21,11 +26,15 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
+    env_file:
+      - ./backend/.env
     environment:
       DATABASE_URL: "postgresql://postgres:password123@postgres:5432/tms_dev_db?schema=public"
-      JWT_SECRET: "super-secret-key-change-me"
+      PORT: 3000
+    command: sh -c "npx prisma db push && npm run dev"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   frontend:
     build: ./frontend
@@ -35,6 +44,8 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    env_file:
+      - ./frontend/.env
     depends_on:
       - backend
 

@@ -67,21 +67,26 @@ const verifyToken = async (req, res, next) => {
 
     next();
   } catch (err) {
-    let errorCode = "UNAUTHORIZED";
-    let message = "Authentication failed.";
+    if (err.name === "TokenExpiredError" || err.name === "JsonWebTokenError" || err.name === "NotBeforeError") {
+      let errorCode = "UNAUTHORIZED";
+      let message = "Authentication failed.";
 
-    if (err.name === "TokenExpiredError") {
-      errorCode = "TOKEN_EXPIRED";
-      message = "Token has expired.";
-    } else if (err.name === "JsonWebTokenError") {
-      message = "Invalid token signature.";
+      if (err.name === "TokenExpiredError") {
+        errorCode = "TOKEN_EXPIRED";
+        message = "Token has expired.";
+      } else if (err.name === "JsonWebTokenError") {
+        message = "Invalid token signature.";
+      }
+
+      return res.status(401).json({
+        errorCode,
+        message,
+        details: err.message,
+      });
     }
 
-    return res.status(401).json({
-      errorCode,
-      message,
-      details: err.message,
-    });
+    // Pass database/network connection failures to central error handler as 500
+    next(err);
   }
 };
 

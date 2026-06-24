@@ -155,13 +155,7 @@ app.get("/", (req, res) => {
 seedDefaultLabels();
 seedSuperAdmin();
 
-// Serve static uploaded attachments behind a secure permission gate
-const { checkAttachmentPermission } = require("./middleware/attachmentMiddleware");
-const { verifyToken } = require("./middleware/authMiddleware");
-app.get("/uploads/:filename", verifyToken, checkAttachmentPermission, (req, res) => {
-  const { filename } = req.params;
-  res.sendFile(path.join(__dirname, "../uploads", filename));
-});
+
 
 // Auth Routes (Compatibility and V1)
 app.use("/api/auth", authRoutes);

@@ -13,6 +13,7 @@ const {
   getUserByIdController,
   updateUserController,
   deactivateUserController,
+  deleteUserController,
   assignRoleController,
   getAuditLogsController,
 } = require("../controllers/userController");
@@ -272,11 +273,11 @@ router.patch(
   deactivateUserController
 );
 
-// Admin-only: Deactivate (soft delete) user
+// Super Admin-only: Completely delete user from database
 router.delete(
   "/:id",
-  requireRole(["ADMIN", "SUPER_ADMIN"]),
-  deactivateUserController
+  requireRole(["SUPER_ADMIN"]),
+  deleteUserController
 );
 
 /**

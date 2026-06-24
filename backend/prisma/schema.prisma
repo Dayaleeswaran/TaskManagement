@@ -50,7 +50,6 @@ model User {
   projectMemberships ProjectMember[]
   activities        Activity[]
   auditLogs         AuditLog[]
-  attachments       Attachment[]
   notificationSettings NotificationSettings?
 
   @@index([email])
@@ -114,7 +113,6 @@ model Task {
   
   // Enterprise additions
   labels      Label[]
-  attachments Attachment[]
 
   @@index([projectId])
   @@index([createdById])
@@ -195,20 +193,6 @@ model Label {
   tasks     Task[]
 
   @@index([name])
-}
-
-model Attachment {
-  id           String   @id @default(uuid())
-  fileName     String
-  fileUrl      String
-  uploadedById String
-  uploadedBy   User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
-  taskId       String
-  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  createdAt    DateTime @default(now())
-
-  @@index([taskId])
-  @@index([uploadedById])
 }
 
 

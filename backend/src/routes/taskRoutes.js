@@ -12,8 +12,6 @@ const {
   assignTask,
   updateTaskStatus,
   reorderTasks,
-  uploadAttachment,
-  deleteAttachment,
 } = require("../controllers/taskController");
 
 // All task routes require authentication and password reset check
@@ -242,6 +240,9 @@ router.get("/:id", getTaskById);
  *       500:
  *         description: Server error
  */
+// Reordering Kanban tasks (placed before :id to prevent matching as parameter)
+router.put("/reorder", reorderTasks);
+
 router.put("/:id", updateTask);
 
 /**
@@ -360,15 +361,10 @@ router.patch("/:id/assign", assignTask);
  */
 router.patch("/:id/status", updateTaskStatus);
 
-// Reordering Kanban tasks
-router.put("/reorder", reorderTasks);
+
 
 // Soft Delete Restore
 router.post("/:id/restore", restoreTask);
 
-
-// File Attachments
-router.post("/:id/attachments", upload.single("file"), uploadAttachment);
-router.delete("/attachments/:id", deleteAttachment);
 
 module.exports = router;

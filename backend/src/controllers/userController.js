@@ -388,12 +388,65 @@ const getAuditLogsController = async (req, res, next) => {
   }
 };
 
+/**
+ * Controller to completely delete (hard delete) a user.
+ */
+const deleteUserController = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Prevent deleting self
+    if (req.user.id === id) {
+      return res.status(400).json({
+        errorCode: "BAD_REQUEST",
+        message: "You cannot delete your own account.",
+        details: null,
+      });
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({
+        errorCode: "USER_NOT_FOUND",
+        message: "User not found.",
+      });
+    }
+
+    // Super Admin protections: Cannot be deleted
+    if (targetUser.role === "SUPER_ADMIN") {
+      return res.status(400).json({
+        errorCode: "BAD_REQUEST",
+        message: "Super Admin account cannot be deleted.",
+      });
+    }
+
+    const user = await userService.deleteUser(id);
+    await auditService.log(
+      "USER_DELETE",
+      req.user.id,
+      null, // Target ID is null since user record is deleted
+      { name: user.name, email: user.email, role: user.role }
+    );
+    
+    return res.status(200).json({
+      message: "User account completely deleted successfully",
+      user,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createUserController,
   getAllUsersController,
   getUserByIdController,
   updateUserController,
   deactivateUserController,
+  deleteUserController,
   assignRoleController,
   getAuditLogsController,
 };

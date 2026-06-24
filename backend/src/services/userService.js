@@ -232,11 +232,34 @@ const assignRole = async (id, role) => {
   return excludePassword(updated);
 };
 
+/**
+ * Hard deletes a user completely from the database.
+ */
+const deleteUser = async (id) => {
+  const user = await prisma.user.findUnique({
+    where: { id },
+  });
+
+  if (!user) {
+    const error = new Error("User not found.");
+    error.statusCode = 404;
+    error.errorCode = "USER_NOT_FOUND";
+    throw error;
+  }
+
+  const deleted = await prisma.user.delete({
+    where: { id },
+  });
+
+  return excludePassword(deleted);
+};
+
 module.exports = {
   createUser,
   getAllUsers,
   getUserById,
   updateUser,
   deactivateUser,
+  deleteUser,
   assignRole,
 };

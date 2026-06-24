@@ -12,9 +12,7 @@ import {
   Trash2, 
   Save, 
   RotateCcw,
-  Paperclip,
-  Tag,
-  Upload
+  Tag
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -202,39 +200,7 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
   };
 
 
-  // --- ATTACHMENTS MANAGEMENT ---
-  const handleUploadAttachment = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
 
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      await api.post(`/api/v1/tasks/${task.id}/attachments`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      addToast('File attached successfully.', 'success');
-      fetchFullTaskDetails();
-    } catch (err) {
-      console.error('Failed to upload file:', err);
-      addToast(err.response?.data?.message || 'File upload failed. Max size: 10MB.', 'error');
-    }
-  };
-
-  const handleDeleteAttachment = async (attachmentId) => {
-    if (!window.confirm('Delete this file attachment permanently?')) return;
-    try {
-      await api.delete(`/api/v1/tasks/attachments/${attachmentId}`);
-      addToast('Attachment removed.', 'success');
-      fetchFullTaskDetails();
-    } catch (err) {
-      console.error('Failed to delete attachment:', err);
-      addToast('Failed to delete attachment.', 'error');
-    }
-  };
 
   const toggleEditLabel = (labelName) => {
     if (editedLabels.includes(labelName)) {
@@ -290,13 +256,7 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
     return date.toLocaleDateString();
   };
 
-  // Get full download link
-  const getDownloadUrl = (path) => {
-    if (!path) return '';
-    const token = sessionStorage.getItem('taskflow_token') || '';
-    const base = path.startsWith('http') ? path : `${api.defaults.baseURL || 'http://localhost:3000'}${path}`;
-    return token ? `${base}?token=${token}` : base;
-  };
+
 
   const allSystemLabels = ["BUG", "FEATURE", "URGENT", "DOCUMENTATION", "REFACTOR"];
   const isOwnerOrAdmin = user?.role === 'ADMIN' || localTask.project?.ownerId === user?.id;
@@ -618,59 +578,6 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
               <p className="text-sm text-slate-650 bg-slate-50 p-4 rounded-xl border border-slate-100 leading-relaxed whitespace-pre-wrap">
                 {localTask.description || 'No description provided.'}
               </p>
-            )}
-          </div>
-
-          {/* Attachments Section */}
-          <div className="space-y-3 border-t border-slate-100 pt-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Paperclip className="h-3.5 w-3.5" />
-                Attachments ({localTask.attachments?.length || 0})
-              </h3>
-              
-              <label className="px-3.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-800 text-xs font-bold flex items-center space-x-1 cursor-pointer">
-                <Upload className="h-3.5 w-3.5" />
-                <span>Upload File</span>
-                <input 
-                  type="file" 
-                  className="hidden" 
-                  onChange={handleUploadAttachment} 
-                />
-              </label>
-            </div>
-
-            {localTask.attachments && localTask.attachments.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                {localTask.attachments.map((file) => (
-                  <div key={file.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
-                    <div className="flex items-center space-x-2.5 min-w-0">
-                      <Paperclip className="h-4 w-4 text-slate-400 shrink-0" />
-                      <div className="min-w-0">
-                        <a 
-                          href={getDownloadUrl(file.fileUrl)} 
-                          target="_blank" 
-                          rel="noreferrer" 
-                          className="text-xs font-semibold text-blue-600 hover:underline truncate block"
-                        >
-                          {file.fileName}
-                        </a>
-                        <span className="text-[10px] text-slate-400 block mt-0.5">by {file.uploadedBy?.name || 'User'}</span>
-                      </div>
-                    </div>
-                    
-                    <button 
-                      onClick={() => handleDeleteAttachment(file.id)}
-                      className="text-red-500 hover:text-red-700 text-xs font-bold p-1 cursor-pointer shrink-0"
-                      title="Remove Attachment"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-slate-400 text-xs py-2">No file attachments loaded.</p>
             )}
           </div>
 

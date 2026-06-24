@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  Trash2,
 } from 'lucide-react';
 
 export default function Users() {
@@ -158,6 +159,25 @@ export default function Users() {
       fetchUsers();
     } catch (err) {
       addToast(err.response?.data?.message || `Failed to ${actionText} user.`, 'error');
+    }
+  };
+
+  const handleDeleteUser = async (targetUser) => {
+    if (targetUser.id === user.id) {
+      addToast('You cannot delete your own account.', 'error');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete user ${targetUser.name}? This action is irreversible.`)) {
+      return;
+    }
+
+    try {
+      await api.delete(`/api/v1/users/${targetUser.id}`);
+      addToast('User deleted successfully.', 'success');
+      fetchUsers();
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to delete user.', 'error');
     }
   };
 
@@ -375,6 +395,15 @@ export default function Users() {
                             ) : (
                               <UserCheck className="h-3.5 w-3.5" />
                             )}
+                          </button>
+                        )}
+                        {user?.role === 'SUPER_ADMIN' && targetUser.role !== 'SUPER_ADMIN' && (
+                          <button
+                            onClick={() => handleDeleteUser(targetUser)}
+                            className="p-1.5 rounded bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-500 hover:border-rose-900/40 hover:bg-rose-950/20 transition-colors cursor-pointer"
+                            title="Delete User"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         )}
                       </div>
