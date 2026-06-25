@@ -85,6 +85,7 @@ export default function Projects() {
     if (projects.length > 0 && location.state?.selectProjectId) {
       const proj = projects.find(p => p.id === location.state.selectProjectId);
       if (proj) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedProjectDetails(proj);
         // Clear navigation state to prevent re-opening on page reload
         window.history.replaceState({}, document.title);

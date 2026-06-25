@@ -1,4 +1,4 @@
-import React, { useId } from 'react';
+import { useId } from 'react';
 
 export default function WorkNestLogo({ size = 48, showText = false, lightText = false, animate = false }) {
   const rawId = useId();

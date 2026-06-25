@@ -6,7 +6,6 @@ import {
   Calendar, 
   MessageSquare, 
   CheckCircle,
-  Archive,
   RefreshCw,
   ExternalLink,
   Shield,
@@ -22,7 +21,7 @@ import { formatTimeAgo } from '../utils/dateUtils';
 import TaskDetailModal from '../components/TaskDetailModal';
 
 export default function Notifications() {
-  const { notifications, loading, markAsRead, markAsUnread, markAllAsRead, unreadCount, markAsStarred, markAsUnstarred } = useNotifications();
+  const { notifications, loading, markAsRead, markAsUnread, unreadCount, markAsStarred, markAsUnstarred } = useNotifications();
   const { user } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
@@ -70,6 +69,7 @@ export default function Notifications() {
   // Auto-select first notification on load if none selected
   useEffect(() => {
     if (!selectedNotifId && sortedNotifications.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedNotifId(sortedNotifications[0].id);
     }
   }, [sortedNotifications, selectedNotifId]);
