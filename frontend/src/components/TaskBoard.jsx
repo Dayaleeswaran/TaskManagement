@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   closestCorners,
@@ -106,11 +107,17 @@ export default function TaskBoard() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Configure sensors for Drag and Drop
-  // Use PointerSensor with activation constraint to prevent blocking normal click events
+  // Use MouseSensor + TouchSensor to support responsive click/drag on desktop & mobile touchscreens
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
         distance: 8, // Drag triggers only after 8px movement
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250, // Holds for 250ms before dragging starts to allow normal page scrolling
+        tolerance: 8, // Prevents drag activation if pointer moves too much before delay triggers
       },
     })
   );

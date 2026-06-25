@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const { verifyToken, checkPasswordReset } = require("../middleware/authMiddleware");
-const upload = require("../middleware/uploadMiddleware");
 const {
   getTasks,
   getTaskById,
@@ -12,6 +11,7 @@ const {
   assignTask,
   updateTaskStatus,
   reorderTasks,
+  getLabels,
 } = require("../controllers/taskController");
 
 // All task routes require authentication and password reset check
@@ -97,6 +97,7 @@ router.use(checkPasswordReset);
  *               $ref: '#/components/schemas/ErrorResponseSchema'
  */
 router.get("/", getTasks);
+router.get("/labels", getLabels);
 
 /**
  * @swagger

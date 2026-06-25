@@ -21,6 +21,7 @@ export default function TaskCard({ task, onClick }) {
     transition,
     opacity: isDragging ? 0.35 : 1,
     zIndex: isDragging ? 50 : 'auto',
+    touchAction: 'none',
   };
 
   // Determine priority badge styling
@@ -94,22 +95,21 @@ export default function TaskCard({ task, onClick }) {
     <div
       ref={setNodeRef}
       style={style}
-      className="group relative p-4 rounded-xl bg-slate-900 border border-slate-850 hover:border-slate-700 hover:shadow-md transition-all duration-200 shadow-sm flex flex-col justify-between gap-3 cursor-pointer"
+      {...attributes}
+      {...listeners}
+      className="group relative p-4 rounded-xl bg-slate-900 border border-slate-850 hover:border-slate-700 hover:shadow-md transition-all duration-200 shadow-sm flex flex-col justify-between gap-3 cursor-grab active:cursor-grabbing"
       onClick={onClick}
     >
       {/* Top Section */}
-      <div className="space-y-2">
+      <div className="space-y-2 select-none">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
             {getPriorityBadge(task.priority)}
           </div>
           
-          {/* Drag Handle */}
+          {/* Drag Handle (Visual cue only, drag works on entire card) */}
           <div
-            {...attributes}
-            {...listeners}
-            className="p-1 rounded text-slate-500 hover:text-slate-800 hover:bg-slate-905 transition-colors opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing"
-            onClick={(e) => e.stopPropagation()} // Stop modal from opening when grabbing handle
+            className="p-1 text-slate-500 transition-colors opacity-40 group-hover:opacity-80"
             title="Drag task"
           >
             <GripVertical className="h-3.5 w-3.5" />

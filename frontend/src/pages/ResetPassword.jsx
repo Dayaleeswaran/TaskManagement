@@ -102,7 +102,7 @@ export default function ResetPassword() {
 
   return (
     <div className="max-w-md w-full mx-auto py-12 px-4">
-      <div className="bg-slate-955 bg-opacity-60 backdrop-filter backdrop-blur-md border border-slate-800 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
+      <div className="bg-slate-950 bg-opacity-60 backdrop-filter backdrop-blur-md border border-slate-800 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
         {/* Top subtle decorative gradient bar */}
         <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-violet-600 via-fuchsia-600 to-violet-600"></div>
 

@@ -117,7 +117,7 @@ export default function MyTasks() {
       {loading ? (
         <div className="py-12 text-center text-slate-550 text-sm animate-pulse">Loading my tasks...</div>
       ) : filteredTasks.length === 0 ? (
-        <div className="py-16 text-center bg-slate-955 border border-slate-900 border-dashed rounded-3xl">
+        <div className="py-16 text-center bg-slate-950 border border-slate-900 border-dashed rounded-3xl">
           <CheckSquare className="h-10 w-10 text-slate-700 mx-auto mb-3" />
           <p className="text-sm font-semibold text-slate-500">No tasks match the selected filter.</p>
         </div>

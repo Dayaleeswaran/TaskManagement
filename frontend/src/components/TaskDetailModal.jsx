@@ -13,7 +13,9 @@ import {
   Save, 
   RotateCcw,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  Tag,
+  Plus
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -46,6 +48,10 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
   const [projectMembers, setProjectMembers] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [editedAssigneeIds, setEditedAssigneeIds] = useState([]);
+  
+  const [availableLabels, setAvailableLabels] = useState(['BUG', 'FEATURE', 'URGENT', 'DOCUMENTATION', 'REFACTOR']);
+  const [editedLabels, setEditedLabels] = useState([]);
+  const [newLabelInput, setNewLabelInput] = useState('');
 
   // Fetch project members for reassigning
   const fetchProjectMembers = useCallback(async (pId) => {
@@ -73,6 +79,7 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
       setEditedStatus(data.status || 'TODO');
       setEditedDueDate(data.dueDate ? new Date(data.dueDate).toISOString().split('T')[0] : '');
       setEditedAssigneeIds(data.assignments?.map((a) => a.userId || a.user?.id) || []);
+      setEditedLabels(data.labels?.map((l) => l.name) || []);
       
       if (data.comments) {
         setComments(data.comments);
@@ -101,6 +108,37 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
       return () => clearTimeout(timer);
     }
   }, [task?.id, fetchFullTaskDetails]);
+
+  useEffect(() => {
+    const fetchLabels = async () => {
+      try {
+        const response = await api.get('/api/v1/tasks/labels');
+        const names = response.data.map(l => l.name);
+        setAvailableLabels(prev => Array.from(new Set([...prev, ...names])));
+      } catch (err) {
+        console.error('Failed to fetch tags:', err);
+      }
+    };
+    fetchLabels();
+  }, []);
+
+  const handleAddNewLabel = () => {
+    const name = newLabelInput.trim().toUpperCase();
+    if (!name) return;
+    if (!availableLabels.includes(name)) {
+      setAvailableLabels(prev => [...prev, name]);
+    }
+    if (!editedLabels.includes(name)) {
+      setEditedLabels(prev => [...prev, name]);
+    }
+    setNewLabelInput('');
+  };
+
+  const toggleLabel = (label) => {
+    setEditedLabels((prev) =>
+      prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
+    );
+  };
 
   // Real-time socket notification update trigger
   useEffect(() => {
@@ -192,6 +230,7 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
         status: editedStatus,
         dueDate: editedDueDate ? new Date(editedDueDate).toISOString() : null,
         assignedUserIds: editedAssigneeIds,
+        labels: editedLabels,
       });
       addToast('Task updated successfully!', 'success');
       setIsEditing(false);
@@ -613,6 +652,75 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
                   })
                 ) : (
                   <span className="text-slate-500 text-xs italic">Unassigned</span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Labels/Tags Section */}
+          <div className="space-y-2 border-t border-slate-850 pt-4 pb-1">
+            <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <Tag className="h-3.5 w-3.5" />
+              Tags / Labels
+            </h3>
+            {isEditing ? (
+              <div className="flex flex-wrap gap-2 items-center">
+                {availableLabels.map((lbl) => {
+                  const isSelected = editedLabels.includes(lbl);
+                  return (
+                    <button
+                      key={lbl}
+                      type="button"
+                      onClick={() => toggleLabel(lbl)}
+                      className={`px-3 py-1.5 rounded-lg border text-[10px] font-bold tracking-wider transition-all duration-150 cursor-pointer ${
+                        isSelected
+                          ? 'bg-violet-600 border-violet-500 text-white shadow shadow-violet-600/30'
+                          : 'bg-[#1e1e1f] border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                      }`}
+                    >
+                      {lbl}
+                    </button>
+                  );
+                })}
+
+                {/* Inline Add Custom Label Input and Button */}
+                <div className="flex items-center space-x-1.5">
+                  <input
+                    type="text"
+                    placeholder="Custom tag..."
+                    value={newLabelInput}
+                    onChange={(e) => setNewLabelInput(e.target.value)}
+                    className="px-2.5 py-1.5 bg-[#1e1e1f] border border-slate-800 rounded-lg text-[10px] font-bold text-slate-250 outline-none focus:border-violet-500 w-24 placeholder:text-slate-650"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddNewLabel();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddNewLabel}
+                    className="p-1.5 bg-[#1e1e1f] border border-slate-800 text-slate-450 hover:text-white hover:border-slate-700 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
+                    title="Add Custom Tag"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {localTask.labels && localTask.labels.length > 0 ? (
+                  localTask.labels.map((lbl) => (
+                    <span
+                      key={lbl.id || lbl.name}
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-bold tracking-wider uppercase bg-violet-600/10 border border-violet-500/20 text-violet-300"
+                    >
+                      {lbl.name}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-slate-500 text-xs italic">No labels assigned</span>
                 )}
               </div>
             )}

@@ -208,7 +208,7 @@ async function main() {
   });
 
   // Tasks in Project 2 (Beta React client)
-  const task4 = await prisma.task.create({
+  await prisma.task.create({
     data: {
       title: 'Develop Sidebar Navigation Layout',
       description: 'Create a slide-over panel navigation component for the workspace pages.',
@@ -222,7 +222,7 @@ async function main() {
     }
   });
 
-  const task5 = await prisma.task.create({
+  await prisma.task.create({
     data: {
       title: 'Integrate Socket.io Real-Time inbox updates',
       description: 'Implement live listener hook inside NotificationContext for instant updates.',
@@ -242,7 +242,7 @@ async function main() {
   });
 
   // Tasks in Project 3 (Gamma DevOps Pipeline)
-  const task6 = await prisma.task.create({
+  await prisma.task.create({
     data: {
       title: 'Deploy Staging Docker clusters',
       description: 'Write Dockerfiles and setup continuous delivery pipelines with AWS container deployment.',

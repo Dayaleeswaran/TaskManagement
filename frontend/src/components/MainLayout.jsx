@@ -110,7 +110,7 @@ export default function MainLayout() {
             {mobileSidebarOpen && (
               <button
                 onClick={closeSidebar}
-                className="p-1 rounded-lg hover:bg-slate-955 text-slate-500 hover:text-slate-100 transition-colors cursor-pointer"
+                className="p-1 rounded-lg hover:bg-slate-950 text-slate-500 hover:text-slate-100 transition-colors cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>

@@ -204,6 +204,28 @@ const createTask = async (req, res, next) => {
       }
     }
 
+    // Estimated hours vs due date validation
+    if (estimatedHours) {
+      const hours = parseFloat(estimatedHours);
+      if (!isNaN(hours) && hours > 0) {
+        const currentTime = new Date();
+        const projectedEndTime = new Date(currentTime.getTime() + hours * 60 * 60 * 1000);
+        
+        if (dueDate) {
+          const dueEnd = new Date(dueDate);
+          dueEnd.setUTCHours(23, 59, 59, 999);
+          
+          if (projectedEndTime > dueEnd) {
+            return res.status(400).json({
+              errorCode: "BAD_REQUEST",
+              message: "The estimated hours exceed the due date window.",
+            });
+          }
+        }
+      }
+    }
+
+
     // Enforce existing and active user verification
     const existingUsers = await prisma.user.findMany({
       where: {
@@ -257,10 +279,19 @@ const createTask = async (req, res, next) => {
     const labelConnections = [];
     if (Array.isArray(labels)) {
       for (const name of labels) {
-        const labelRecord = await prisma.label.findUnique({ where: { name } });
-        if (labelRecord) {
-          labelConnections.push({ id: labelRecord.id });
+        const formattedName = name.trim().toUpperCase();
+        if (!formattedName) continue;
+
+        let labelRecord = await prisma.label.findUnique({ where: { name: formattedName } });
+        if (!labelRecord) {
+          labelRecord = await prisma.label.create({
+            data: {
+              name: formattedName,
+              color: 'blue'
+            }
+          });
         }
+        labelConnections.push({ id: labelRecord.id });
       }
     }
 
@@ -410,10 +441,19 @@ const updateTask = async (req, res, next) => {
     if (Array.isArray(labels)) {
       const labelConnections = [];
       for (const name of labels) {
-        const labelRecord = await prisma.label.findUnique({ where: { name } });
-        if (labelRecord) {
-          labelConnections.push({ id: labelRecord.id });
+        const formattedName = name.trim().toUpperCase();
+        if (!formattedName) continue;
+
+        let labelRecord = await prisma.label.findUnique({ where: { name: formattedName } });
+        if (!labelRecord) {
+          labelRecord = await prisma.label.create({
+            data: {
+              name: formattedName,
+              color: 'blue'
+            }
+          });
         }
+        labelConnections.push({ id: labelRecord.id });
       }
       updateData.labels = {
         set: labelConnections,
@@ -487,7 +527,7 @@ const updateTask = async (req, res, next) => {
       }
     }
 
-    const updatedTask = await prisma.task.update({
+    await prisma.task.update({
       where: { id },
       data: updateData,
       include: {
@@ -839,7 +879,7 @@ const updateTaskStatus = async (req, res, next) => {
 
 const reorderTasks = async (req, res, next) => {
   try {
-    const { projectId, status, taskIds } = req.body;
+    const { status, taskIds } = req.body;
     if (!Array.isArray(taskIds)) {
       return res.status(400).json({
         errorCode: "BAD_REQUEST",
@@ -862,6 +902,16 @@ const reorderTasks = async (req, res, next) => {
     next(err);
   }
 };
+const getLabels = async (req, res, next) => {
+  try {
+    const labels = await prisma.label.findMany({
+      orderBy: { name: 'asc' },
+    });
+    return res.status(200).json(labels);
+  } catch (err) {
+    next(err);
+  }
+};
 
 
 module.exports = {
@@ -874,4 +924,5 @@ module.exports = {
   assignTask,
   updateTaskStatus,
   reorderTasks,
+  getLabels,
 };

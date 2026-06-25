@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Calendar, Clock, Tag, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Calendar, Clock, Tag, AlertCircle, Loader2, Plus } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 
@@ -16,7 +16,9 @@ export default function CreateTaskModal({ onClose, onTaskCreated }) {
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('TODO');
   const [priority, setPriority] = useState('MEDIUM');
-  const [startDate, setStartDate] = useState('');
+  const [startDate, setStartDate] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
   const [dueDate, setDueDate] = useState(() => {
     // Default to 7 days from now
     const d = new Date();
@@ -29,7 +31,33 @@ export default function CreateTaskModal({ onClose, onTaskCreated }) {
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [assignedUserIds, setAssignedUserIds] = useState([]);
 
-  const AVAILABLE_LABELS = ['BUG', 'FEATURE', 'URGENT', 'DOCUMENTATION', 'REFACTOR'];
+  const [availableLabels, setAvailableLabels] = useState(['BUG', 'FEATURE', 'URGENT', 'DOCUMENTATION', 'REFACTOR']);
+  const [newLabelInput, setNewLabelInput] = useState('');
+
+  useEffect(() => {
+    const fetchLabels = async () => {
+      try {
+        const response = await api.get('/api/v1/tasks/labels');
+        const names = response.data.map(l => l.name);
+        setAvailableLabels(prev => Array.from(new Set([...prev, ...names])));
+      } catch (err) {
+        console.error('Failed to fetch tags:', err);
+      }
+    };
+    fetchLabels();
+  }, []);
+
+  const handleAddNewLabel = () => {
+    const name = newLabelInput.trim().toUpperCase();
+    if (!name) return;
+    if (!availableLabels.includes(name)) {
+      setAvailableLabels(prev => [...prev, name]);
+    }
+    if (!selectedLabels.includes(name)) {
+      setSelectedLabels(prev => [...prev, name]);
+    }
+    setNewLabelInput('');
+  };
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -102,6 +130,24 @@ export default function CreateTaskModal({ onClose, onTaskCreated }) {
       if (selectedDue < today) {
         addToast('Due date cannot be in the past.', 'error');
         return;
+      }
+    }
+
+    if (estimatedHours) {
+      const hours = parseFloat(estimatedHours);
+      if (!isNaN(hours) && hours > 0) {
+        const currentTime = new Date();
+        const projectedEndTime = new Date(currentTime.getTime() + hours * 60 * 60 * 1000);
+        
+        if (dueDate) {
+          const [year, month, day] = dueDate.split('-').map(Number);
+          const dueEnd = new Date(year, month - 1, day, 23, 59, 59, 999);
+          
+          if (projectedEndTime > dueEnd) {
+            addToast("The estimated hours exceed the due date window.", "error");
+            return;
+          }
+        }
       }
     }
 
@@ -347,8 +393,8 @@ export default function CreateTaskModal({ onClose, onTaskCreated }) {
                 <Tag className="h-3.5 w-3.5 text-slate-400" />
                 Assign Tags / Labels
               </label>
-              <div className="flex flex-wrap gap-2">
-                {AVAILABLE_LABELS.map((lbl) => {
+              <div className="flex flex-wrap gap-2 items-center">
+                {availableLabels.map((lbl) => {
                   const isSelected = selectedLabels.includes(lbl);
                   return (
                     <button
@@ -365,6 +411,31 @@ export default function CreateTaskModal({ onClose, onTaskCreated }) {
                     </button>
                   );
                 })}
+
+                {/* Inline Add Custom Label Input and Button */}
+                <div className="flex items-center space-x-1.5">
+                  <input
+                    type="text"
+                    placeholder="Custom tag..."
+                    value={newLabelInput}
+                    onChange={(e) => setNewLabelInput(e.target.value)}
+                    className="px-2.5 py-1.5 bg-slate-950 border border-slate-850 rounded-lg text-[10px] font-bold text-slate-200 outline-none focus:border-violet-500 w-24 placeholder:text-slate-600"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddNewLabel();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddNewLabel}
+                    className="p-1.5 bg-slate-950 border border-slate-850 text-slate-400 hover:text-white hover:border-slate-700 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
+                    title="Add Custom Tag"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
 

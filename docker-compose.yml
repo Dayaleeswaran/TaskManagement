@@ -31,7 +31,7 @@ services:
     environment:
       DATABASE_URL: "postgresql://postgres:password123@postgres:5432/tms_dev_db?schema=public"
       PORT: 3000
-    command: sh -c "npx prisma db push && npm run dev"
+    command: sh -c "npx prisma db push && npx prisma db seed && npm run dev"
     depends_on:
       postgres:
         condition: service_healthy

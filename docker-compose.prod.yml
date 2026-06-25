@@ -33,7 +33,7 @@ services:
       JWT_SECRET: "production-jwt-super-secret-key-change-me"
       JWT_EXPIRES_IN: "24h"
       CLIENT_ORIGIN: "http://localhost,http://localhost:80"
-    command: sh -c "npx prisma migrate deploy && npm run start"
+    command: sh -c "npx prisma migrate deploy && npx prisma db seed && npm run start"
     depends_on:
       postgres:
         condition: service_healthy

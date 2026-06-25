@@ -6,7 +6,6 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("../swagger");
-const path = require("path");
 
 const { init } = require("./socket");
 const authRoutes = require("./routes/authRoutes");
