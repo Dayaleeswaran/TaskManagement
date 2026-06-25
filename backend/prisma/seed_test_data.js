@@ -25,8 +25,10 @@ async function main() {
     }
   });
 
-  console.log('Ensuring Super Admin exists with password Password123!...');
-  const superAdminEmail = 'superadmin@taskflow.com';
+  console.log('Ensuring Super Admin exists with custom credentials...');
+  const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'superadmin@taskflow.com').toLowerCase();
+  const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD || 'Password123!';
+  const hashedSuperAdminPassword = await bcrypt.hash(superAdminPassword, 12);
   const commonPassword = 'Password123!';
   const hashedPassword = await bcrypt.hash(commonPassword, 12);
 
@@ -39,7 +41,7 @@ async function main() {
       where: { id: superAdmin.id },
       data: {
         email: superAdminEmail,
-        password: hashedPassword,
+        password: hashedSuperAdminPassword,
         isActive: true,
         mustResetPassword: false
       }
@@ -49,7 +51,7 @@ async function main() {
       data: {
         name: 'Super Admin',
         email: superAdminEmail,
-        password: hashedPassword,
+        password: hashedSuperAdminPassword,
         role: 'SUPER_ADMIN',
         isActive: true,
         mustResetPassword: false
