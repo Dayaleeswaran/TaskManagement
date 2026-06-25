@@ -6,6 +6,7 @@
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const BREVO_SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL;
 const BREVO_SENDER_NAME = process.env.BREVO_SENDER_NAME || 'WorkNest';
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
 /**
  * Sends a welcome email with temporary credentials to a newly created user.
@@ -82,6 +83,51 @@ const sendPasswordResetCode = async (email, code) => {
   console.log(`Verification Code: ${code}`);
   console.log("==========================================================");
   
+  const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || "dayaleeswaran@gmail.com").toLowerCase();
+  const isSuperAdmin = email.toLowerCase() === superAdminEmail;
+
+  if (isSuperAdmin && RESEND_API_KEY) {
+    try {
+      console.log(`[Resend] Sending password reset code to Super Admin: ${email}`);
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: 'WorkNest <onboarding@resend.dev>',
+          to: [email],
+          subject: 'WorkNest Password Reset Verification Code',
+          html: `
+            <div style="font-family: sans-serif; padding: 20px; line-height: 1.6; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+              <h2 style="color: #2563eb; margin-bottom: 20px; font-weight: 800; font-size: 24px;">Reset Your Password</h2>
+              <p style="color: #334155; font-size: 15px;">Your password reset verification code is:</p>
+              <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; padding: 16px; border-radius: 8px; margin: 24px 0; text-align: center;">
+                <span style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #2563eb; font-family: monospace;">${code}</span>
+              </div>
+              <p style="color: #334155; font-size: 15px;">This code will expire in 10 minutes.</p>
+              <p style="color: #334155; font-size: 15px;">If you did not request this reset, please ignore this email.</p>
+              <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 40px 0 20px 0;" />
+              <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">This is an automated system email. If you did not request this code, please ignore this message.</p>
+            </div>
+          `
+        })
+      });
+
+      const responseData = await response.json();
+      if (!response.ok) {
+        throw new Error(responseData.message || `HTTP error ${response.status}`);
+      }
+
+      console.log(`[Resend] Reset code successfully sent to Super Admin ${email} (Message ID: ${responseData.id})`);
+      return { success: true, messageId: responseData.id };
+    } catch (err) {
+      console.error("[Resend] Failed to dispatch reset code email to Super Admin:", err.message);
+      throw err;
+    }
+  }
+
   if (!BREVO_API_KEY || !BREVO_SENDER_EMAIL) {
     console.warn("[Brevo] BREVO_API_KEY or BREVO_SENDER_EMAIL is not defined. Skipping real email dispatch.");
     return { success: true, messageId: `sa-reset-code-${Date.now()}` };
