@@ -94,6 +94,17 @@ export default function CreateTaskModal({ onClose, onTaskCreated }) {
       return;
     }
 
+    if (dueDate) {
+      const selectedDue = new Date(dueDate);
+      selectedDue.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (selectedDue < today) {
+        addToast('Due date cannot be in the past.', 'error');
+        return;
+      }
+    }
+
     try {
       setSubmitting(true);
       const payload = {
@@ -306,6 +317,7 @@ export default function CreateTaskModal({ onClose, onTaskCreated }) {
                 <input
                   type="date"
                   value={dueDate}
+                  min={new Date().toISOString().split('T')[0]}
                   onChange={(e) => setDueDate(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-850 rounded-xl outline-none text-slate-200 focus:border-violet-500 cursor-pointer"
                 />

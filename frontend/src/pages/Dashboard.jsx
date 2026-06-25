@@ -14,14 +14,17 @@ import {
   Calendar
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useNotifications } from '../context/NotificationContext';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { getSocket } = useNotifications();
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -62,7 +65,23 @@ export default function Dashboard() {
     if (user) {
       fetchDashboardData();
     }
-  }, [user]);
+  }, [user, refreshTrigger]);
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const handleActivity = (activity) => {
+      if (activity && activity.userId !== user?.id) {
+        setRefreshTrigger(prev => prev + 1);
+      }
+    };
+
+    socket.on('activity', handleActivity);
+    return () => {
+      socket.off('activity', handleActivity);
+    };
+  }, [getSocket, user?.id]);
 
   // Compute common values
   const totalTasks = tasks.length;
@@ -719,17 +738,6 @@ export default function Dashboard() {
               <span>{projects.length} project{projects.length !== 1 ? 's' : ''}</span>
             </div>
           </div>
-
-          {/* Customize Button with grid logo */}
-          <button className="flex items-center space-x-2 px-3.5 py-1.5 bg-[#252526] hover:bg-[#2c2c2d] border border-slate-850 rounded-xl font-medium text-white transition-all cursor-pointer">
-            <div className="grid grid-cols-2 gap-0.5 w-3 h-3">
-              <div className="w-1.2 h-1.2 bg-rose-500 rounded-[1px]"></div>
-              <div className="w-1.2 h-1.2 bg-blue-500 rounded-[1px]"></div>
-              <div className="w-1.2 h-1.2 bg-amber-500 rounded-[1px]"></div>
-              <div className="w-1.2 h-1.2 bg-emerald-500 rounded-[1px]"></div>
-            </div>
-            <span>Customize</span>
-          </button>
         </div>
       </div>
 

@@ -21,6 +21,7 @@ import TaskDetailModal from './TaskDetailModal';
 import SkeletonCard from './SkeletonCard';
 import useTaskFilters from '../hooks/useTaskFilters';
 import { useToast } from '../context/ToastContext';
+import { useNotifications } from '../context/NotificationContext';
 
 // Kanban Board columns config mapping to Prisma db Status enum
 const COLUMNS = [
@@ -96,11 +97,13 @@ function BoardSkeleton() {
  */
 export default function TaskBoard() {
   const { user } = useAuth();
+  const { getSocket } = useNotifications();
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { addToast } = useToast();
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Configure sensors for Drag and Drop
   // Use PointerSensor with activation constraint to prevent blocking normal click events
@@ -176,7 +179,23 @@ export default function TaskBoard() {
     Promise.resolve().then(() => {
       fetchTasks();
     });
-  }, []);
+  }, [refreshTrigger]);
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const handleActivity = (activity) => {
+      if (activity && activity.userId !== user?.id) {
+        setRefreshTrigger(prev => prev + 1);
+      }
+    };
+
+    socket.on('activity', handleActivity);
+    return () => {
+      socket.off('activity', handleActivity);
+    };
+  }, [getSocket, user?.id]);
 
   // Extract unique assignees dynamically from the loaded tasks list
   const uniqueAssignees = useMemo(() => {
@@ -419,7 +438,7 @@ export default function TaskBoard() {
           )}
 
           {/* Create Task Button */}
-          {(user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER') && (
+          {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER') && (
             <button
               onClick={() => setIsCreateOpen(true)}
               className="px-3 py-2 bg-violet-600 hover:bg-violet-650 text-white text-xs font-semibold rounded-xl shadow-sm hover:shadow transition-all duration-200 flex items-center space-x-1.5 cursor-pointer"

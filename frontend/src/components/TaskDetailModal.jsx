@@ -83,8 +83,15 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
       }
     } catch (err) {
       console.error('Failed to fetch full task details:', err);
+      if (err.response?.status === 404) {
+        addToast('This task has been deleted or is no longer accessible.', 'error');
+        onClose();
+        if (onTaskDeleted) {
+          onTaskDeleted(task.id);
+        }
+      }
     }
-  }, [task.id, fetchProjectMembers]);
+  }, [task.id, fetchProjectMembers, onClose, onTaskDeleted, addToast]);
 
   useEffect(() => {
     if (task?.id) {
@@ -158,6 +165,24 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
       addToast('At least one assignee is required.', 'error');
       return;
     }
+
+    if (editedDueDate) {
+      const selectedDue = new Date(editedDueDate);
+      selectedDue.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const originalDue = task.dueDate ? new Date(task.dueDate) : null;
+      if (originalDue) {
+        originalDue.setHours(0, 0, 0, 0);
+      }
+
+      if ((!originalDue || originalDue.getTime() !== selectedDue.getTime()) && selectedDue < today) {
+        addToast('Due date cannot be in the past.', 'error');
+        return;
+      }
+    }
+
     setIsSaving(true);
     try {
       const response = await api.put(`/api/v1/tasks/${task.id}`, {
@@ -496,6 +521,7 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
                   <input
                     type="date"
                     value={editedDueDate}
+                    min={new Date().toISOString().split('T')[0]}
                     onChange={(e) => setEditedDueDate(e.target.value)}
                     className="px-2 py-0.5 bg-[#1e1e1f] border border-slate-800 rounded-lg text-xs text-slate-200 mt-0.5"
                   />

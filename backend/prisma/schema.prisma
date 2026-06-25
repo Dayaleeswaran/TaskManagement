@@ -152,6 +152,7 @@ model Notification {
   type      String
   message   String
   isRead    Boolean  @default(false)
+  isStarred Boolean  @default(false)
   createdAt DateTime @default(now())
 
   userId    String

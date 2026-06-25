@@ -53,7 +53,7 @@ const createUser = async (userData) => {
   await notificationService.createNotification(
     user.id,
     "ACCOUNT_CREATED",
-    "Your Taskflow account has been created."
+    "Your WorkNest account has been created."
   );
 
   // Send asynchronous welcome email notification

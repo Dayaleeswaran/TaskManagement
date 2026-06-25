@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import GlobalSearch from './GlobalSearch';
 import api from '../services/api';
+import WorkNestLogo from './WorkNestLogo';
 import {
   Home,
   Bell,
@@ -103,11 +104,8 @@ export default function MainLayout() {
         <div className="flex-1 overflow-y-auto">
           {/* Logo / Header */}
           <div className="p-4 flex items-center justify-between border-b border-slate-850">
-            <Link to="/dashboard" onClick={onClickCallback} className="flex items-center space-x-2.5">
-              <div className="h-8 w-8 rounded-lg bg-violet-600 flex items-center justify-center font-bold text-white shadow-sm text-sm">
-                TF
-              </div>
-              <span className="text-sm font-bold text-slate-100 tracking-tight">TaskFlow</span>
+            <Link to="/dashboard" onClick={onClickCallback} className="flex items-center">
+              <WorkNestLogo size={36} showText={true} lightText={true} />
             </Link>
             {mobileSidebarOpen && (
               <button
@@ -159,7 +157,7 @@ export default function MainLayout() {
 
           {/* Section 2: Task and Projects Management */}
           <div className="px-3 py-2 space-y-1">
-            {user?.role === 'COLLABORATOR' && (
+            {user?.role === 'COLLABORATOR' ? (
               <Link
                 to="/my-tasks"
                 onClick={onClickCallback}
@@ -169,6 +167,17 @@ export default function MainLayout() {
               >
                 <CheckCircle className={`h-4.5 w-4.5 ${isActive('/my-tasks') ? 'text-white' : 'text-slate-700'}`} />
                 <span>My tasks</span>
+              </Link>
+            ) : (
+              <Link
+                to="/tasks"
+                onClick={onClickCallback}
+                className={`flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
+                  isActive('/tasks') ? 'bg-slate-905 text-white font-semibold' : 'text-slate-500 hover:text-slate-100 hover:bg-slate-905/40'
+                }`}
+              >
+                <CheckCircle className={`h-4.5 w-4.5 ${isActive('/tasks') ? 'text-white' : 'text-slate-700'}`} />
+                <span>Tasks</span>
               </Link>
             )}
 
@@ -327,11 +336,8 @@ export default function MainLayout() {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <Link to="/dashboard" className="flex items-center space-x-2">
-          <div className="h-7 w-7 rounded-lg bg-violet-600 flex items-center justify-center font-bold text-white shadow-sm text-xs">
-            TF
-          </div>
-          <span className="text-sm font-bold text-slate-100 tracking-tight">TaskFlow</span>
+        <Link to="/dashboard" className="flex items-center">
+          <WorkNestLogo size={32} showText={true} lightText={true} />
         </Link>
         {unreadCount > 0 ? (
           <span className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-blue-600 text-white">

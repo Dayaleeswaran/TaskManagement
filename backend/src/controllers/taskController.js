@@ -174,6 +174,51 @@ const createTask = async (req, res, next) => {
       });
     }
 
+    // Priority validation
+    const validPriorities = ["LOW", "MEDIUM", "HIGH"];
+    let finalPriority = "MEDIUM";
+    if (priority) {
+      const upperPriority = priority.toUpperCase();
+      if (!validPriorities.includes(upperPriority)) {
+        return res.status(400).json({
+          errorCode: "BAD_REQUEST",
+          message: "Priority must match predefined values (LOW, MEDIUM, HIGH).",
+        });
+      }
+      finalPriority = upperPriority;
+    }
+
+    // Due date validation
+    if (dueDate) {
+      const selectedDue = new Date(dueDate);
+      selectedDue.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const allowPastDate = req.body.allowPastDate || req.query.allowPastDate;
+      if (!allowPastDate && selectedDue < today) {
+        return res.status(400).json({
+          errorCode: "BAD_REQUEST",
+          message: "Due date cannot be in the past.",
+        });
+      }
+    }
+
+    // Enforce existing and active user verification
+    const existingUsers = await prisma.user.findMany({
+      where: {
+        id: { in: assignedUserIds },
+        isActive: true,
+      },
+    });
+
+    if (existingUsers.length !== assignedUserIds.length) {
+      return res.status(400).json({
+        errorCode: "BAD_REQUEST",
+        message: "One or more assigned users do not exist or are inactive.",
+      });
+    }
+
     const project = await prisma.project.findUnique({
       where: { id: projectId },
     });
@@ -230,7 +275,7 @@ const createTask = async (req, res, next) => {
         description: description || "",
         status: status || "TODO",
         completedAt: (status === "COMPLETED") ? new Date() : null,
-        priority: priority || "MEDIUM",
+        priority: finalPriority,
         dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         startDate: startDate ? new Date(startDate) : null,
         estimatedHours: estimatedHours ? parseFloat(estimatedHours) : null,
@@ -263,12 +308,23 @@ const createTask = async (req, res, next) => {
       `${req.user.name} created this task | task:${task.id}`
     );
 
-    // Create notifications and emit Socket.io to assigned users
-    await notificationService.createBulkNotifications(
-      assignedUserIds,
-      "TASK_ASSIGNED",
-      `You have been assigned to task: ${task.title} | task:${task.id}`
-    );
+    // Create notifications and emit Socket.io to assigned users and administrators
+    const adminIds = await notificationService.getAdminAndSuperAdminIds();
+    const notificationsToCreate = [
+      ...assignedUserIds.map((userId) => ({
+        userId,
+        type: "TASK_ASSIGNED",
+        message: `You have been assigned to task: ${task.title} | task:${task.id}`
+      })),
+      ...adminIds
+        .filter((id) => id !== req.user.id && !assignedUserIds.includes(id))
+        .map((userId) => ({
+          userId,
+          type: "TASK_ASSIGNED",
+          message: `New task created: ${task.title} by ${req.user.name} | task:${task.id}`
+        }))
+    ];
+    await notificationService.createCustomBulkNotifications(notificationsToCreate);
 
     return res.status(201).json(task);
   } catch (err) {
@@ -311,8 +367,43 @@ const updateTask = async (req, res, next) => {
         updateData.completedAt = null;
       }
     }
-    if (priority !== undefined) updateData.priority = priority;
-    if (dueDate !== undefined) updateData.dueDate = new Date(dueDate);
+    
+    // Priority validation
+    const validPriorities = ["LOW", "MEDIUM", "HIGH"];
+    if (priority !== undefined) {
+      if (!validPriorities.includes(priority.toUpperCase())) {
+        return res.status(400).json({
+          errorCode: "BAD_REQUEST",
+          message: "Priority must match predefined values (LOW, MEDIUM, HIGH).",
+        });
+      }
+      updateData.priority = priority.toUpperCase();
+    }
+
+    // Due date validation
+    if (dueDate !== undefined && dueDate !== null) {
+      const selectedDue = new Date(dueDate);
+      selectedDue.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const originalDue = existingTask.dueDate ? new Date(existingTask.dueDate) : null;
+      if (originalDue) {
+        originalDue.setHours(0, 0, 0, 0);
+      }
+
+      const allowPastDate = req.body.allowPastDate || req.query.allowPastDate;
+      const isUnchanged = originalDue && (originalDue.getTime() === selectedDue.getTime());
+
+      if (!allowPastDate && !isUnchanged && selectedDue < today) {
+        return res.status(400).json({
+          errorCode: "BAD_REQUEST",
+          message: "Due date cannot be in the past.",
+        });
+      }
+      updateData.dueDate = new Date(dueDate);
+    }
+    
     if (startDate !== undefined) updateData.startDate = startDate ? new Date(startDate) : null;
     if (estimatedHours !== undefined) updateData.estimatedHours = estimatedHours ? parseFloat(estimatedHours) : null;
 
@@ -335,6 +426,21 @@ const updateTask = async (req, res, next) => {
         return res.status(400).json({
           errorCode: "BAD_REQUEST",
           message: "At least one assignee is required.",
+        });
+      }
+
+      // Enforce existing and active user verification
+      const existingUsers = await prisma.user.findMany({
+        where: {
+          id: { in: assignedUserIds },
+          isActive: true,
+        },
+      });
+
+      if (existingUsers.length !== assignedUserIds.length) {
+        return res.status(400).json({
+          errorCode: "BAD_REQUEST",
+          message: "One or more assigned users do not exist or are inactive.",
         });
       }
 
@@ -413,6 +519,14 @@ const updateTask = async (req, res, next) => {
       taskAssignments.forEach((a) => {
         if (a.userId !== req.user.id) {
           recipients.add(a.userId);
+        }
+      });
+
+      // Add Admins and Super Admins
+      const adminIds = await notificationService.getAdminAndSuperAdminIds();
+      adminIds.forEach((adminId) => {
+        if (adminId !== req.user.id) {
+          recipients.add(adminId);
         }
       });
 
@@ -550,8 +664,8 @@ const assignTask = async (req, res, next) => {
     }
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      return res.status(404).json({ errorCode: "USER_NOT_FOUND", message: "User not found." });
+    if (!user || !user.isActive) {
+      return res.status(404).json({ errorCode: "USER_NOT_FOUND", message: "User not found or is inactive." });
     }
 
     // Check if user belongs to the project's member list
@@ -669,6 +783,14 @@ const updateTaskStatus = async (req, res, next) => {
         recipients.add(task.project.ownerId);
       }
 
+      // Add Admins and Super Admins
+      const adminIds = await notificationService.getAdminAndSuperAdminIds();
+      adminIds.forEach((adminId) => {
+        if (adminId !== req.user.id) {
+          recipients.add(adminId);
+        }
+      });
+
       if (recipients.size > 0) {
         await notificationService.createBulkNotifications(
           Array.from(recipients),
@@ -688,6 +810,14 @@ const updateTaskStatus = async (req, res, next) => {
       task.assignments.forEach((a) => {
         if (a.userId !== req.user.id) {
           recipients.add(a.userId);
+        }
+      });
+
+      // Add Admins and Super Admins
+      const adminIds = await notificationService.getAdminAndSuperAdminIds();
+      adminIds.forEach((adminId) => {
+        if (adminId !== req.user.id) {
+          recipients.add(adminId);
         }
       });
 

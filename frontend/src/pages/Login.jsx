@@ -3,6 +3,8 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Mail, Lock, Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
+import WorkNestLogo from '../components/WorkNestLogo';
+import ShapeGrid from '../components/ShapeGrid';
 
 export default function Login() {
   const { login, user } = useAuth();
@@ -121,14 +123,25 @@ export default function Login() {
   };
 
   return (
-    <div className="max-w-md w-full mx-auto py-8 px-4">
-
-      <div className="bg-slate-900 border border-slate-850 rounded-2xl p-8 shadow-md relative overflow-hidden">
-        <div className="text-center mb-8">
-          <div className="mx-auto h-12 w-12 rounded-xl bg-slate-950 border border-slate-850 flex items-center justify-center mb-4 text-slate-500">
-            <ShieldCheck className="h-6 w-6" />
+    <>
+      <div className="absolute inset-0 w-full h-full z-0">
+        <ShapeGrid 
+          speed={0.5}
+          squareSize={40}
+          direction="diagonal"
+          borderColor="#2F293A"
+          hoverFillColor="#222"
+          shape="square"
+          hoverTrailAmount={0}
+        />
+      </div>
+      <div className="max-w-md w-full mx-auto py-8 px-4 relative z-10">
+        <div className="bg-slate-900/85 backdrop-blur-md border border-slate-850 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
+        <div className="text-center mb-8 flex flex-col items-center">
+          <div className="mb-4">
+            <WorkNestLogo size={80} showText={false} animate={true} />
           </div>
-          <h2 className="text-2xl font-bold text-slate-100 tracking-tight">Welcome to TaskFlow</h2>
+          <h2 className="text-2xl font-bold text-slate-100 tracking-tight">Welcome to WorkNest</h2>
           <p className="text-sm text-slate-500 mt-2">Sign in to your account to continue</p>
         </div>
 
@@ -224,7 +237,8 @@ export default function Login() {
             )}
           </button>
         </form>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

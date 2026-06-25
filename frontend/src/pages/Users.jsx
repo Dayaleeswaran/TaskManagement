@@ -627,11 +627,6 @@ function UserDetailsModal({ targetUser, onClose }) {
         {/* Detailed Info Section */}
         <div className="mt-6 border-t border-slate-100 pt-5 space-y-4 text-xs">
           <div className="flex items-center justify-between">
-            <span className="text-slate-400 font-bold uppercase tracking-wider">Account ID</span>
-            <span className="font-mono text-slate-750">{targetUser.id}</span>
-          </div>
-
-          <div className="flex items-center justify-between">
             <span className="text-slate-400 font-bold uppercase tracking-wider">Date Registered</span>
             <span className="text-slate-750 font-semibold">
               {targetUser.createdAt ? new Date(targetUser.createdAt).toLocaleDateString() : 'N/A'}

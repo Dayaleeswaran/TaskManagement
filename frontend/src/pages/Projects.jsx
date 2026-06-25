@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
@@ -23,6 +23,7 @@ import {
 export default function Projects() {
   const { user } = useAuth();
   const { addToast } = useToast();
+  const location = useLocation();
   
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +79,18 @@ export default function Projects() {
     }, 0);
     return () => clearTimeout(timer);
   }, [user, fetchProjects, fetchSystemUsers]);
+
+  // Auto-select project if passed from notification navigation state
+  useEffect(() => {
+    if (projects.length > 0 && location.state?.selectProjectId) {
+      const proj = projects.find(p => p.id === location.state.selectProjectId);
+      if (proj) {
+        setSelectedProjectDetails(proj);
+        // Clear navigation state to prevent re-opening on page reload
+        window.history.replaceState({}, document.title);
+      }
+    }
+  }, [projects, location.state]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -158,13 +171,13 @@ export default function Projects() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-extrabold text-white tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
             {user?.role === 'COLLABORATOR' ? 'My Projects' : 'Projects'}
           </h1>
           <p className="text-slate-500 text-sm mt-1">
             {user?.role === 'COLLABORATOR' 
               ? 'View and access your assigned project workspaces.' 
-              : 'Manage project portfolios, status tracking, and resource allocation.'
+              : 'Manage projects, status tracking, and resource allocation.'
             }
           </p>
         </div>
@@ -630,20 +643,16 @@ function ProjectDetailsModal({ project, onClose }) {
               {activeTab === 'about' && (
                 <div className="space-y-6">
                   <div>
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Project Portfolio Description</h4>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Project Description</h4>
                     <p className="text-sm text-slate-650 mt-2 bg-slate-50 border border-slate-100 p-4 rounded-xl leading-relaxed whitespace-pre-wrap">
                       {project.description || 'No description provided.'}
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 bg-slate-50/50 p-4 rounded-xl border border-slate-100 text-xs">
+                  <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100 text-xs">
                     <div>
-                      <span className="text-slate-400 font-bold block">Portfolio Owner</span>
+                      <span className="text-slate-400 font-bold block">Project Owner</span>
                       <span className="text-slate-700 font-semibold mt-1 block">{project.owner?.name || 'Unknown Manager'}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 font-bold block">Access Scope Code</span>
-                      <span className="text-slate-750 font-mono mt-1 block">{project.id}</span>
                     </div>
                   </div>
                 </div>
@@ -696,7 +705,7 @@ function ProjectDetailsModal({ project, onClose }) {
 
                   {/* Members list */}
                   <div className="space-y-2">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Current Portfolio Members</h4>
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Current Project Members</h4>
                     {members.length === 0 ? (
                       <p className="text-xs text-slate-400 py-2">No members registered in this project.</p>
                     ) : (

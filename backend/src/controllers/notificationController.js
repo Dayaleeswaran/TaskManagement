@@ -87,9 +87,47 @@ const markAsUnreadController = async (req, res, next) => {
   }
 };
 
+/**
+ * Controller to mark a single notification as starred.
+ */
+const markAsStarredController = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const notification = await notificationService.markAsStarred(id, userId);
+    return res.status(200).json({
+      message: "Notification marked as starred.",
+      notification,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Controller to mark a single notification as unstarred.
+ */
+const markAsUnstarredController = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const notification = await notificationService.markAsUnstarred(id, userId);
+    return res.status(200).json({
+      message: "Notification marked as unstarred.",
+      notification,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getNotificationsController,
   markAsReadController,
   markAllAsReadController,
   markAsUnreadController,
+  markAsStarredController,
+  markAsUnstarredController,
 };

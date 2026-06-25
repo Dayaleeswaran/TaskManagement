@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   SlidersHorizontal, 
@@ -11,19 +11,24 @@ import {
   ExternalLink,
   Shield,
   UserCheck,
-  UserX
+  UserX,
+  Star
 } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+import api from '../services/api';
 import { formatTimeAgo } from '../utils/dateUtils';
 import TaskDetailModal from '../components/TaskDetailModal';
 
 export default function Notifications() {
-  const { notifications, loading, markAsRead, markAsUnread, markAllAsRead, unreadCount } = useNotifications();
+  const { notifications, loading, markAsRead, markAsUnread, markAllAsRead, unreadCount, markAsStarred, markAsUnstarred } = useNotifications();
   const { user } = useAuth();
+  const { addToast } = useToast();
   const navigate = useNavigate();
+  const starredCount = notifications.filter(n => n.isStarred).length;
 
-  const [activeTab, setActiveTab] = useState('Activity'); // 'Activity', 'Archive'
+  const [activeTab, setActiveTab] = useState('Activity'); // 'Activity', 'Starred', 'Unread'
   const [selectedNotifId, setSelectedNotifId] = useState(null);
   const [sortOrder, setSortOrder] = useState('Newest'); // 'Newest', 'Oldest'
   const [typeFilter, setTypeFilter] = useState('ALL'); // 'ALL', 'TASK_ASSIGNED', 'TASK_COMPLETED', 'COMMENT_ADDED', 'PROJECT_MEMBER_ADDED', 'ROLE_CHANGED', 'ACCOUNT_DEACTIVATED'
@@ -36,10 +41,11 @@ export default function Notifications() {
     setSelectedNotifId(null);
   };
 
-  // Filter notifications by tab (Activity show unread, Archive show read)
+  // Filter notifications by tab (Activity shows all, Starred shows starred, Unread shows only unread)
   const tabNotifications = notifications.filter(notif => {
-    if (activeTab === 'Activity') return !notif.isRead;
-    return notif.isRead;
+    if (activeTab === 'Starred') return notif.isStarred;
+    if (activeTab === 'Unread') return !notif.isRead || notif.id === selectedNotifId;
+    return true; // 'Activity' tab displays all notifications (seen and unseen)
   });
 
   // Apply Type Filter
@@ -60,6 +66,26 @@ export default function Notifications() {
 
   // Find selected notification
   const selectedNotif = notifications.find(n => n.id === activeSelectedNotifId);
+
+  // Auto-select first notification on load if none selected
+  useEffect(() => {
+    if (!selectedNotifId && sortedNotifications.length > 0) {
+      setSelectedNotifId(sortedNotifications[0].id);
+    }
+  }, [sortedNotifications, selectedNotifId]);
+
+  const lastSelectedIdRef = useRef(null);
+
+  // Auto-mark selected notification as read when it becomes active (runs on selection change)
+  useEffect(() => {
+    if (selectedNotifId && selectedNotifId !== lastSelectedIdRef.current) {
+      lastSelectedIdRef.current = selectedNotifId;
+      const notif = notifications.find(n => n.id === selectedNotifId);
+      if (notif && !notif.isRead) {
+        markAsRead(selectedNotifId);
+      }
+    }
+  }, [selectedNotifId, notifications, markAsRead]);
 
   // Helper: format notification type label
   const getNotificationTypeLabel = (type) => {
@@ -222,16 +248,31 @@ export default function Notifications() {
 
   const selectedDetails = parseNotificationDetails(selectedNotif);
 
-  const handleOpenItem = () => {
+  const handleOpenItem = async () => {
     if (!selectedNotif) return;
-    if (selectedDetails.actionType === 'task') {
-      if (selectedDetails.taskId) {
-        setActiveTaskDetailsId(selectedDetails.taskId);
-      } else {
-        navigate(user?.role === 'COLLABORATOR' ? '/my-tasks' : '/tasks');
+    try {
+      if (selectedDetails.actionType === 'task') {
+        if (selectedDetails.taskId) {
+          // Verify if task still exists
+          await api.get(`/api/v1/tasks/${selectedDetails.taskId}`);
+          setActiveTaskDetailsId(selectedDetails.taskId);
+        } else {
+          navigate(user?.role === 'COLLABORATOR' ? '/my-tasks' : '/tasks');
+        }
+      } else if (selectedDetails.actionType === 'project') {
+        if (selectedDetails.projectId) {
+          // Verify if project still exists
+          await api.get(`/api/v1/projects/${selectedDetails.projectId}`);
+          // Navigate to projects and pass projectId in state for auto-selection
+          navigate('/projects', { state: { selectProjectId: selectedDetails.projectId } });
+        } else {
+          navigate('/projects');
+        }
       }
-    } else if (selectedDetails.actionType === 'project') {
-      navigate('/projects');
+    } catch (err) {
+      console.error('Failed to open related item:', err);
+      const itemType = selectedDetails.actionType === 'task' ? 'task' : 'project';
+      addToast(`This ${itemType} has been deleted or is no longer accessible.`, 'error');
     }
   };
 
@@ -240,17 +281,11 @@ export default function Notifications() {
       {/* Header bar */}
       <div className="flex items-center justify-between flex-shrink-0">
         <h1 className="text-3xl font-bold text-white">Inbox</h1>
-        <button 
-          onClick={markAllAsRead}
-          className="px-4 py-1.5 bg-[#252526] hover:bg-[#2c2c2d] border border-slate-850 text-xs font-semibold text-white rounded-xl transition-all duration-150 cursor-pointer"
-        >
-          Manage notifications
-        </button>
       </div>
 
       {/* Tabs Menu */}
       <div className="flex border-b border-slate-850 gap-6 flex-shrink-0">
-        {['Activity', 'Archive'].map((tab) => (
+        {['Activity', 'Starred', 'Unread'].map((tab) => (
           <button
             key={tab}
             onClick={() => handleTabChange(tab)}
@@ -259,7 +294,12 @@ export default function Notifications() {
             }`}
           >
             <span>{tab}</span>
-            {tab === 'Activity' && unreadCount > 0 && (
+            {tab === 'Starred' && starredCount > 0 && (
+              <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                {starredCount}
+              </span>
+            )}
+            {tab === 'Unread' && unreadCount > 0 && (
               <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-blue-600/15 text-blue-400 border border-blue-500/20">
                 {unreadCount}
               </span>
@@ -363,11 +403,24 @@ export default function Notifications() {
                               </span>
                             </div>
                             
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center space-x-1.5 shrink-0">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (notif.isStarred) {
+                                    markAsUnstarred(notif.id);
+                                  } else {
+                                    markAsStarred(notif.id);
+                                  }
+                                }}
+                                className="p-1 rounded hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                              >
+                                <Star className={`h-3.5 w-3.5 ${notif.isStarred ? 'fill-amber-400 text-amber-400' : 'text-slate-500 hover:text-slate-350'}`} />
+                              </button>
                               <span className="text-[9px] text-slate-500 font-semibold shrink-0">
                                 {formatTimeAgo(notif.createdAt)}
                               </span>
-                              {!notif.isRead && activeTab === 'Activity' && (
+                              {!notif.isRead && (
                                 <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0"></span>
                               )}
                             </div>
@@ -390,7 +443,7 @@ export default function Notifications() {
         <div className="w-[60%] flex flex-col bg-[#252526] border border-slate-850 rounded-2xl overflow-hidden p-6 relative justify-between">
           {!selectedNotif ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3">
-              <Archive className="h-10 w-10 text-slate-700 animate-bounce" />
+              <MessageSquare className="h-10 w-10 text-slate-700 animate-bounce" />
               <p className="text-xs text-slate-550 font-semibold italic">Select a notification to view full details</p>
             </div>
           ) : (
@@ -403,29 +456,43 @@ export default function Notifications() {
                     {getNotificationTypeLabel(selectedNotif.type)}
                   </span>
                   
-                  {activeTab === 'Activity' ? (
+                  <div className="flex items-center space-x-2">
                     <button
                       onClick={async () => {
-                        await markAsRead(selectedNotif.id);
-                        setSelectedNotifId(null);
+                        if (selectedNotif.isStarred) {
+                          await markAsUnstarred(selectedNotif.id);
+                        } else {
+                          await markAsStarred(selectedNotif.id);
+                        }
                       }}
                       className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-905 hover:bg-slate-950 text-slate-400 hover:text-white border border-slate-800 text-[10px] font-bold transition-colors cursor-pointer"
                     >
-                      <Archive className="h-3 w-3" />
-                      <span>Archive</span>
+                      <Star className={`h-3 w-3 ${selectedNotif.isStarred ? 'fill-amber-400 text-amber-400' : 'text-slate-400'}`} />
+                      <span>{selectedNotif.isStarred ? 'Starred' : 'Star'}</span>
                     </button>
-                  ) : (
-                    <button
-                      onClick={async () => {
-                        await markAsUnread(selectedNotif.id);
-                        setSelectedNotifId(null);
-                      }}
-                      className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-905 hover:bg-slate-950 text-slate-400 hover:text-white border border-slate-800 text-[10px] font-bold transition-colors cursor-pointer"
-                    >
-                      <RefreshCw className="h-3 w-3" />
-                      <span>Restore</span>
-                    </button>
-                  )}
+
+                    {selectedNotif.isRead ? (
+                      <button
+                        onClick={async () => {
+                          await markAsUnread(selectedNotif.id);
+                        }}
+                        className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-905 hover:bg-slate-950 text-slate-400 hover:text-white border border-slate-800 text-[10px] font-bold transition-colors cursor-pointer"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        <span>Mark as unread</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={async () => {
+                          await markAsRead(selectedNotif.id);
+                        }}
+                        className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-905 hover:bg-slate-950 text-slate-400 hover:text-white border border-slate-800 text-[10px] font-bold transition-colors cursor-pointer"
+                      >
+                        <CheckCircle className="h-3 w-3" />
+                        <span>Mark as read</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Details Section */}

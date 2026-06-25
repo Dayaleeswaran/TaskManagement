@@ -6,6 +6,7 @@ import ToastContainer from './components/Toast';
 import ProtectedRoute from './components/ProtectedRoute';
 import MainLayout from './components/MainLayout';
 import ErrorBoundary from './components/ErrorBoundary';
+import WorkNestLogo from './components/WorkNestLogo';
 
 
 // Pages
@@ -26,10 +27,20 @@ import AuditLogs from './pages/AuditLogs';
 import { X } from 'lucide-react';
 
 function AppContent() {
-  const { notifications, dismissNotification } = useAuth();
+  const { notifications, dismissNotification, isTransitioning } = useAuth();
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col">
+      {isTransitioning && (
+        <div className="splash-transition-overlay">
+          <div className="scale-110">
+            <WorkNestLogo size={140} showText={true} lightText={true} animate={true} />
+          </div>
+          <p className="splash-text">
+            Preparing your nest...
+          </p>
+        </div>
+      )}
       {/* Simulation Notifications Banner for Offline Mock testing */}
       {notifications.length > 0 && (
         <div className="bg-slate-950 border-b border-violet-900/40 px-6 py-2 space-y-2 z-50">
@@ -69,7 +80,7 @@ function AppContent() {
           <Route
             path="/login"
             element={
-              <div className="flex-1 flex items-center justify-center p-6 bg-slate-950">
+              <div className="flex-1 flex items-center justify-center p-6 bg-slate-950 relative overflow-hidden">
                 <Login />
               </div>
             }

@@ -188,6 +188,7 @@ const updateUserController = async (req, res, next) => {
     }
 
     const isDeactivated = targetUser.isActive && updateData.isActive === false;
+    const isActivated = !targetUser.isActive && updateData.isActive === true;
 
     const user = await userService.updateUser(id, updateData);
     
@@ -207,6 +208,21 @@ const updateUserController = async (req, res, next) => {
           req.user.id,
           user.id,
           { name: user.name, email: user.email, updatedFields: Object.keys(updateData) }
+        );
+      }
+    }
+
+    if (isDeactivated || isActivated) {
+      const adminIds = await notificationService.getAdminAndSuperAdminIds();
+      const actionLabel = isActivated ? "activated" : "deactivated";
+      const message = `User "${user.name}" (${user.email}) has been ${actionLabel} by ${req.user.name} | user:${user.id}`;
+      const recipientIds = adminIds.filter((adminId) => adminId !== req.user.id);
+      
+      if (recipientIds.length > 0) {
+        await notificationService.createBulkNotifications(
+          recipientIds,
+          notificationService.NotificationType.ADMIN_UPDATE,
+          message
         );
       }
     }

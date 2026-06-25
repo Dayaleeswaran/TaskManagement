@@ -14,7 +14,7 @@ export const NotificationProvider = ({ children }) => {
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   // Hook into live Socket.io notifications
-  const { notifications: liveNotifications, setNotifications: setLiveNotifications } = useSocket();
+  const { notifications: liveNotifications, setNotifications: setLiveNotifications, getSocket } = useSocket();
 
   // Fetch initial notifications
   const fetchNotifications = useCallback(async () => {
@@ -104,6 +104,40 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
+  // Mark single notification as starred
+  const markAsStarred = async (id) => {
+    try {
+      await api.patch(`/api/v1/notifications/${id}/star`);
+      setNotifications((prev) =>
+        prev.map((n) => {
+          if (n.id === id) {
+            return { ...n, isStarred: true };
+          }
+          return n;
+        })
+      );
+    } catch (err) {
+      console.error(`[NotificationContext] Failed to mark notification ${id} as starred:`, err);
+    }
+  };
+
+  // Mark single notification as unstarred
+  const markAsUnstarred = async (id) => {
+    try {
+      await api.patch(`/api/v1/notifications/${id}/unstar`);
+      setNotifications((prev) =>
+        prev.map((n) => {
+          if (n.id === id) {
+            return { ...n, isStarred: false };
+          }
+          return n;
+        })
+      );
+    } catch (err) {
+      console.error(`[NotificationContext] Failed to mark notification ${id} as unstarred:`, err);
+    }
+  };
+
   return (
     <NotificationContext.Provider
       value={{
@@ -114,7 +148,10 @@ export const NotificationProvider = ({ children }) => {
         markAsRead,
         markAllAsRead,
         markAsUnread,
+        markAsStarred,
+        markAsUnstarred,
         setNotifications,
+        getSocket,
       }}
     >
       {children}

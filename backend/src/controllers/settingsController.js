@@ -25,13 +25,18 @@ const updateNotificationSettings = async (req, res, next) => {
     const userId = req.user.id;
     const { taskAssigned, taskCompleted, taskCommented, projectUpdates } = req.body;
     
-    const settings = await prisma.notificationSettings.update({
+    const updateData = {};
+    if (taskAssigned !== undefined) updateData.taskAssigned = taskAssigned;
+    if (taskCompleted !== undefined) updateData.taskCompleted = taskCompleted;
+    if (taskCommented !== undefined) updateData.taskCommented = taskCommented;
+    if (projectUpdates !== undefined) updateData.projectUpdates = projectUpdates;
+
+    const settings = await prisma.notificationSettings.upsert({
       where: { userId },
-      data: {
-        taskAssigned: taskAssigned !== undefined ? taskAssigned : undefined,
-        taskCompleted: taskCompleted !== undefined ? taskCompleted : undefined,
-        taskCommented: taskCommented !== undefined ? taskCommented : undefined,
-        projectUpdates: projectUpdates !== undefined ? projectUpdates : undefined,
+      update: updateData,
+      create: {
+        userId,
+        ...updateData,
       },
     });
     

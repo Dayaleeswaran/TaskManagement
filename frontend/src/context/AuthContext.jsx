@@ -20,6 +20,7 @@ export const AuthProvider = ({ children }) => {
   });
 
   const [loading, setLoading] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
   // On mount, verify session
@@ -57,7 +58,10 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post('/api/auth/login', { email, password });
       
       const { token, user: apiUser } = response.data;
+      setIsTransitioning(true);
       setSession(token, apiUser);
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      setIsTransitioning(false);
       setLoading(false);
       return apiUser;
     } catch (err) {
@@ -97,7 +101,10 @@ export const AuthProvider = ({ children }) => {
         // Simulate small server latency
         await new Promise((resolve) => setTimeout(resolve, 600));
 
+        setIsTransitioning(true);
         setSession(mockToken, mockUser);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        setIsTransitioning(false);
         setLoading(false);
         return mockUser;
       }
@@ -167,6 +174,7 @@ export const AuthProvider = ({ children }) => {
         user,
         role,
         loading,
+        isTransitioning,
         notifications,
         login,
         logout,

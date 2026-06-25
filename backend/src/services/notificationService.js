@@ -193,12 +193,118 @@ const markAsUnread = async (notificationId, userId) => {
   });
 };
 
+/**
+ * Retrieves all active user IDs with the role ADMIN or SUPER_ADMIN.
+ * @returns {Promise<string[]>} Array of admin/superadmin user IDs.
+ */
+const getAdminAndSuperAdminIds = async () => {
+  const admins = await prisma.user.findMany({
+    where: {
+      role: { in: ["ADMIN", "SUPER_ADMIN"] },
+      isActive: true,
+    },
+    select: { id: true },
+  });
+  return admins.map((a) => a.id);
+};
+
+/**
+ * Creates custom bulk notifications with different messages per user.
+ * @param {object[]} notificationsArray - Array of { userId, type, message } objects.
+ * @returns {Promise<object[]>} Array of created notifications.
+ */
+const createCustomBulkNotifications = async (notificationsArray) => {
+  if (!notificationsArray || notificationsArray.length === 0) return [];
+
+  const notifications = await prisma.notification.createManyAndReturn({
+    data: notificationsArray.map((notif) => ({
+      userId: notif.userId,
+      type: notif.type,
+      message: notif.message,
+      isRead: false,
+    })),
+  });
+
+  // Emit to each user's socket room
+  notifications.forEach((notification) => {
+    emitNotification(notification.userId, notification);
+  });
+
+  return notifications;
+};
+
+/**
+ * Marks a single notification as starred.
+ * @param {string} notificationId - The notification's ID.
+ * @param {string} userId - The requesting user's ID.
+ * @returns {Promise<object>} The updated notification.
+ */
+const markAsStarred = async (notificationId, userId) => {
+  const notification = await prisma.notification.findUnique({
+    where: { id: notificationId },
+  });
+
+  if (!notification) {
+    const error = new Error("Notification not found.");
+    error.statusCode = 404;
+    error.errorCode = "NOTIFICATION_NOT_FOUND";
+    throw error;
+  }
+
+  if (notification.userId !== userId) {
+    const error = new Error("You are not authorized to update this notification.");
+    error.statusCode = 403;
+    error.errorCode = "FORBIDDEN";
+    throw error;
+  }
+
+  return prisma.notification.update({
+    where: { id: notificationId },
+    data: { isStarred: true },
+  });
+};
+
+/**
+ * Marks a single notification as unstarred.
+ * @param {string} notificationId - The notification's ID.
+ * @param {string} userId - The requesting user's ID.
+ * @returns {Promise<object>} The updated notification.
+ */
+const markAsUnstarred = async (notificationId, userId) => {
+  const notification = await prisma.notification.findUnique({
+    where: { id: notificationId },
+  });
+
+  if (!notification) {
+    const error = new Error("Notification not found.");
+    error.statusCode = 404;
+    error.errorCode = "NOTIFICATION_NOT_FOUND";
+    throw error;
+  }
+
+  if (notification.userId !== userId) {
+    const error = new Error("You are not authorized to update this notification.");
+    error.statusCode = 403;
+    error.errorCode = "FORBIDDEN";
+    throw error;
+  }
+
+  return prisma.notification.update({
+    where: { id: notificationId },
+    data: { isStarred: false },
+  });
+};
+
 module.exports = {
   NotificationType,
   createNotification,
   createBulkNotifications,
+  createCustomBulkNotifications,
   getNotificationsForUser,
   markAsRead,
   markAllAsRead,
   markAsUnread,
+  markAsStarred,
+  markAsUnstarred,
+  getAdminAndSuperAdminIds,
 };

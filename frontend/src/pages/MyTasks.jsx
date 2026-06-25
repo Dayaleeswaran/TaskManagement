@@ -3,14 +3,19 @@ import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import { CheckSquare, Clock, AlertTriangle, Play, CheckCircle2 } from 'lucide-react';
 import TaskDetailModal from '../components/TaskDetailModal';
+import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 
 export default function MyTasks() {
   const { addToast } = useToast();
+  const { user } = useAuth();
+  const { getSocket } = useNotifications();
   
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL'); // ALL, PENDING, COMPLETED
   const [selectedTask, setSelectedTask] = useState(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const fetchMyTasks = useCallback(async () => {
     try {
@@ -30,7 +35,23 @@ export default function MyTasks() {
       fetchMyTasks();
     }, 0);
     return () => clearTimeout(timer);
-  }, [fetchMyTasks]);
+  }, [fetchMyTasks, refreshTrigger]);
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const handleActivity = (activity) => {
+      if (activity && activity.userId !== user?.id) {
+        setRefreshTrigger(prev => prev + 1);
+      }
+    };
+
+    socket.on('activity', handleActivity);
+    return () => {
+      socket.off('activity', handleActivity);
+    };
+  }, [getSocket, user?.id]);
 
   const handleStatusChange = async (taskId, newStatus) => {
     try {

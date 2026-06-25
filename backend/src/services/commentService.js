@@ -80,7 +80,7 @@ const createComment = async (taskId, authorId, body) => {
     },
   });
 
-  // 4. Send notification to the task creator and assignees, excluding the author
+  // 4. Send notification to the task creator, assignees, project owner, and administrators, excluding the author
   const recipientIds = new Set();
   if (task.createdById !== authorId) {
     recipientIds.add(task.createdById);
@@ -88,6 +88,17 @@ const createComment = async (taskId, authorId, body) => {
   task.assignments.forEach((assignment) => {
     if (assignment.userId !== authorId) {
       recipientIds.add(assignment.userId);
+    }
+  });
+  if (task.project.ownerId !== authorId) {
+    recipientIds.add(task.project.ownerId);
+  }
+
+  // Add Admins and Super Admins
+  const adminIds = await notificationService.getAdminAndSuperAdminIds();
+  adminIds.forEach((id) => {
+    if (id !== authorId) {
+      recipientIds.add(id);
     }
   });
 
