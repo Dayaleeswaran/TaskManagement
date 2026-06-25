@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
+import TaskDetailModal from '../components/TaskDetailModal';
 import { 
   FolderKanban, 
   Plus, 
@@ -36,6 +38,8 @@ export default function Projects() {
   const [submitting, setSubmitting] = useState(false);
 
   const [systemUsers, setSystemUsers] = useState([]);
+  const [ownerId, setOwnerId] = useState('');
+  const [createOwnerId, setCreateOwnerId] = useState('');
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [selectedMemberIds, setSelectedMemberIds] = useState([]);
 
@@ -68,7 +72,7 @@ export default function Projects() {
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchProjects();
-      if (user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER') {
+      if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'PROJECT_MANAGER') {
         fetchSystemUsers();
       }
     }, 0);
@@ -81,15 +85,20 @@ export default function Projects() {
 
     try {
       setSubmitting(true);
-      await api.post('/api/v1/projects', { 
+      const payload = { 
         name: name.trim(), 
         description: description.trim(), 
         memberUserIds: selectedMemberIds 
-      });
+      };
+      if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') {
+        payload.ownerId = createOwnerId;
+      }
+      await api.post('/api/v1/projects', payload);
       addToast('Project created successfully!', 'success');
       setName('');
       setDescription('');
       setSelectedMemberIds([]);
+      setCreateOwnerId('');
       setIsCreateOpen(false);
       fetchProjects();
     } catch (err) {
@@ -105,7 +114,11 @@ export default function Projects() {
 
     try {
       setSubmitting(true);
-      await api.put(`/api/v1/projects/${activeProject.id}`, { name, description });
+      const payload = { name: name.trim(), description: description.trim() };
+      if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') {
+        payload.ownerId = ownerId;
+      }
+      await api.put(`/api/v1/projects/${activeProject.id}`, payload);
       addToast('Project updated successfully!', 'success');
       setName('');
       setDescription('');
@@ -137,6 +150,7 @@ export default function Projects() {
     setActiveProject(proj);
     setName(proj.name);
     setDescription(proj.description || '');
+    setOwnerId(proj.ownerId || '');
     setIsEditOpen(true);
   };
 
@@ -144,11 +158,18 @@ export default function Projects() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">Projects</h1>
-          <p className="text-slate-500 text-sm mt-1">Manage project portfolios, status tracking, and resource allocation.</p>
+          <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+            {user?.role === 'COLLABORATOR' ? 'My Projects' : 'Projects'}
+          </h1>
+          <p className="text-slate-500 text-sm mt-1">
+            {user?.role === 'COLLABORATOR' 
+              ? 'View and access your assigned project workspaces.' 
+              : 'Manage project portfolios, status tracking, and resource allocation.'
+            }
+          </p>
         </div>
         
-        {(user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER') && (
+        {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'PROJECT_MANAGER') && (
           <button 
             onClick={() => {
               setName('');
@@ -185,7 +206,7 @@ export default function Projects() {
                 </div>
                 
                 {/* PM / Admin controls */}
-                {(user?.role === 'ADMIN' || project.ownerId === user?.id) && (
+                {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || project.ownerId === user?.id) && (
                   <div 
                     className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => e.stopPropagation()}
@@ -221,7 +242,9 @@ export default function Projects() {
               {/* Footer */}
               <div className="mt-4 flex items-center justify-between text-[11px] text-slate-400 font-bold border-t border-slate-100 pt-3 uppercase tracking-wider">
                 <span>Owner: {project.owner?.name || 'Unknown'}</span>
-                <span>{project._count?.tasks || 0} Tasks</span>
+                <span>
+                  {project._count?.tasks || 0} {user?.role === 'COLLABORATOR' ? 'Assigned Tasks' : 'Tasks'}
+                </span>
               </div>
             </div>
           ))}
@@ -263,6 +286,34 @@ export default function Projects() {
                   required
                 />
               </div>
+              {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Project Owner</label>
+                  {loadingUsers ? (
+                    <div className="text-xs text-slate-500 py-2 flex items-center gap-1.5">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
+                      <span>Loading eligible managers...</span>
+                    </div>
+                  ) : (
+                    <select
+                      value={createOwnerId}
+                      onChange={(e) => setCreateOwnerId(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-350 focus:outline-none focus:ring-1 focus:ring-violet-650 rounded-xl text-sm text-slate-800 cursor-pointer"
+                      required
+                    >
+                      <option value="" disabled>Select Owner (Project Manager)</option>
+                      {systemUsers
+                        .filter((u) => u.role === 'PROJECT_MANAGER' && u.isActive)
+                        .map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name} ({u.role?.replace('_', ' ')})
+                          </option>
+                        ))
+                      }
+                    </select>
+                  )}
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Description</label>
                 <textarea 
@@ -278,15 +329,15 @@ export default function Projects() {
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Project Members</label>
                 {loadingUsers ? (
                   <div className="text-xs text-slate-500 py-2 flex items-center gap-1.5">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
-                    <span>Loading users list...</span>
+                     <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
+                     <span>Loading users list...</span>
                   </div>
-                ) : systemUsers.filter((u) => u.id !== user?.id).length === 0 ? (
-                  <p className="text-xs text-slate-400">No other active users available to add.</p>
+                ) : systemUsers.filter((u) => u.role === 'COLLABORATOR' && u.isActive).length === 0 ? (
+                  <p className="text-xs text-slate-400">No active collaborators available to add.</p>
                 ) : (
                   <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl">
                     {systemUsers
-                      .filter((u) => u.id !== user?.id)
+                      .filter((u) => u.role === 'COLLABORATOR' && u.isActive)
                       .map((u) => {
                         const isSelected = selectedMemberIds.includes(u.id);
                         return (
@@ -340,7 +391,7 @@ export default function Projects() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="fixed inset-0 bg-transparent" onClick={() => setIsEditOpen(false)}></div>
           <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl z-10">
-            <button className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer" onClick={() => setIsEditOpen(false)}>
+            <button className="absolute top-4 right-4 text-slate-400 hover:text-slate-650 cursor-pointer" onClick={() => setIsEditOpen(false)}>
               <X className="h-5 w-5" />
             </button>
             <h2 className="text-lg font-bold text-slate-800 mb-4">Edit Project</h2>
@@ -363,6 +414,34 @@ export default function Projects() {
                   className="w-full px-3 py-2 bg-white border border-slate-350 focus:outline-none focus:ring-1 focus:ring-violet-650 rounded-xl text-sm text-slate-800 h-24 resize-none"
                 />
               </div>
+              {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Project Owner</label>
+                  {loadingUsers ? (
+                    <div className="text-xs text-slate-500 py-2 flex items-center gap-1.5">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
+                      <span>Loading eligible managers...</span>
+                    </div>
+                  ) : (
+                    <select
+                      value={ownerId}
+                      onChange={(e) => setOwnerId(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-350 focus:outline-none focus:ring-1 focus:ring-violet-650 rounded-xl text-sm text-slate-800 cursor-pointer"
+                      required
+                    >
+                      <option value="" disabled>Select Owner</option>
+                      {systemUsers
+                        .filter((u) => u.role === 'PROJECT_MANAGER' && u.isActive)
+                        .map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name} ({u.role?.replace('_', ' ')})
+                          </option>
+                        ))
+                      }
+                    </select>
+                  )}
+                </div>
+              )}
               <button 
                 type="submit" 
                 disabled={submitting}
@@ -382,11 +461,14 @@ export default function Projects() {
 function ProjectDetailsModal({ project, onClose }) {
   const { user } = useAuth();
   const { addToast } = useToast();
+  const navigate = useNavigate();
   
-  const [activeTab, setActiveTab] = useState('about'); // 'about', 'members', 'timeline'
+  const [activeTab, setActiveTab] = useState('about'); // 'about', 'members', 'timeline', 'tasks'
   const [members, setMembers] = useState([]);
   const [activities, setActivities] = useState([]);
+  const [projectTasks, setProjectTasks] = useState([]);
   const [loadingDetails, setLoadingDetails] = useState(true);
+  const [activeTaskDetailsId, setActiveTaskDetailsId] = useState(null);
   
   // Search to Add Members
   const [userQuery, setUserQuery] = useState('');
@@ -396,12 +478,14 @@ function ProjectDetailsModal({ project, onClose }) {
   const fetchMembersAndTimeline = useCallback(async () => {
     setLoadingDetails(true);
     try {
-      const [membersRes, timelineRes] = await Promise.all([
+      const [membersRes, timelineRes, tasksRes] = await Promise.all([
         api.get(`/api/v1/projects/${project.id}/members`),
-        api.get(`/api/v1/projects/${project.id}/activities`)
+        api.get(`/api/v1/projects/${project.id}/activities`),
+        api.get(`/api/v1/tasks?projectId=${project.id}&limit=100`)
       ]);
       setMembers(membersRes.data || []);
       setActivities(timelineRes.data || []);
+      setProjectTasks(tasksRes.data.tasks || tasksRes.data || []);
     } catch (err) {
       console.error(err);
       addToast('Failed to load project details.', 'error');
@@ -431,9 +515,9 @@ function ProjectDetailsModal({ project, onClose }) {
     const delayDebounceFn = setTimeout(async () => {
       try {
         const response = await api.get(`/api/v1/search?q=${encodeURIComponent(userQuery)}`);
-        // Filter out users who are already members
+        // Filter out users who are already members, and restrict to collaborators only
         const filtered = (response.data.users || []).filter(
-          (u) => !members.some((m) => m.id === u.id)
+          (u) => !members.some((m) => m.id === u.id) && u.role === 'COLLABORATOR' && u.isActive
         );
         setSearchResults(filtered);
       } catch (err) {
@@ -444,7 +528,7 @@ function ProjectDetailsModal({ project, onClose }) {
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [userQuery, members]);
+  }, [userQuery, members, user?.role]);
 
   const handleAddMember = async (targetUserId) => {
     try {
@@ -471,7 +555,7 @@ function ProjectDetailsModal({ project, onClose }) {
     }
   };
 
-  const isOwnerOrAdmin = user?.role === 'ADMIN' || project.ownerId === user?.id;
+  const isOwnerOrAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || project.ownerId === user?.id;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
@@ -496,7 +580,7 @@ function ProjectDetailsModal({ project, onClose }) {
             className={`px-4 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
               activeTab === 'about' 
                 ? 'border-violet-600 text-violet-600' 
-                : 'border-transparent text-slate-400 hover:text-slate-600'
+                : 'border-transparent text-slate-400 hover:text-slate-650'
             }`}
           >
             <span className="flex items-center gap-1.5"><Info className="h-3.5 w-3.5" /> About</span>
@@ -506,17 +590,27 @@ function ProjectDetailsModal({ project, onClose }) {
             className={`px-4 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
               activeTab === 'members' 
                 ? 'border-violet-600 text-violet-600' 
-                : 'border-transparent text-slate-400 hover:text-slate-600'
+                : 'border-transparent text-slate-400 hover:text-slate-650'
             }`}
           >
             <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> Members ({members.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('tasks')}
+            className={`px-4 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+              activeTab === 'tasks' 
+                ? 'border-violet-600 text-violet-600' 
+                : 'border-transparent text-slate-400 hover:text-slate-650'
+            }`}
+          >
+            <span className="flex items-center gap-1.5"><FolderKanban className="h-3.5 w-3.5" /> Tasks ({projectTasks.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('timeline')}
             className={`px-4 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
               activeTab === 'timeline' 
                 ? 'border-violet-600 text-violet-600' 
-                : 'border-transparent text-slate-400 hover:text-slate-600'
+                : 'border-transparent text-slate-400 hover:text-slate-650'
             }`}
           >
             <span className="flex items-center gap-1.5"><Activity className="h-3.5 w-3.5" /> Activity Timeline</span>
@@ -609,14 +703,30 @@ function ProjectDetailsModal({ project, onClose }) {
                       <div className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden bg-slate-50/50">
                         {members.map((member) => {
                           const initials = member.name?.split(' ').map(n => n[0]).join('') || 'U';
+                          const canViewDetail = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'PROJECT_MANAGER';
                           return (
                             <div key={member.id} className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                              <div className="flex items-center space-x-3 text-xs">
-                                <div className="h-8 w-8 rounded-full bg-violet-100 flex items-center justify-center font-bold text-violet-700">
+                              <div 
+                                onClick={() => {
+                                  if (canViewDetail) {
+                                    onClose();
+                                    navigate(`/users?search=${encodeURIComponent(member.email)}`);
+                                  }
+                                }}
+                                className={`flex items-center space-x-3 text-xs ${canViewDetail ? 'cursor-pointer group/member' : ''}`}
+                              >
+                                <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold border transition-colors ${
+                                  member.role === 'SUPER_ADMIN' ? 'avatar-initials-amber' :
+                                  member.role === 'ADMIN' ? 'avatar-initials-purple' :
+                                  member.role === 'PROJECT_MANAGER' ? 'avatar-initials-blue' :
+                                  'avatar-initials-violet'
+                                }`}>
                                   {initials}
                                 </div>
                                 <div>
-                                  <span className="font-bold text-slate-700">{member.name}</span>
+                                  <span className={`font-bold text-slate-700 ${canViewDetail ? 'group-hover/member:text-violet-700 group-hover/member:underline' : ''}`}>
+                                    {member.name}
+                                  </span>
                                   <span className="text-[10px] bg-slate-200/60 text-slate-500 border border-slate-200 px-1.5 py-0.5 rounded ml-2 uppercase font-bold tracking-wide">
                                     {member.role?.replace('_', ' ')}
                                   </span>
@@ -668,7 +778,12 @@ function ProjectDetailsModal({ project, onClose }) {
                                 </span>
                               </div>
                               <div className="mt-2 flex items-center space-x-1.5 text-[10px] text-slate-400">
-                                <span className="h-4 w-4 rounded bg-slate-200 flex items-center justify-center font-bold text-[8px] text-slate-600 uppercase">
+                                <span className={`h-4 w-4 rounded flex items-center justify-center font-bold text-[8px] uppercase shrink-0 border ${
+                                  act.user?.role === 'SUPER_ADMIN' ? 'avatar-initials-amber' :
+                                  act.user?.role === 'ADMIN' ? 'avatar-initials-purple' :
+                                  act.user?.role === 'PROJECT_MANAGER' ? 'avatar-initials-blue' :
+                                  'avatar-initials-violet'
+                                }`}>
                                   {actInitials}
                                 </span>
                                 <span>by {act.user?.name || 'System'}</span>
@@ -681,10 +796,84 @@ function ProjectDetailsModal({ project, onClose }) {
                   )}
                 </div>
               )}
+
+              {/* TASKS TAB */}
+              {activeTab === 'tasks' && (() => {
+                const totalTasks = projectTasks.length;
+                const completedTasks = projectTasks.filter(t => t.status === 'COMPLETED').length;
+                const completionPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+                return (
+                  <div className="space-y-4">
+                    {/* Progress Bar Component */}
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-4">
+                      <div className="flex justify-between items-center mb-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        <span>Project Progress</span>
+                        <span className="text-violet-650 font-extrabold">{completionPercent}% ({completedTasks}/{totalTasks} Completed)</span>
+                      </div>
+                      <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                        <div 
+                          className="bg-gradient-to-r from-violet-600 to-fuchsia-600 h-full rounded-full transition-all duration-300"
+                          style={{ width: `${completionPercent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Tasks List */}
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Project Tasks List</h4>
+                      {projectTasks.length === 0 ? (
+                        <p className="text-xs text-slate-400 py-6 text-center italic">No tasks registered in this project.</p>
+                      ) : (
+                        <div className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden bg-slate-50/50">
+                          {projectTasks.map((t) => (
+                            <div 
+                              key={t.id} 
+                              onClick={() => setActiveTaskDetailsId(t.id)}
+                              className="p-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer text-xs"
+                            >
+                              <div className="min-w-0 flex-1 pr-4">
+                                <span className="font-bold text-slate-700 block truncate hover:text-violet-600 transition-colors">
+                                  {t.title}
+                                </span>
+                                <div className="flex items-center space-x-2 mt-1 text-[10px] text-slate-450 font-semibold">
+                                  <span className={`px-1.5 py-0.2 rounded font-bold uppercase tracking-wider text-[8px] border ${
+                                    t.priority === 'HIGH' ? 'bg-rose-50 border-rose-100 text-rose-500' : t.priority === 'MEDIUM' ? 'bg-amber-50 border-amber-100 text-amber-500' : 'bg-emerald-50 border-emerald-100 text-emerald-500'
+                                  }`}>
+                                    {t.priority}
+                                  </span>
+                                  <span>•</span>
+                                  <span>Due: {t.dueDate ? new Date(t.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'No Due Date'}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-3 shrink-0">
+                                <span className={`px-2 py-0.5 rounded-full font-bold uppercase tracking-wider text-[9px] border ${
+                                  t.status === 'COMPLETED' ? 'bg-emerald-50 border-emerald-100 text-emerald-500' : t.status === 'IN_PROGRESS' ? 'bg-blue-50 border-blue-100 text-blue-500' : 'bg-slate-100 border-slate-200 text-slate-500'
+                                }`}>
+                                  {t.status?.replace('_', ' ')}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </>
           )}
         </div>
       </div>
+      {activeTaskDetailsId && (
+        <TaskDetailModal
+          task={{ id: activeTaskDetailsId }}
+          onClose={() => {
+            setActiveTaskDetailsId(null);
+            fetchMembersAndTimeline();
+          }}
+          onTaskUpdated={fetchMembersAndTimeline}
+        />
+      )}
     </div>
   );
 }

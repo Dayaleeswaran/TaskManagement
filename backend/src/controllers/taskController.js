@@ -2,8 +2,7 @@ const prisma = require("../prisma");
 const dbQueries = require("../services/dbQueries");
 const notificationService = require("../services/notificationService");
 const activityService = require("../services/activityService");
-const fs = require("fs");
-const path = require("path");
+
 
 
 const getTasks = async (req, res, next) => {
@@ -11,7 +10,7 @@ const getTasks = async (req, res, next) => {
     let { status, priority, assigneeId, page, limit, projectId } = req.query;
     const { role, id: userId } = req.user;
 
-    if (role === "COLLABORATOR") {
+    if (role === "COLLABORATOR" && !projectId) {
       assigneeId = userId;
     }
 
@@ -87,7 +86,12 @@ const getTaskById = async (req, res, next) => {
     // Verify access permission
     if (req.user.role === "COLLABORATOR") {
       const isAssigned = task.assignments.some((a) => a.userId === req.user.id);
-      if (!isAssigned) {
+      const isProjectMember = await prisma.projectMember.findUnique({
+        where: {
+          projectId_userId: { projectId: task.projectId, userId: req.user.id },
+        },
+      });
+      if (!isAssigned && !isProjectMember) {
         const error = new Error("You do not have permission to view this task.");
         error.statusCode = 403;
         error.errorCode = "FORBIDDEN";
@@ -102,7 +106,43 @@ const getTaskById = async (req, res, next) => {
       }
     }
 
-    return res.status(200).json(task);
+    // Fetch chronological activity logs specifically suffix-linked to this task
+    const activities = await prisma.activity.findMany({
+      where: {
+        projectId: task.projectId,
+        action: {
+          contains: `task:${id}`,
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+
+    const parsedActivities = activities.map((act) => {
+      const actionText = act.action.split(" | task:")[0];
+      return {
+        id: act.id,
+        userName: act.user.name,
+        action: actionText,
+        createdAt: act.createdAt,
+      };
+    });
+
+    return res.status(200).json({
+      ...task,
+      activities: parsedActivities,
+    });
   } catch (err) {
     next(err);
   }
@@ -220,14 +260,14 @@ const createTask = async (req, res, next) => {
     await activityService.createActivity(
       projectId,
       req.user.id,
-      `${req.user.name} created task "${title}".`
+      `${req.user.name} created this task | task:${task.id}`
     );
 
     // Create notifications and emit Socket.io to assigned users
     await notificationService.createBulkNotifications(
       assignedUserIds,
       "TASK_ASSIGNED",
-      `You have been assigned to task: ${task.title}`
+      `You have been assigned to task: ${task.title} | task:${task.id}`
     );
 
     return res.status(201).json(task);
@@ -336,7 +376,7 @@ const updateTask = async (req, res, next) => {
         await notificationService.createBulkNotifications(
           newlyAssignedUserIds,
           "TASK_ASSIGNED",
-          `You have been assigned to task: ${existingTask.title}`
+          `You have been assigned to task: ${existingTask.title} | task:${id}`
         );
       }
     }
@@ -349,12 +389,56 @@ const updateTask = async (req, res, next) => {
       },
     });
 
-    // Record Activity
-    await activityService.createActivity(
-      existingTask.projectId,
-      req.user.id,
-      `${req.user.name} updated task "${updatedTask.title}".`
-    );
+    // Record Activity and Notifications for status change or general update
+    const statusChanged = status !== undefined && status !== existingTask.status;
+    if (statusChanged) {
+      const statusLabel = status.replace("_", " ").toLowerCase();
+      const activityMsg = status === "COMPLETED"
+        ? `${req.user.name} completed this task | task:${id}`
+        : `${req.user.name} changed status to ${status} | task:${id}`;
+        
+      await activityService.createActivity(existingTask.projectId, req.user.id, activityMsg);
+
+      // Send notifications for status changes to creator, owner, and assignees (excluding req.user)
+      const recipients = new Set();
+      if (existingTask.createdById !== req.user.id) {
+        recipients.add(existingTask.createdById);
+      }
+      if (existingTask.project.ownerId !== req.user.id) {
+        recipients.add(existingTask.project.ownerId);
+      }
+      const taskAssignments = await prisma.taskAssignment.findMany({
+        where: { taskId: id },
+      });
+      taskAssignments.forEach((a) => {
+        if (a.userId !== req.user.id) {
+          recipients.add(a.userId);
+        }
+      });
+
+      if (recipients.size > 0) {
+        if (status === "COMPLETED") {
+          await notificationService.createBulkNotifications(
+            Array.from(recipients),
+            "TASK_COMPLETED",
+            `Task completed: ${existingTask.title} | task:${id}`
+          );
+        } else {
+          await notificationService.createBulkNotifications(
+            Array.from(recipients),
+            "STATUS_CHANGED",
+            `Task "${existingTask.title}" status has been changed to ${statusLabel} by ${req.user.name} | task:${id}`
+          );
+        }
+      }
+    } else {
+      // General task update
+      await activityService.createActivity(
+        existingTask.projectId,
+        req.user.id,
+        `${req.user.name} updated this task | task:${id}`
+      );
+    }
 
     const fullUpdatedTask = await dbQueries.getTaskWithFullDetails(id);
     return res.status(200).json(fullUpdatedTask);
@@ -497,14 +581,14 @@ const assignTask = async (req, res, next) => {
     await activityService.createActivity(
       task.projectId,
       req.user.id,
-      `${req.user.name} assigned task "${task.title}" to ${user.name}.`
+      `${req.user.name} assigned this task to ${user.name} | task:${id}`
     );
 
     // Notify User
     await notificationService.createNotification(
       userId,
       "TASK_ASSIGNED",
-      `You have been assigned to task: ${task.title}`
+      `You have been assigned to task: ${task.title} | task:${task.id}`
     );
 
 
@@ -532,7 +616,17 @@ const updateTaskStatus = async (req, res, next) => {
       return res.status(404).json({ errorCode: "TASK_NOT_FOUND", message: "Task not found." });
     }
 
-    // Collaborator validation
+    // Project Manager validation: must own the project
+    if (req.user.role === "PROJECT_MANAGER") {
+      if (task.project.ownerId !== req.user.id) {
+        return res.status(403).json({
+          errorCode: "FORBIDDEN",
+          message: "You do not have permission to update tasks in this project.",
+        });
+      }
+    }
+
+    // Collaborator validation: must be assigned to task
     if (req.user.role === "COLLABORATOR") {
       const isAssigned = task.assignments.some((a) => a.userId === req.user.id);
       if (!isAssigned && task.createdById !== req.user.id) {
@@ -557,11 +651,11 @@ const updateTaskStatus = async (req, res, next) => {
 
     const statusLabel = status.replace("_", " ").toLowerCase();
 
-    // Record Activity
+    // Record Activity with suffix
     const activityMsg =
       status === "COMPLETED"
-        ? `${req.user.name} completed task "${task.title}".`
-        : `${req.user.name} moved task "${task.title}" to "${statusLabel}".`;
+        ? `${req.user.name} completed this task | task:${id}`
+        : `${req.user.name} changed status to ${status} | task:${id}`;
         
     await activityService.createActivity(task.projectId, req.user.id, activityMsg);
 
@@ -579,7 +673,7 @@ const updateTaskStatus = async (req, res, next) => {
         await notificationService.createBulkNotifications(
           Array.from(recipients),
           "TASK_COMPLETED",
-          `Task completed: ${task.title}`
+          `Task completed: ${task.title} | task:${task.id}`
         );
       }
     } else {
@@ -601,7 +695,7 @@ const updateTaskStatus = async (req, res, next) => {
         await notificationService.createBulkNotifications(
           Array.from(recipients),
           "STATUS_CHANGED",
-          `Task "${task.title}" status has been changed to ${statusLabel} by ${req.user.name}`
+          `Task "${task.title}" status has been changed to ${statusLabel} by ${req.user.name} | task:${task.id}`
         );
       }
     }

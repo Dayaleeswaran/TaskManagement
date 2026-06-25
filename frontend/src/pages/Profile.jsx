@@ -54,6 +54,19 @@ export default function Profile() {
     }
   };
 
+  const getAvatarClass = (role) => {
+    switch (role) {
+      case 'SUPER_ADMIN':
+        return 'avatar-initials-amber';
+      case 'ADMIN':
+        return 'avatar-initials-purple';
+      case 'PROJECT_MANAGER':
+        return 'avatar-initials-blue';
+      default:
+        return 'avatar-initials-violet';
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div>
@@ -67,7 +80,7 @@ export default function Profile() {
           <div className="p-6 rounded-2xl bg-slate-950/40 border border-slate-800 space-y-6 relative overflow-hidden">
             {/* Header profile info */}
             <div className="flex items-center space-x-4">
-              <div className="h-16 w-16 rounded-full bg-violet-600/10 border border-violet-500/20 flex items-center justify-center font-bold text-2xl text-violet-400">
+              <div className={`h-16 w-16 rounded-full flex items-center justify-center font-bold text-2xl border ${getAvatarClass(user?.role)}`}>
                 {user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
               </div>
               <div>
@@ -80,12 +93,12 @@ export default function Profile() {
             <div className="border-t border-slate-900 pt-5 space-y-4">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-400 flex items-center"><User className="h-4 w-4 mr-2 text-slate-500" /> Full Name</span>
-                <span className="font-semibold text-slate-100">{user?.name}</span>
+                <span className="font-semibold text-white">{user?.name}</span>
               </div>
               
               <div className="flex items-center justify-between text-sm">
                 <span className="text-slate-400 flex items-center"><Mail className="h-4 w-4 mr-2 text-slate-500" /> Email Address</span>
-                <span className="font-semibold text-slate-100">{user?.email}</span>
+                <span className="font-semibold text-white">{user?.email}</span>
               </div>
 
               <div className="flex items-center justify-between text-sm">
@@ -169,7 +182,7 @@ export default function Profile() {
           <p className="text-xs text-slate-400 leading-relaxed">
             Your account role assigns you the following dashboard and operations privileges:
           </p>
-          <ul className="text-xs text-slate-300 space-y-2 pt-2">
+          <ul className="text-xs text-slate-800 space-y-2 pt-2">
             {user?.role === 'SUPER_ADMIN' && (
               <>
                 <li className="flex items-start">✓ Full System Access & Seeding</li>

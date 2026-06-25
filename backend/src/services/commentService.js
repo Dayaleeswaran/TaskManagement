@@ -15,6 +15,7 @@ const createComment = async (taskId, authorId, body) => {
     where: { id: taskId },
     include: {
       assignments: true,
+      project: true,
     },
   });
 
@@ -35,6 +36,29 @@ const createComment = async (taskId, authorId, body) => {
     error.statusCode = 404;
     error.errorCode = "USER_NOT_FOUND";
     throw error;
+  }
+
+  // Enforce task access permission for comment creator
+  if (author.role === "COLLABORATOR") {
+    const isAssigned = task.assignments.some((a) => a.userId === authorId);
+    const isProjectMember = await prisma.projectMember.findUnique({
+      where: {
+        projectId_userId: { projectId: task.projectId, userId: authorId },
+      },
+    });
+    if (!isAssigned && task.createdById !== authorId && !isProjectMember) {
+      const error = new Error("You do not have permission to comment on this task.");
+      error.statusCode = 403;
+      error.errorCode = "FORBIDDEN";
+      throw error;
+    }
+  } else if (author.role === "PROJECT_MANAGER") {
+    if (task.project.ownerId !== authorId) {
+      const error = new Error("You do not have permission to comment on this task.");
+      error.statusCode = 403;
+      error.errorCode = "FORBIDDEN";
+      throw error;
+    }
   }
 
   // 3. Persist the comment
@@ -68,7 +92,7 @@ const createComment = async (taskId, authorId, body) => {
   });
 
   if (recipientIds.size > 0) {
-    const message = `${author.name} commented on task: ${task.title}`;
+    const message = `${author.name} commented on task: ${task.title} | task:${task.id}`;
     await notificationService.createBulkNotifications(
       Array.from(recipientIds),
       "COMMENT_ADDED",
@@ -80,7 +104,7 @@ const createComment = async (taskId, authorId, body) => {
   await activityService.createActivity(
     task.projectId,
     authorId,
-    `${author.name} commented on task "${task.title}".`
+    `${author.name} commented on this task | task:${taskId}`
   );
 
   return comment;
@@ -89,11 +113,16 @@ const createComment = async (taskId, authorId, body) => {
 /**
  * Retrieves all comments associated with a task in chronological order.
  * @param {string} taskId - The ID of the task.
+ * @param {object} requestingUser - The requesting user object.
  * @returns {Promise<Array>} List of comment objects.
  */
-const getCommentsByTask = async (taskId) => {
+const getCommentsByTask = async (taskId, requestingUser) => {
   const task = await prisma.task.findUnique({
     where: { id: taskId },
+    include: {
+      assignments: true,
+      project: true,
+    },
   });
 
   if (!task) {
@@ -101,6 +130,29 @@ const getCommentsByTask = async (taskId) => {
     error.statusCode = 404;
     error.errorCode = "TASK_NOT_FOUND";
     throw error;
+  }
+
+  // Enforce task access permission for comment retriever
+  if (requestingUser.role === "COLLABORATOR") {
+    const isAssigned = task.assignments.some((a) => a.userId === requestingUser.id);
+    const isProjectMember = await prisma.projectMember.findUnique({
+      where: {
+        projectId_userId: { projectId: task.projectId, userId: requestingUser.id },
+      },
+    });
+    if (!isAssigned && task.createdById !== requestingUser.id && !isProjectMember) {
+      const error = new Error("You do not have permission to view comments for this task.");
+      error.statusCode = 403;
+      error.errorCode = "FORBIDDEN";
+      throw error;
+    }
+  } else if (requestingUser.role === "PROJECT_MANAGER") {
+    if (task.project.ownerId !== requestingUser.id) {
+      const error = new Error("You do not have permission to view comments for this task.");
+      error.statusCode = 403;
+      error.errorCode = "FORBIDDEN";
+      throw error;
+    }
   }
 
   return prisma.comment.findMany({

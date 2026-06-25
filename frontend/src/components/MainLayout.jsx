@@ -1,77 +1,65 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useLocation, Outlet } from 'react-router-dom';
+import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import NotificationBell from './NotificationBell';
+import { useNotifications } from '../context/NotificationContext';
 import GlobalSearch from './GlobalSearch';
+import api from '../services/api';
 import {
-  LayoutDashboard,
-  Users,
-  CheckSquare,
-  FolderKanban,
-  ClipboardList,
+  Home,
   Bell,
-  User,
+  CheckCircle,
+  ClipboardList,
+  ChevronDown,
+  ChevronRight,
+  Plus,
   LogOut,
   Menu,
   X,
   ShieldCheck,
+  Users,
+  ClipboardList as AuditIcon,
+  User
 } from 'lucide-react';
 
 export default function MainLayout() {
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotifications();
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [workExpanded, setWorkExpanded] = useState(true);
 
   const isActive = (path) => location.pathname === path;
 
-  // Define navigation items configuration
-  const navigationConfig = {
-    SUPER_ADMIN: [
-      { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-      { name: 'Users', path: '/users', icon: Users },
-      { name: 'Projects', path: '/projects', icon: FolderKanban },
-      { name: 'Tasks', path: '/tasks', icon: CheckSquare },
-      { name: 'Audit Logs', path: '/audit-logs', icon: ClipboardList },
-      { name: 'Notifications', path: '/notifications', icon: Bell },
-    ],
-    ADMIN: [
-      { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-      { name: 'Users', path: '/users', icon: Users },
-      { name: 'Projects', path: '/projects', icon: FolderKanban },
-      { name: 'Tasks', path: '/tasks', icon: CheckSquare },
-      { name: 'Audit Logs', path: '/audit-logs', icon: ClipboardList },
-      { name: 'Notifications', path: '/notifications', icon: Bell },
-    ],
-    PROJECT_MANAGER: [
-      { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-      { name: 'Projects', path: '/projects', icon: FolderKanban },
-      { name: 'Tasks', path: '/tasks', icon: CheckSquare },
-      { name: 'Notifications', path: '/notifications', icon: Bell },
-    ],
-    COLLABORATOR: [
-      { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-      { name: 'My Tasks', path: '/my-tasks', icon: ClipboardList },
-      { name: 'Notifications', path: '/notifications', icon: Bell },
-      { name: 'Profile', path: '/profile', icon: User },
-    ],
-  };
-
-  const menuItems = navigationConfig[user?.role] || [];
-
-  // Standardized role badge colors: SUPER_ADMIN=amber, ADMIN=purple, PM=blue, COLLABORATOR=gray
-  const getRoleBadgeStyle = (role) => {
+  const getAvatarClass = (role) => {
     switch (role) {
-      case 'SUPER_ADMIN':
-        return 'bg-amber-500/10 text-amber-400 border-amber-500/30';
-      case 'ADMIN':
-        return 'bg-purple-500/10 text-purple-400 border-purple-500/30';
-      case 'PROJECT_MANAGER':
-        return 'bg-blue-500/10 text-blue-400 border-blue-500/30';
-      default:
-        return 'bg-slate-500/10 text-slate-400 border-slate-600/30';
+      case 'SUPER_ADMIN': return 'avatar-initials-amber';
+      case 'ADMIN': return 'avatar-initials-purple';
+      case 'PROJECT_MANAGER': return 'avatar-initials-blue';
+      default: return 'avatar-initials-violet';
     }
   };
+
+  // Fetch active projects for sidebar safely inside useEffect
+  useEffect(() => {
+    let active = true;
+    if (user) {
+      api.get('/api/v1/projects')
+        .then(response => {
+          if (active) {
+            setProjects(response.data || []);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to fetch sidebar projects:', err);
+        });
+    }
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   // Open mobile sidebar
   const openSidebar = useCallback(() => {
@@ -90,150 +78,286 @@ export default function MainLayout() {
     }, 250);
   }, []);
 
-  // Clean up body class on unmount
   useEffect(() => {
     return () => {
       document.body.classList.remove('sidebar-open');
     };
   }, []);
 
-  const renderNavLinks = (onClickCallback) => (
-    <div className="space-y-1.5 px-3 py-4">
-      {menuItems.map((item) => {
-        const IconComponent = item.icon;
-        const active = isActive(item.path);
-        return (
-          <Link
-            key={item.name}
-            to={item.path}
-            onClick={onClickCallback}
-            className={`flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 group text-sm cursor-pointer ${
-              active
-                ? 'bg-slate-905 border-l-4 border-violet-600 text-slate-100 shadow-sm'
-                : 'text-slate-500 hover:text-slate-100 hover:bg-slate-905/60'
-            }`}
-          >
-            <IconComponent
-              className={`h-5 w-5 transition-transform duration-200 group-hover:scale-105 ${
-                active ? 'text-slate-100' : 'text-slate-500 group-hover:text-slate-350'
+  const handleNewProjectClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate('/projects', { state: { openCreateModal: true } });
+  };
+
+  const projectIcons = [
+    { icon: ClipboardList, color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+    { icon: ClipboardList, color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+    { icon: ClipboardList, color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+    { icon: ClipboardList, color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' }
+  ];
+
+  const renderSidebarContent = (onClickCallback) => {
+    return (
+      <div className="h-full flex flex-col justify-between bg-slate-900 border-r border-slate-850 w-64 select-none">
+        <div className="flex-1 overflow-y-auto">
+          {/* Logo / Header */}
+          <div className="p-4 flex items-center justify-between border-b border-slate-850">
+            <Link to="/dashboard" onClick={onClickCallback} className="flex items-center space-x-2.5">
+              <div className="h-8 w-8 rounded-lg bg-violet-600 flex items-center justify-center font-bold text-white shadow-sm text-sm">
+                TF
+              </div>
+              <span className="text-sm font-bold text-slate-100 tracking-tight">TaskFlow</span>
+            </Link>
+            {mobileSidebarOpen && (
+              <button
+                onClick={closeSidebar}
+                className="p-1 rounded-lg hover:bg-slate-955 text-slate-500 hover:text-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+
+          {/* Section 1: Main Dashboard Links */}
+          <div className="px-3 pt-4 pb-2 space-y-1">
+            <Link
+              to="/dashboard"
+              onClick={onClickCallback}
+              className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
+                isActive('/dashboard') ? 'bg-slate-905 text-white font-semibold' : 'text-slate-500 hover:text-slate-100 hover:bg-slate-905/40'
               }`}
-            />
-            <span>{item.name}</span>
-          </Link>
-        );
-      })}
-    </div>
-  );
+            >
+              <div className="flex items-center space-x-3">
+                <Home className={`h-4.5 w-4.5 ${isActive('/dashboard') ? 'text-white' : 'text-slate-700'}`} />
+                <span>Home</span>
+              </div>
+            </Link>
+
+            <Link
+              to="/notifications"
+              onClick={onClickCallback}
+              className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
+                isActive('/notifications') ? 'bg-slate-905 text-white font-semibold' : 'text-slate-500 hover:text-slate-100 hover:bg-slate-905/40'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <Bell className={`h-4.5 w-4.5 ${isActive('/notifications') ? 'text-white' : 'text-slate-700'}`} />
+                <span>Inbox</span>
+              </div>
+              {unreadCount > 0 && (
+                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-600/15 text-blue-400 border border-blue-500/20">
+                  {unreadCount}
+                </span>
+              )}
+            </Link>
+          </div>
+
+          <div className="px-4 py-1">
+            <div className="border-t border-slate-850"></div>
+          </div>
+
+          {/* Section 2: Task and Projects Management */}
+          <div className="px-3 py-2 space-y-1">
+            {user?.role === 'COLLABORATOR' && (
+              <Link
+                to="/my-tasks"
+                onClick={onClickCallback}
+                className={`flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
+                  isActive('/my-tasks') ? 'bg-slate-905 text-white font-semibold' : 'text-slate-500 hover:text-slate-100 hover:bg-slate-905/40'
+                }`}
+              >
+                <CheckCircle className={`h-4.5 w-4.5 ${isActive('/my-tasks') ? 'text-white' : 'text-slate-700'}`} />
+                <span>My tasks</span>
+              </Link>
+            )}
+
+            <Link
+              to="/projects"
+              onClick={onClickCallback}
+              className={`flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
+                isActive('/projects') ? 'bg-slate-905 text-white font-semibold' : 'text-slate-500 hover:text-slate-100 hover:bg-slate-905/40'
+              }`}
+            >
+              <ClipboardList className={`h-4.5 w-4.5 ${isActive('/projects') ? 'text-white' : 'text-slate-700'}`} />
+              <span>{user?.role === 'COLLABORATOR' ? 'My Projects' : 'Projects'}</span>
+            </Link>
+          </div>
+
+          {/* Section 3: Admin Actions & Settings */}
+          <>
+            <div className="px-4 py-1">
+              <div className="border-t border-slate-850"></div>
+            </div>
+            <div className="px-3 py-2 space-y-1">
+              {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'PROJECT_MANAGER') && (
+                <Link
+                  to="/users"
+                  onClick={onClickCallback}
+                  className={`flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
+                    isActive('/users') ? 'bg-slate-905 text-white font-semibold' : 'text-slate-500 hover:text-slate-100 hover:bg-slate-905/40'
+                  }`}
+                >
+                  <Users className={`h-4.5 w-4.5 ${isActive('/users') ? 'text-white' : 'text-slate-700'}`} />
+                  <span>Users Directory</span>
+                </Link>
+              )}
+
+              {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
+                <Link
+                  to="/audit-logs"
+                  onClick={onClickCallback}
+                  className={`flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
+                    isActive('/audit-logs') ? 'bg-slate-905 text-white font-semibold' : 'text-slate-500 hover:text-slate-100 hover:bg-slate-905/40'
+                  }`}
+                >
+                  <AuditIcon className={`h-4.5 w-4.5 ${isActive('/audit-logs') ? 'text-white' : 'text-slate-700'}`} />
+                  <span>Audit Logs</span>
+                </Link>
+              )}
+
+              <Link
+                to="/profile"
+                onClick={onClickCallback}
+                className={`flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
+                  isActive('/profile') ? 'bg-slate-905 text-white font-semibold' : 'text-slate-500 hover:text-slate-100 hover:bg-slate-905/40'
+                }`}
+              >
+                <User className={`h-4.5 w-4.5 ${isActive('/profile') ? 'text-white' : 'text-slate-700'}`} />
+                <span>Profile Settings</span>
+              </Link>
+            </div>
+          </>
+
+          <div className="px-4 py-1">
+            <div className="border-t border-slate-850"></div>
+          </div>
+
+          {/* Section 4: Collapsible Work Section */}
+          <div className="px-3 py-2">
+            <div 
+              className="flex items-center justify-between px-3 py-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer group"
+              onClick={() => setWorkExpanded(!workExpanded)}
+            >
+              <div className="flex items-center space-x-1.5">
+                {workExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                <span>Work</span>
+              </div>
+              {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'PROJECT_MANAGER') && (
+                <button
+                  onClick={handleNewProjectClick}
+                  className="p-0.5 rounded hover:bg-slate-905/60 text-slate-500 hover:text-white cursor-pointer"
+                  title="Create Project"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            {workExpanded && (
+              <div className="mt-1 space-y-0.5">
+                {projects.length === 0 ? (
+                  <div className="px-6 py-2 text-xs text-slate-550 italic">No projects found</div>
+                ) : (
+                  projects.map((proj, idx) => {
+                    const iconStyle = projectIcons[idx % projectIcons.length];
+                    const ProjectIcon = iconStyle.icon;
+                    return (
+                      <Link
+                        key={proj.id}
+                        to="/projects"
+                        onClick={onClickCallback}
+                        className="flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium text-slate-500 hover:text-slate-100 hover:bg-slate-905/40 transition-all duration-150"
+                      >
+                        <div className={`h-5 w-5 rounded-md flex items-center justify-center border shrink-0 ${iconStyle.color}`}>
+                          <ProjectIcon className="h-3 w-3" />
+                        </div>
+                        <span className="truncate">{proj.name}</span>
+                      </Link>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Section: Search, User profile card and Sign out */}
+        <div className="p-4 border-t border-slate-850 space-y-4">
+          <div className="px-1">
+            <GlobalSearch />
+          </div>
+
+          <div className="flex items-center justify-between bg-slate-950/40 p-2.5 rounded-xl border border-slate-850">
+            <div className="flex items-center space-x-2.5 min-w-0">
+              <div className={`h-8.5 w-8.5 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border ${getAvatarClass(user?.role)}`}>
+                {user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-white truncate leading-tight">{user?.name}</p>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">{user?.role?.replace('_', ' ')}</p>
+              </div>
+            </div>
+            <button
+              onClick={logout}
+              className="p-1.5 rounded-lg hover:bg-rose-50/10 text-slate-500 hover:text-rose-400 transition-colors cursor-pointer"
+              title="Sign Out"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="text-[9px] text-slate-700 flex items-center justify-between px-1">
+            <span>Secure Portals v1.0</span>
+            <ShieldCheck className="h-3 w-3 text-emerald-500/40" />
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-850 px-4 sm:px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          {/* Mobile hamburger menu toggle */}
-          <button
-            onClick={openSidebar}
-            className="md:hidden p-2 rounded-lg text-slate-500 hover:text-slate-100 hover:bg-slate-950 transition-colors cursor-pointer"
-            aria-label="Open navigation menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          
-          <div className="flex items-center space-x-3">
-            <div className="h-9 w-9 rounded-xl bg-violet-600 flex items-center justify-center font-bold text-white shadow-sm">
-              TF
-            </div>
-            <span className="text-lg font-bold tracking-tight text-slate-100">
-              TaskFlow
-            </span>
+      {/* Mobile Top Header (Visible only on mobile screen widths) */}
+      <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-850 px-4 py-3 flex md:hidden items-center justify-between">
+        <button
+          onClick={openSidebar}
+          className="p-2 rounded-lg text-slate-500 hover:text-slate-100 hover:bg-slate-950 transition-colors cursor-pointer"
+          aria-label="Open menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <Link to="/dashboard" className="flex items-center space-x-2">
+          <div className="h-7 w-7 rounded-lg bg-violet-600 flex items-center justify-center font-bold text-white shadow-sm text-xs">
+            TF
           </div>
-        </div>
-
-        {/* Global Search */}
-        <div className="hidden md:block flex-1 max-w-xs mx-4">
-          <GlobalSearch />
-        </div>
-
-        {/* User profile details & Logout */}
-        <div className="flex items-center space-x-3 sm:space-x-4">
-          <NotificationBell />
-          <div className="flex items-center space-x-3 border-r border-slate-850 pr-3 sm:pr-4">
-            {/* User Avatar with Initials */}
-            <div className="h-9 w-9 rounded-xl bg-violet-600 flex items-center justify-center font-bold text-xs text-white shadow-sm">
-              {user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
-            </div>
-            
-            <div className="hidden sm:block text-left">
-              <div className="text-xs font-semibold text-slate-100 leading-tight">{user?.name}</div>
-              <div className="flex items-center space-x-1.5 mt-0.5">
-                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider ${getRoleBadgeStyle(user?.role)}`}>
-                  {user?.role?.replace('_', ' ')}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={logout}
-            className="p-2 sm:py-2 sm:px-3.5 rounded-xl bg-slate-900 hover:bg-rose-50 hover:text-rose-600 border border-slate-800 hover:border-rose-200 text-slate-400 transition-all duration-200 flex items-center space-x-1.5 text-xs font-semibold cursor-pointer"
-            title="Sign Out"
-          >
-            <LogOut className="h-4 w-4" />
-            <span className="hidden sm:inline">Sign Out</span>
-          </button>
-        </div>
+          <span className="text-sm font-bold text-slate-100 tracking-tight">TaskFlow</span>
+        </Link>
+        {unreadCount > 0 ? (
+          <span className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-blue-600 text-white">
+            {unreadCount}
+          </span>
+        ) : (
+          <div className="w-7"></div>
+        )}
       </header>
 
       {/* Main Layout Area */}
       <div className="flex-1 flex overflow-hidden">
         {/* Desktop Sidebar (Fixed) */}
         <aside className="hidden md:block w-64 bg-slate-900 border-r border-slate-850 flex-shrink-0">
-          <div className="h-full flex flex-col justify-between">
-            <div className="flex-1 overflow-y-auto">
-              {renderNavLinks()}
-            </div>
-            <div className="p-4 border-t border-slate-850 text-[10px] text-slate-500 flex items-center justify-between">
-              <span>Secure Shell v1.0</span>
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-500/60" />
-            </div>
-          </div>
+          {renderSidebarContent()}
         </aside>
 
-        {/* Mobile Slide-out Drawer Sidebar (Overlay with animation) */}
+        {/* Mobile Slide-out Drawer Sidebar */}
         {mobileSidebarOpen && (
           <div className="fixed inset-0 z-50 md:hidden flex">
-            {/* Backdrop */}
             <div
               className={`fixed inset-0 bg-black/60 backdrop-blur-sm ${isClosing ? 'sidebar-backdrop-exit' : 'sidebar-backdrop-enter'}`}
               onClick={closeSidebar}
             ></div>
-
-            {/* Sidebar drawer content with slide animation */}
-            <div className={`relative flex flex-col w-64 max-w-xs bg-slate-900 border-r border-slate-850 h-full shadow-2xl z-10 ${isClosing ? 'sidebar-drawer-exit' : 'sidebar-drawer-enter'}`}>
-              <div className="p-4 flex items-center justify-between border-b border-slate-850">
-                <div className="flex items-center space-x-2.5">
-                  <div className="h-8 w-8 rounded-lg bg-violet-600 flex items-center justify-center font-bold text-white shadow-sm text-sm">
-                    TF
-                  </div>
-                  <span className="text-sm font-bold text-slate-100">Menu Navigation</span>
-                </div>
-                <button
-                  onClick={closeSidebar}
-                  className="p-1 rounded-lg hover:bg-slate-950 text-slate-500 hover:text-slate-100 transition-colors cursor-pointer"
-                  aria-label="Close navigation menu"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto">
-                {renderNavLinks(closeSidebar)}
-              </div>
-
-              <div className="p-4 border-t border-slate-850 text-[10px] text-slate-500 flex items-center justify-between">
-                <span>Secure Mobile Shell</span>
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500/60" />
-              </div>
+            <div className={`relative flex flex-col w-64 bg-slate-900 border-r border-slate-850 h-full shadow-2xl z-10 ${isClosing ? 'sidebar-drawer-exit' : 'sidebar-drawer-enter'}`}>
+              {renderSidebarContent(closeSidebar)}
             </div>
           </div>
         )}

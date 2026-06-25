@@ -71,19 +71,7 @@ export default function Dashboard() {
   const completedTasks = tasks.filter(t => t.status === 'COMPLETED').length;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-  // Enforce badge styles
-  const getRoleBadgeStyle = (role) => {
-    switch (role) {
-      case 'SUPER_ADMIN':
-        return 'bg-amber-500/10 text-amber-600 border-amber-200';
-      case 'ADMIN':
-        return 'bg-purple-500/10 text-purple-600 border-purple-200';
-      case 'PROJECT_MANAGER':
-        return 'bg-blue-500/10 text-blue-600 border-blue-200';
-      default:
-        return 'bg-slate-500/10 text-slate-600 border-slate-300';
-    }
-  };
+
 
   // --- COLLABORATOR VIEW ---
   const renderCollaboratorView = () => {
@@ -686,23 +674,62 @@ export default function Dashboard() {
     );
   };
 
+  const formattedDate = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const getGreeting = () => {
+    const hr = new Date().getHours();
+    if (hr < 12) return 'Good morning';
+    if (hr < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const firstName = user?.name ? user.name.split(' ')[0] : 'User';
+
   return (
-    <div className="space-y-8">
-      {/* Header welcome banner */}
-      <div className="bg-gradient-to-r from-slate-900/60 to-purple-950/20 border border-slate-800/80 rounded-3xl p-8 relative overflow-hidden backdrop-blur-md">
-        <div className="absolute -right-16 -top-16 w-48 h-48 bg-purple-600/10 rounded-full blur-3xl"></div>
-        <div className="absolute -left-16 -bottom-16 w-48 h-48 bg-fuchsia-600/10 rounded-full blur-3xl"></div>
-        
-        <div className="relative z-10 space-y-2">
-          <span className={`px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-wider ${getRoleBadgeStyle(user?.role)}`}>
-            {user?.role?.replace('_', ' ')} Panel
-          </span>
-          <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-none mt-2">
-            Welcome back, <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">{user?.name || 'User'}</span>!
+    <div className="space-y-8 select-none">
+      {/* Asana Dark Mode Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-850">
+        <div>
+          <p className="text-xs text-slate-500 font-medium">{formattedDate}</p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight mt-1">
+            {getGreeting()}, {firstName}
           </h1>
-          <p className="text-slate-400 text-sm max-w-2xl">
-            Central monitoring panel for task statistics, project progress, and active workloads.
-          </p>
+        </div>
+
+        {/* Right side pills */}
+        <div className="flex flex-wrap items-center gap-3 text-xs">
+          {/* Dropdown: My week */}
+          <div className="flex items-center space-x-1 px-3 py-1.5 bg-[#252526] hover:bg-[#2c2c2d] border border-slate-850 rounded-xl font-medium text-white transition-all cursor-pointer">
+            <span>My week</span>
+            <span className="text-[9px] text-slate-500">▼</span>
+          </div>
+
+          {/* Unified status pill */}
+          <div className="flex items-center space-x-3 px-3.5 py-1.5 bg-[#252526] border border-slate-850 rounded-xl font-medium text-slate-400">
+            <div className="flex items-center space-x-1">
+              <span className="text-emerald-450">✓</span>
+              <span>{completedTasks} task{completedTasks !== 1 ? 's' : ''} completed</span>
+            </div>
+            <div className="h-3 w-px bg-slate-800"></div>
+            <div className="flex items-center space-x-1">
+              <span>{projects.length} project{projects.length !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
+
+          {/* Customize Button with grid logo */}
+          <button className="flex items-center space-x-2 px-3.5 py-1.5 bg-[#252526] hover:bg-[#2c2c2d] border border-slate-850 rounded-xl font-medium text-white transition-all cursor-pointer">
+            <div className="grid grid-cols-2 gap-0.5 w-3 h-3">
+              <div className="w-1.2 h-1.2 bg-rose-500 rounded-[1px]"></div>
+              <div className="w-1.2 h-1.2 bg-blue-500 rounded-[1px]"></div>
+              <div className="w-1.2 h-1.2 bg-amber-500 rounded-[1px]"></div>
+              <div className="w-1.2 h-1.2 bg-emerald-500 rounded-[1px]"></div>
+            </div>
+            <span>Customize</span>
+          </button>
         </div>
       </div>
 

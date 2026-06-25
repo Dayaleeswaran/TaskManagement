@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import { CheckSquare, Clock, AlertTriangle, Play, CheckCircle2 } from 'lucide-react';
+import TaskDetailModal from '../components/TaskDetailModal';
 
 export default function MyTasks() {
   const { addToast } = useToast();
@@ -9,6 +10,7 @@ export default function MyTasks() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL'); // ALL, PENDING, COMPLETED
+  const [selectedTask, setSelectedTask] = useState(null);
 
   const fetchMyTasks = useCallback(async () => {
     try {
@@ -35,6 +37,10 @@ export default function MyTasks() {
       await api.patch(`/api/v1/tasks/${taskId}/status`, { status: newStatus });
       addToast(`Task status updated to ${newStatus.replace('_', ' ').toLowerCase()}`, 'success');
       fetchMyTasks();
+      // If the currently selected task is updated, refresh it too
+      if (selectedTask && selectedTask.id === taskId) {
+        setSelectedTask(prev => ({ ...prev, status: newStatus }));
+      }
     } catch (err) {
       addToast(err.response?.data?.message || 'Failed to update task status.', 'error');
     }
@@ -90,7 +96,7 @@ export default function MyTasks() {
       {loading ? (
         <div className="py-12 text-center text-slate-550 text-sm animate-pulse">Loading my tasks...</div>
       ) : filteredTasks.length === 0 ? (
-        <div className="py-16 text-center bg-slate-950/20 border border-slate-900 border-dashed rounded-3xl">
+        <div className="py-16 text-center bg-slate-955 border border-slate-900 border-dashed rounded-3xl">
           <CheckSquare className="h-10 w-10 text-slate-700 mx-auto mb-3" />
           <p className="text-sm font-semibold text-slate-500">No tasks match the selected filter.</p>
         </div>
@@ -99,7 +105,8 @@ export default function MyTasks() {
           {filteredTasks.map((task) => (
             <div
               key={task.id}
-              className="p-5 rounded-2xl bg-slate-950/40 border border-slate-800 hover:border-slate-700/80 transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4"
+              onClick={() => setSelectedTask(task)}
+              className="p-5 rounded-2xl bg-slate-950/40 border border-slate-800 hover:border-slate-700/80 hover:bg-slate-900/20 transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer"
             >
               <div className="flex items-start space-x-3.5">
                 <div className="mt-1 h-9 w-9 rounded-xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
@@ -125,7 +132,11 @@ export default function MyTasks() {
                 {/* Status Selection Dropdown */}
                 <select
                   value={task.status}
-                  onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    handleStatusChange(task.id, e.target.value);
+                  }}
                   className="px-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-xl text-xs font-semibold text-slate-200 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
                 >
                   <option value="TODO">To Do</option>
@@ -136,7 +147,10 @@ export default function MyTasks() {
                 {/* Quick actions status updates */}
                 {task.status === 'TODO' && (
                   <button 
-                    onClick={() => handleStatusChange(task.id, 'IN_PROGRESS')}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStatusChange(task.id, 'IN_PROGRESS');
+                    }}
                     className="p-2 rounded-lg bg-slate-900 hover:bg-violet-600/20 text-slate-400 hover:text-violet-300 border border-slate-850 hover:border-violet-500/30 transition-all duration-200 cursor-pointer"
                     title="Start Task"
                   >
@@ -145,7 +159,10 @@ export default function MyTasks() {
                 )}
                 {task.status === 'IN_PROGRESS' && (
                   <button 
-                    onClick={() => handleStatusChange(task.id, 'COMPLETED')}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStatusChange(task.id, 'COMPLETED');
+                    }}
                     className="p-2 rounded-lg bg-slate-900 hover:bg-emerald-600/20 text-slate-400 hover:text-emerald-300 border border-slate-850 hover:border-emerald-500/30 transition-all duration-200 cursor-pointer"
                     title="Complete Task"
                   >
@@ -156,6 +173,16 @@ export default function MyTasks() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Task Details Panel overlay */}
+      {selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onTaskUpdated={fetchMyTasks}
+          onTaskDeleted={fetchMyTasks}
+        />
       )}
     </div>
   );

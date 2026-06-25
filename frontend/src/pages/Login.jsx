@@ -19,12 +19,33 @@ export default function Login() {
   // Get redirection path or default to dashboard
   const from = location.state?.from?.pathname || '/dashboard';
 
-  // If already logged in, redirect to dashboard
+  // If already logged in, redirect to workspace
   useEffect(() => {
     if (user) {
-      navigate('/dashboard', { replace: true });
+      let targetPath = '/dashboard';
+      if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
+        targetPath = '/users';
+      } else if (user.role === 'PROJECT_MANAGER') {
+        targetPath = '/projects';
+      } else if (user.role === 'COLLABORATOR') {
+        targetPath = '/my-tasks';
+      }
+      navigate(targetPath, { replace: true });
     }
   }, [user, navigate]);
+
+  // Check for redirected message (e.g. from forced logout)
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const messageParam = queryParams.get('message');
+    if (messageParam) {
+      setTimeout(() => {
+        setError(messageParam);
+        addToast(messageParam, 'error');
+      }, 100);
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.search, location.pathname, navigate, addToast]);
 
   // Clear field error when user types
   const handleEmailChange = (e) => {
@@ -76,9 +97,20 @@ export default function Login() {
 
     try {
       setLoading(true);
-      await login(email, password);
+      const loggedInUser = await login(email, password);
+      
+      let targetPath = from;
+      if (from === '/dashboard' || from === '/') {
+        if (loggedInUser.role === 'SUPER_ADMIN' || loggedInUser.role === 'ADMIN') {
+          targetPath = '/users';
+        } else if (loggedInUser.role === 'PROJECT_MANAGER') {
+          targetPath = '/projects';
+        } else if (loggedInUser.role === 'COLLABORATOR') {
+          targetPath = '/my-tasks';
+        }
+      }
       // Success: Navigate to redirected route
-      navigate(from, { replace: true });
+      navigate(targetPath, { replace: true });
     } catch (err) {
       const errorMsg = err.message || 'Incorrect email or password. Please try again.';
       setError(errorMsg);

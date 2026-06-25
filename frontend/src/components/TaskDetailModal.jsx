@@ -12,15 +12,18 @@ import {
   Trash2, 
   Save, 
   RotateCcw,
-  Tag
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useNotifications } from '../context/NotificationContext';
 
 export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskUpdated, onTaskDeleted }) {
   const { user } = useAuth();
   const { addToast } = useToast();
+  const { notifications } = useNotifications();
 
   const [localTask, setLocalTask] = useState(task);
   const [comments, setComments] = useState([]);
@@ -38,13 +41,13 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
     if (!task.dueDate) return '';
     return new Date(task.dueDate).toISOString().split('T')[0];
   });
-  const [editedLabels, setEditedLabels] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
 
   const [projectMembers, setProjectMembers] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [editedAssigneeIds, setEditedAssigneeIds] = useState([]);
 
+  // Fetch project members for reassigning
   const fetchProjectMembers = useCallback(async (pId) => {
     try {
       setLoadingMembers(true);
@@ -57,26 +60,26 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
     }
   }, []);
 
-  // Fetch full details of the task including attachments, watchers, and labels
+  // Fetch full details of the task
   const fetchFullTaskDetails = useCallback(async () => {
     try {
       const response = await api.get(`/api/v1/tasks/${task.id}`);
-      setLocalTask(response.data);
+      const data = response.data;
+      setLocalTask(data);
       // Sync edit states
-      setEditedTitle(response.data.title || '');
-      setEditedDescription(response.data.description || '');
-      setEditedPriority(response.data.priority || 'MEDIUM');
-      setEditedStatus(response.data.status || 'TODO');
-      setEditedDueDate(response.data.dueDate ? new Date(response.data.dueDate).toISOString().split('T')[0] : '');
-      setEditedLabels(response.data.labels?.map((l) => l.name) || []);
-      setEditedAssigneeIds(response.data.assignments?.map((a) => a.userId || a.user?.id) || []);
+      setEditedTitle(data.title || '');
+      setEditedDescription(data.description || '');
+      setEditedPriority(data.priority || 'MEDIUM');
+      setEditedStatus(data.status || 'TODO');
+      setEditedDueDate(data.dueDate ? new Date(data.dueDate).toISOString().split('T')[0] : '');
+      setEditedAssigneeIds(data.assignments?.map((a) => a.userId || a.user?.id) || []);
       
-      if (response.data.comments) {
-        setComments(response.data.comments);
+      if (data.comments) {
+        setComments(data.comments);
       }
 
-      if (response.data.projectId) {
-        fetchProjectMembers(response.data.projectId);
+      if (data.projectId) {
+        fetchProjectMembers(data.projectId);
       }
     } catch (err) {
       console.error('Failed to fetch full task details:', err);
@@ -92,7 +95,20 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
     }
   }, [task?.id, fetchFullTaskDetails]);
 
-  // Close modal when Escape key is pressed
+  // Real-time socket notification update trigger
+  useEffect(() => {
+    if (notifications.length > 0) {
+      const latest = notifications[0];
+      if (latest && latest.message && latest.message.includes(`task:${task.id}`)) {
+        const timer = setTimeout(() => {
+          fetchFullTaskDetails();
+        }, 0);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [notifications, task.id, fetchFullTaskDetails]);
+
+  // Close panel on Escape key
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose();
@@ -106,7 +122,7 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
     if (!task?.id) return;
 
     const fetchComments = async () => {
-      Promise.resolve().then(() => setIsLoadingComments(true));
+      setIsLoadingComments(true);
       try {
         const response = await api.get(`/api/v1/tasks/${task.id}/comments`);
         setComments(response.data.comments || response.data || []);
@@ -120,6 +136,19 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
     fetchComments();
   }, [task?.id]);
 
+  // Permission helpers
+  const canEditTask = 
+    user?.role === 'ADMIN' || 
+    user?.role === 'SUPER_ADMIN' || 
+    (user?.role === 'PROJECT_MANAGER' && localTask.project?.ownerId === user?.id);
+
+  const canChangeStatus = 
+    user?.role === 'ADMIN' || 
+    user?.role === 'SUPER_ADMIN' || 
+    (user?.role === 'PROJECT_MANAGER' && localTask.project?.ownerId === user?.id) ||
+    (user?.role === 'COLLABORATOR' && localTask.assignments?.some(a => (a.userId || a.user?.id) === user?.id));
+
+  // Save changes (Admin/PM details edit)
   const handleSaveTask = async () => {
     if (!editedTitle.trim()) {
       addToast('Task title is required.', 'error');
@@ -137,7 +166,6 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
         priority: editedPriority,
         status: editedStatus,
         dueDate: editedDueDate ? new Date(editedDueDate).toISOString() : null,
-        labels: editedLabels,
         assignedUserIds: editedAssigneeIds,
       });
       addToast('Task updated successfully!', 'success');
@@ -152,12 +180,42 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
       if (onTaskUpdated) {
         onTaskUpdated(updated);
       }
+      fetchFullTaskDetails();
     } catch (err) {
       console.error('Failed to update task:', err);
       addToast(err.response?.data?.message || 'Failed to update task.', 'error');
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Change task status directly
+  const handleStatusChange = async (newStatus) => {
+    setIsSaving(true);
+    try {
+      const response = await api.patch(`/api/v1/tasks/${task.id}/status`, { status: newStatus });
+      addToast(`Task status updated to ${newStatus.replace('_', ' ').toLowerCase()}`, 'success');
+      
+      const updated = {
+        ...localTask,
+        ...response.data,
+      };
+      setLocalTask(updated);
+      
+      if (onTaskUpdated) {
+        onTaskUpdated(updated);
+      }
+      fetchFullTaskDetails();
+    } catch (err) {
+      console.error('Failed to update status:', err);
+      addToast(err.response?.data?.message || 'Failed to update status.', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleMarkComplete = () => {
+    handleStatusChange('COMPLETED');
   };
 
   const handleDeleteTask = async () => {
@@ -192,54 +250,46 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
       if (onCommentAdded) {
         onCommentAdded(task.id);
       }
+      fetchFullTaskDetails();
     } catch (err) {
       console.error('Failed to submit comment:', err);
+      addToast(err.response?.data?.message || 'Failed to submit comment.', 'error');
     } finally {
       setIsSubmittingComment(false);
-    }
-  };
-
-
-
-
-  const toggleEditLabel = (labelName) => {
-    if (editedLabels.includes(labelName)) {
-      setEditedLabels(editedLabels.filter((l) => l !== labelName));
-    } else {
-      setEditedLabels([...editedLabels, labelName]);
     }
   };
 
   const getPriorityColor = (priority) => {
     switch (priority?.toUpperCase()) {
       case 'HIGH':
-        return 'text-rose-600 bg-rose-50 border-rose-100';
+        return 'text-rose-400 bg-rose-500/10 border-rose-500/20';
       case 'MEDIUM':
-        return 'text-amber-600 bg-amber-50 border-amber-100';
+        return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
       default:
-        return 'text-emerald-700 bg-emerald-50 border-emerald-100';
+        return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
     }
   };
 
   const getStatusColor = (status) => {
     switch (status?.toUpperCase().replace('_', '')) {
       case 'COMPLETED':
-        return 'text-emerald-700 bg-emerald-50 border-emerald-100';
+        return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
       case 'INPROGRESS':
-        return 'text-blue-700 bg-blue-50 border-blue-100';
+        return 'text-blue-400 bg-blue-500/10 border-blue-500/20';
       default:
-        return 'text-slate-600 bg-slate-100 border-slate-200';
+        return 'text-slate-400 bg-[#1e1e1f] border-slate-800';
     }
   };
 
   const getRoleBadgeColor = (role) => {
     switch (role) {
       case 'ADMIN':
-        return 'bg-purple-100 border-purple-200 text-purple-700';
+      case 'SUPER_ADMIN':
+        return 'avatar-initials-purple';
       case 'PROJECT_MANAGER':
-        return 'bg-blue-100 border-blue-200 text-blue-700';
+        return 'avatar-initials-blue';
       default:
-        return 'bg-slate-100 border-slate-200 text-slate-700';
+        return 'avatar-initials-violet';
     }
   };
 
@@ -256,82 +306,56 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
     return date.toLocaleDateString();
   };
 
-
-
-  const allSystemLabels = ["BUG", "FEATURE", "URGENT", "DOCUMENTATION", "REFACTOR"];
-  const isOwnerOrAdmin = user?.role === 'ADMIN' || localTask.project?.ownerId === user?.id;
+  const formatDueDate = (dateString) => {
+    if (!dateString) return 'No Due Date';
+    return new Date(dateString).toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-50 flex justify-end">
+      {/* Backdrop overlay */}
       <div 
-        className="fixed inset-0 bg-transparent"
+        className="fixed inset-0 bg-slate-950/65 backdrop-blur-xs transition-opacity duration-300"
         onClick={onClose}
       />
 
-      {/* Modal Container */}
-      <div className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden z-10 transition-all duration-300">
+      {/* Slide-over Right Panel */}
+      <div className="relative w-full max-w-lg md:max-w-xl bg-[#252526] border-l border-slate-850 h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-300 select-none">
         
-        {/* Header */}
-        <div className="p-6 border-b border-slate-100 flex items-start justify-between bg-slate-50/50">
-          <div className="space-y-1.5 flex-1 pr-6">
-            <div className="flex items-center space-x-2.5 flex-wrap gap-y-1.5">
-              {isEditing ? (
-                <>
-                  <select
-                    value={editedStatus}
-                    onChange={(e) => setEditedStatus(e.target.value)}
-                    className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white border border-slate-350 text-slate-800 focus:outline-none cursor-pointer"
-                  >
-                    <option value="TODO">To Do</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="COMPLETED">Completed</option>
-                  </select>
-                  <select
-                    value={editedPriority}
-                    onChange={(e) => setEditedPriority(e.target.value)}
-                    className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white border border-slate-350 text-slate-800 focus:outline-none cursor-pointer"
-                  >
-                    <option value="LOW">Low</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HIGH">High</option>
-                  </select>
-                </>
-              ) : (
-                <>
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border uppercase tracking-wider ${getStatusColor(localTask.status)}`}>
-                    {localTask.status?.replace('_', ' ')}
-                  </span>
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border uppercase tracking-wider ${getPriorityColor(localTask.priority)}`}>
-                    {localTask.priority} Priority
-                  </span>
-                </>
-              )}
-            </div>
-            {isEditing ? (
-              <input
-                type="text"
-                value={editedTitle}
-                onChange={(e) => setEditedTitle(e.target.value)}
-                className="w-full px-3 py-1.5 bg-white border border-slate-300 focus:outline-none focus:ring-1 focus:ring-violet-600 rounded-xl text-base font-bold text-slate-800 mt-1"
-                placeholder="Task Title"
-              />
+        {/* Header Action Bar */}
+        <div className="p-5 border-b border-slate-850 flex items-center justify-between flex-shrink-0 bg-[#252526]">
+          <div className="flex items-center space-x-3">
+            {/* Mark Complete Button / Status Badge */}
+            {localTask.status === 'COMPLETED' ? (
+              <span className="flex items-center space-x-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wide">
+                <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                <span>Completed</span>
+              </span>
             ) : (
-              <h2 className="text-xl font-extrabold text-slate-800 leading-snug tracking-tight">
-                {localTask.title}
-              </h2>
+              <button
+                onClick={handleMarkComplete}
+                disabled={!canChangeStatus || isSaving}
+                className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 cursor-pointer"
+              >
+                <CheckCircle className="h-3.5 w-3.5" />
+                <span>Mark Complete</span>
+              </button>
             )}
           </div>
-          
+
           <div className="flex items-center space-x-2">
-            {isOwnerOrAdmin && (
+            {canEditTask && (
               <>
                 {isEditing ? (
                   <>
                     <button
                       onClick={handleSaveTask}
                       disabled={isSaving}
-                      className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-600 border border-emerald-100 hover:border-emerald-600 text-emerald-600 hover:text-white transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/20 hover:border-emerald-600 transition-colors cursor-pointer"
                       title="Save Changes"
                     >
                       {isSaving ? <Clock className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -341,7 +365,7 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
                         setIsEditing(false);
                         fetchFullTaskDetails();
                       }}
-                      className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg bg-slate-905 border border-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
                       title="Cancel Edit"
                     >
                       <RotateCcw className="h-4 w-4" />
@@ -351,14 +375,14 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
                   <>
                     <button
                       onClick={() => setIsEditing(true)}
-                      className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-100 hover:bg-slate-905 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg bg-slate-905 border border-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
                       title="Edit Task"
                     >
                       <Edit3 className="h-4 w-4" />
                     </button>
                     <button
                       onClick={handleDeleteTask}
-                      className="p-1.5 rounded-lg bg-rose-50 border border-rose-100 text-rose-600 hover:text-white hover:bg-rose-600 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-600 border border-rose-500/20 hover:border-rose-600 text-rose-400 hover:text-white transition-colors cursor-pointer"
                       title="Delete Task"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -369,140 +393,134 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
             )}
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-905 transition-colors cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        {/* Content Body (Scrollable) */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Scrollable Content Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-6">
           
-          {/* Metadata Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <div className="flex items-center space-x-3 text-sm">
-              <Calendar className="h-4 w-4 text-slate-400" />
-              <div>
-                <span className="text-slate-500 block text-xs">Due Date</span>
-                {isEditing ? (
-                  <input
-                    type="date"
-                    value={editedDueDate}
-                    onChange={(e) => setEditedDueDate(e.target.value)}
-                    className="px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 mt-0.5"
-                  />
-                ) : (
-                  <span className="text-slate-800 font-medium">
-                    {localTask.dueDate ? new Date(localTask.dueDate).toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'No Due Date'}
-                  </span>
-                )}
-              </div>
-            </div>
+          {/* Task Title */}
+          <div className="space-y-1.5">
+            {isEditing ? (
+              <input
+                type="text"
+                value={editedTitle}
+                onChange={(e) => setEditedTitle(e.target.value)}
+                className="w-full px-3 py-1.5 bg-[#1e1e1f] border border-slate-800 focus:outline-none focus:border-violet-500 rounded-xl text-base font-bold text-white"
+                placeholder="Task Title"
+              />
+            ) : (
+              <h2 className="text-xl font-extrabold text-white leading-snug tracking-tight">
+                {localTask.title}
+              </h2>
+            )}
+          </div>
 
+          {/* Status Badge Selection */}
+          <div className="flex items-center space-x-2 border-b border-slate-850 pb-4">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status:</span>
+            {canChangeStatus && localTask.status !== 'COMPLETED' ? (
+              <select
+                value={localTask.status}
+                onChange={(e) => handleStatusChange(e.target.value)}
+                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-[#1e1e1f] border border-slate-800 text-slate-200 focus:outline-none cursor-pointer"
+              >
+                <option value="TODO">To Do</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="COMPLETED">Completed</option>
+              </select>
+            ) : (
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border uppercase tracking-wider ${getStatusColor(localTask.status)}`}>
+                {localTask.status?.replace('_', ' ')}
+              </span>
+            )}
+          </div>
+
+          {/* Information Section Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-900/40 p-4 rounded-xl border border-slate-850">
+            {/* Project Name */}
             <div className="flex items-center space-x-3 text-sm">
-              <Layers className="h-4 w-4 text-slate-400" />
+              <Layers className="h-4 w-4 text-slate-500" />
               <div>
-                <span className="text-slate-500 block text-xs">Project</span>
-                <span className="text-slate-800 font-medium">
+                <span className="text-slate-500 block text-[10px] font-bold uppercase tracking-wider">Project</span>
+                <span className="text-white font-medium">
                   {localTask.project?.name || 'General Tasks'}
                 </span>
               </div>
             </div>
 
+            {/* Created By */}
             <div className="flex items-center space-x-3 text-sm">
-              <User className="h-4 w-4 text-slate-400" />
+              <User className="h-4 w-4 text-slate-500" />
               <div>
-                <span className="text-slate-500 block text-xs">Created By</span>
-                <span className="text-slate-800 font-medium">
+                <span className="text-slate-500 block text-[10px] font-bold uppercase tracking-wider">Created By</span>
+                <span className="text-white font-medium">
                   {localTask.createdBy?.name || 'System Admin'}
                 </span>
               </div>
             </div>
 
+            {/* Priority */}
             <div className="flex items-center space-x-3 text-sm">
-              <Award className="h-4 w-4 text-slate-400" />
+              <AlertTriangle className="h-4 w-4 text-slate-500" />
               <div>
-                <span className="text-slate-500 block text-xs">Assignees</span>
-                <div className="flex items-center space-x-1 mt-0.5">
-                  {localTask.assignments && localTask.assignments.length > 0 ? (
-                    localTask.assignments.map((assignment, index) => {
-                      const userObj = assignment.user || assignment;
-                      const initials = userObj.name?.split(' ').map(n => n[0]).join('') || 'U';
-                      return (
-                        <div
-                          key={index}
-                          className="h-6 w-6 rounded-full bg-violet-600 flex items-center justify-center text-[10px] font-bold text-white"
-                          title={userObj.name}
-                        >
-                          {initials}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <span className="text-slate-400 text-xs font-normal">Unassigned</span>
-                  )}
-                </div>
+                <span className="text-slate-500 block text-[10px] font-bold uppercase tracking-wider">Priority</span>
+                {isEditing ? (
+                  <select
+                    value={editedPriority}
+                    onChange={(e) => setEditedPriority(e.target.value)}
+                    className="px-2 py-0.5 bg-[#1e1e1f] border border-slate-800 rounded-lg text-xs text-slate-200 mt-0.5"
+                  >
+                    <option value="LOW">Low</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="HIGH">High</option>
+                  </select>
+                ) : (
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold border uppercase tracking-wider ${getPriorityColor(localTask.priority)}`}>
+                    {localTask.priority}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Due Date */}
+            <div className="flex items-center space-x-3 text-sm">
+              <Calendar className="h-4 w-4 text-slate-500" />
+              <div>
+                <span className="text-slate-500 block text-[10px] font-bold uppercase tracking-wider">Due Date</span>
+                {isEditing ? (
+                  <input
+                    type="date"
+                    value={editedDueDate}
+                    onChange={(e) => setEditedDueDate(e.target.value)}
+                    className="px-2 py-0.5 bg-[#1e1e1f] border border-slate-800 rounded-lg text-xs text-slate-200 mt-0.5"
+                  />
+                ) : (
+                  <span className="text-white font-medium">
+                    {formatDueDate(localTask.dueDate)}
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Labels Section */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Tag className="h-3.5 w-3.5" />
-              Task Labels
-            </h3>
-            {isEditing ? (
-              <div className="flex flex-wrap gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200">
-                {allSystemLabels.map((labelName) => {
-                  const active = editedLabels.includes(labelName);
-                  return (
-                    <button
-                      key={labelName}
-                      onClick={() => toggleEditLabel(labelName)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
-                        active 
-                          ? 'bg-blue-600 border-blue-600 text-white' 
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      {labelName}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {localTask.labels && localTask.labels.length > 0 ? (
-                  localTask.labels.map((lbl) => (
-                    <span 
-                      key={lbl.id} 
-                      className="px-2.5 py-0.5 rounded-full text-xs font-bold border bg-blue-50 border-blue-100 text-blue-700 uppercase"
-                    >
-                      {lbl.name}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-slate-400 text-xs">No labels configured.</span>
-                )}
-              </div>
-            )}
-          </div>
-
           {/* Assignees Section */}
-          <div className="space-y-2 border-t border-slate-100 pt-4">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+          <div className="space-y-2 pt-1">
+            <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
               <Award className="h-3.5 w-3.5" />
               Assignees <span className="text-rose-500">*</span>
             </h3>
             {isEditing ? (
               loadingMembers ? (
-                <div className="text-slate-550 text-xs py-2 flex items-center gap-1.5">
+                <div className="text-slate-500 text-xs py-2 flex items-center gap-1.5 animate-pulse">
                   <Clock className="h-3.5 w-3.5 animate-spin text-violet-500" /> Loading project members...
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 bg-slate-900/20 border border-slate-850 rounded-xl">
                   {projectMembers.map((member) => {
                     const isSelected = editedAssigneeIds.includes(member.id);
                     return (
@@ -518,8 +536,8 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
                         }}
                         className={`flex items-center space-x-2.5 px-3 py-1.5 rounded-lg border text-left transition-colors cursor-pointer ${
                           isSelected
-                            ? 'bg-violet-600/10 border-violet-500 text-violet-750'
-                            : 'bg-white border-slate-200 text-slate-500 hover:text-slate-800 hover:border-slate-350'
+                            ? 'bg-violet-600/10 border-violet-500/50 text-violet-300'
+                            : 'bg-[#1e1e1f] border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
                         }`}
                       >
                         <input
@@ -528,9 +546,9 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
                           readOnly
                           className="accent-violet-500 pointer-events-none"
                         />
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold truncate">{member.name}</p>
-                          <p className="text-[10px] text-slate-400 truncate">{member.role?.replace('_', ' ')}</p>
+                        <div className="min-w-0 text-xs">
+                          <p className="font-bold truncate text-white">{member.name}</p>
+                          <p className="text-[10px] text-slate-500 truncate">{member.role?.replace('_', ' ')}</p>
                         </div>
                       </button>
                     );
@@ -543,52 +561,62 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
                   localTask.assignments.map((assignment, index) => {
                     const userObj = assignment.user || assignment;
                     const initials = userObj.name?.split(' ').map(n => n[0]).join('') || 'U';
+                    const role = userObj.role || 'COLLABORATOR';
                     return (
                       <div
                         key={index}
-                        className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-violet-50 border border-violet-100 text-violet-750 text-xs font-bold"
+                        className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full border text-xs font-bold ${
+                          role === 'SUPER_ADMIN' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
+                          role === 'ADMIN' ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' :
+                          role === 'PROJECT_MANAGER' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
+                          'bg-slate-500/10 border-slate-600/20 text-slate-350'
+                        }`}
                         title={userObj.name}
                       >
-                        <div className="h-4 w-4 rounded-full bg-violet-600 flex items-center justify-center text-[8px] font-black text-white uppercase">
+                        <div className={`h-4 w-4 rounded-full flex items-center justify-center text-[8px] font-black uppercase shrink-0 border ${
+                          role === 'SUPER_ADMIN' ? 'avatar-initials-amber' :
+                          role === 'ADMIN' ? 'avatar-initials-purple' :
+                          role === 'PROJECT_MANAGER' ? 'avatar-initials-blue' :
+                          'avatar-initials-violet'
+                        }`}>
                           {initials}
                         </div>
-                        <span>{userObj.name}</span>
+                        <span className="text-white">{userObj.name}</span>
                       </div>
                     );
                   })
                 ) : (
-                  <span className="text-slate-400 text-xs">Unassigned</span>
+                  <span className="text-slate-500 text-xs italic">Unassigned</span>
                 )}
               </div>
             )}
           </div>
 
-
-          {/* Description */}
-          <div className="space-y-2 border-t border-slate-100 pt-4">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Description</h3>
+          {/* Task Description */}
+          <div className="space-y-2 border-t border-slate-850 pt-4">
+            <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Description</h3>
             {isEditing ? (
               <textarea
                 value={editedDescription}
                 onChange={(e) => setEditedDescription(e.target.value)}
-                className="w-full px-4 py-3 bg-white border border-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-600 rounded-xl text-sm text-slate-800 h-28 resize-none"
+                className="w-full px-4 py-3 bg-[#1e1e1f] border border-slate-800 focus:outline-none focus:border-violet-500 rounded-xl text-xs text-white h-24 resize-none"
                 placeholder="Task description details..."
               />
             ) : (
-              <p className="text-sm text-slate-650 bg-slate-50 p-4 rounded-xl border border-slate-100 leading-relaxed whitespace-pre-wrap">
+              <p className="text-xs text-slate-300 bg-slate-900/30 p-4 rounded-xl border border-slate-850 leading-relaxed whitespace-pre-wrap">
                 {localTask.description || 'No description provided.'}
               </p>
             )}
           </div>
 
           {/* Comments Section */}
-          <div className="space-y-4 border-t border-slate-100 pt-6">
-            <div className="flex items-center space-x-2 text-slate-600">
-              <MessageSquare className="h-4 w-4 text-violet-600" />
-              <h3 className="text-xs font-bold uppercase tracking-wider">Comments ({comments.length})</h3>
+          <div className="space-y-4 border-t border-slate-850 pt-6">
+            <div className="flex items-center space-x-2 text-slate-400">
+              <MessageSquare className="h-4 w-4 text-violet-500" />
+              <h3 className="text-[10px] font-bold uppercase tracking-wider">Comments ({comments.length})</h3>
             </div>
 
-            {/* Submit Comment Form */}
+            {/* Comment Form input */}
             <form onSubmit={handleSubmitComment} className="flex gap-2">
               <input
                 type="text"
@@ -596,26 +624,26 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 disabled={isSubmittingComment}
-                className="flex-1 px-4 py-2.5 bg-white border border-slate-250 focus:outline-none focus:ring-1 focus:ring-violet-600 rounded-xl text-sm placeholder-slate-400 text-slate-800 transition-colors"
+                className="flex-1 px-4 py-2.5 bg-[#1e1e1f] border border-slate-800 focus:outline-none focus:border-violet-500 rounded-xl text-xs placeholder-slate-500 text-white transition-colors"
               />
               <button
                 type="submit"
                 disabled={!newComment.trim() || isSubmittingComment}
-                className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-sm flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-xs flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isSubmittingComment ? (
-                  <Clock className="h-4 w-4 animate-spin" />
+                  <Clock className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Send className="h-4 w-4" />
+                  <Send className="h-3.5 w-3.5" />
                 )}
               </button>
             </form>
 
-            {/* Comments List */}
-            <div className="space-y-3.5 max-h-62 overflow-y-auto pr-1">
+            {/* Scrollable Comments List */}
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
               {isLoadingComments ? (
-                <div className="py-6 flex items-center justify-center text-slate-500 text-sm">
-                  <Clock className="h-5 w-5 animate-spin mr-2 text-violet-600" />
+                <div className="py-6 flex items-center justify-center text-slate-500 text-xs">
+                  <Clock className="h-4 w-4 animate-spin mr-2 text-violet-500" />
                   Loading comments...
                 </div>
               ) : comments.length > 0 ? (
@@ -623,19 +651,19 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
                   const author = comment.author || { name: 'Unknown User', role: 'COLLABORATOR' };
                   const initials = author.name?.split(' ').map(n => n[0]).join('') || 'U';
                   return (
-                    <div key={comment.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 flex items-start space-x-3 text-sm">
-                      <div className={`h-8 w-8 rounded-lg border flex items-center justify-center font-bold text-xs flex-shrink-0 ${getRoleBadgeColor(author.role)}`}>
+                    <div key={comment.id} className="p-3 bg-[#1e1e1f] rounded-xl border border-slate-850 flex items-start space-x-3 text-xs">
+                      <div className={`h-8 w-8 rounded-lg border flex items-center justify-center font-bold text-xs shrink-0 ${getRoleBadgeColor(author.role)}`}>
                         {initials}
                       </div>
                       <div className="flex-1 space-y-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-slate-700 truncate">{author.name}</span>
-                          <span className="text-[10px] text-slate-400 whitespace-nowrap flex items-center">
+                          <span className="font-bold text-white truncate">{author.name}</span>
+                          <span className="text-[10px] text-slate-500 whitespace-nowrap flex items-center">
                             <Clock className="h-3 w-3 mr-1" />
                             {formatRelativeTime(comment.createdAt)}
                           </span>
                         </div>
-                        <p className="text-slate-600 text-xs leading-relaxed break-words">
+                        <p className="text-slate-300 leading-relaxed break-words text-[11px]">
                           {comment.body}
                         </p>
                       </div>
@@ -643,10 +671,46 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
                   );
                 })
               ) : (
-                <p className="text-slate-400 text-xs text-center py-6">No comments posted yet.</p>
+                <p className="text-slate-550 text-xs text-center py-6 italic">No comments posted yet.</p>
               )}
             </div>
           </div>
+
+          {/* Activity Timeline */}
+          <div className="space-y-4 border-t border-slate-850 pt-6 pb-2">
+            <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Activity Timeline</h3>
+            <div className="space-y-3.5">
+              {localTask.activities && localTask.activities.length > 0 ? (
+                [...localTask.activities].reverse().map((act) => (
+                  <div key={act.id} className="flex items-start space-x-3 text-[11px]">
+                    <div className="h-5.5 w-5.5 rounded-full avatar-initials-violet flex items-center justify-center font-bold text-[8px] uppercase shrink-0 mt-0.5 border">
+                      {act.userName?.split(' ').map(n => n[0]).join('') || 'U'}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-slate-300">
+                        {act.action.startsWith(act.userName) ? (
+                          <>
+                            <span className="text-white font-bold">{act.userName}</span>
+                            {act.action.slice(act.userName.length)}
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-white font-bold">{act.userName}</span> {act.action}
+                          </>
+                        )}
+                      </p>
+                      <p className="text-[9px] text-slate-550 mt-0.5">
+                        {formatRelativeTime(act.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-slate-550 text-xs italic">No activities logged yet.</p>
+              )}
+            </div>
+          </div>
+
         </div>
       </div>
     </div>

@@ -69,8 +69,27 @@ const markAllAsReadController = async (req, res, next) => {
   }
 };
 
+/**
+ * Controller to mark a single notification as unread (Restore).
+ */
+const markAsUnreadController = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const notification = await notificationService.markAsUnread(id, userId);
+    return res.status(200).json({
+      message: "Notification marked as unread.",
+      notification,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getNotificationsController,
   markAsReadController,
   markAllAsReadController,
+  markAsUnreadController,
 };

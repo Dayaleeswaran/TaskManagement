@@ -144,19 +144,6 @@ async function getTaskWithFullDetails(taskId) {
         }
       },
       labels: true,
-      attachments: {
-        include: {
-          uploadedBy: {
-            select: {
-              id: true,
-              name: true
-            }
-          }
-        },
-        orderBy: {
-          createdAt: "desc"
-        }
-      },
       comments: {
         include: {
           author: {

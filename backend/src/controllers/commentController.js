@@ -25,7 +25,7 @@ const createCommentController = async (req, res, next) => {
 const getCommentsByTaskController = async (req, res, next) => {
   try {
     const { taskId } = req.params;
-    const comments = await commentService.getCommentsByTask(taskId);
+    const comments = await commentService.getCommentsByTask(taskId, req.user);
     return res.status(200).json({ comments });
   } catch (err) {
     next(err);

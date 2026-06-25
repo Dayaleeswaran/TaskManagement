@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
@@ -20,13 +21,15 @@ import {
 export default function Users() {
   const { user } = useAuth();
   const { addToast } = useToast();
+  const [searchParams] = useSearchParams();
+  const initialSearch = searchParams.get('search') || '';
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Search & Filter State
-  const [search, setSearch] = useState('');
-  const [appliedSearch, setAppliedSearch] = useState('');
+  const [search, setSearch] = useState(initialSearch);
+  const [appliedSearch, setAppliedSearch] = useState(initialSearch);
   const [roleFilter, setRoleFilter] = useState('');
   const [isActiveFilter, setIsActiveFilter] = useState('');
 
@@ -40,6 +43,7 @@ export default function Users() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isRoleOpen, setIsRoleOpen] = useState(false);
   const [activeUser, setActiveUser] = useState(null);
+  const [selectedUserDetails, setSelectedUserDetails] = useState(null);
 
   // Form State
   const [name, setName] = useState('');
@@ -75,13 +79,21 @@ export default function Users() {
   }, [page, limit, appliedSearch, roleFilter, isActiveFilter, addToast]);
 
   useEffect(() => {
-    if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') {
+    if (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'PROJECT_MANAGER') {
       const timer = setTimeout(() => {
         fetchUsers();
       }, 0);
       return () => clearTimeout(timer);
     }
   }, [user, fetchUsers]);
+
+  useEffect(() => {
+    const q = searchParams.get('search') || '';
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSearch(q);
+    setAppliedSearch(q);
+    setPage(1);
+  }, [searchParams]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -200,11 +212,11 @@ export default function Users() {
     }
   };
 
-  if (user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN') {
+  if (user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN' && user?.role !== 'PROJECT_MANAGER') {
     return (
       <div className="p-8 text-center bg-slate-950/20 border border-slate-900 rounded-3xl">
-        <h2 className="text-xl font-bold text-rose-400">Unauthorized Access</h2>
-        <p className="text-slate-400 text-sm mt-2">Only administrators are permitted to view user directory lists.</p>
+        <h2 className="text-xl font-bold text-rose-455">Unauthorized Access</h2>
+        <p className="text-slate-400 text-sm mt-2">Only administrators and project managers are permitted to view user directory lists.</p>
       </div>
     );
   }
@@ -221,18 +233,20 @@ export default function Users() {
           <p className="text-slate-400 text-sm mt-1">Manage platform members, assign user security roles, and control active status.</p>
         </div>
 
-        <button
-          onClick={() => {
-            setName('');
-            setEmail('');
-            setRole('COLLABORATOR');
-            setIsAddOpen(true);
-          }}
-          className="px-4 py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold rounded-xl shadow-lg shadow-violet-600/15 transition-all duration-200 flex items-center justify-center space-x-2 text-sm cursor-pointer self-start md:self-auto"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Add New User</span>
-        </button>
+        {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
+          <button
+            onClick={() => {
+              setName('');
+              setEmail('');
+              setRole('COLLABORATOR');
+              setIsAddOpen(true);
+            }}
+            className="px-4 py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold rounded-xl shadow-lg shadow-violet-600/15 transition-all duration-200 flex items-center justify-center space-x-2 text-sm cursor-pointer self-start md:self-auto"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add New User</span>
+          </button>
+        )}
       </div>
 
       {/* Filters & Search */}
@@ -324,24 +338,28 @@ export default function Users() {
                   <th className="p-4">Role</th>
                   <th className="p-4">Status</th>
                   <th className="p-4">Joined Date</th>
-                  <th className="p-4 text-right">Actions</th>
+                  {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && <th className="p-4 text-right">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-850">
                 {users.map((targetUser) => (
                   <tr key={targetUser.id} className="hover:bg-slate-900/20 transition-colors">
                     {/* User profile with initials avatar */}
-                    <td className="p-4 flex items-center space-x-3">
-                      <div className={`h-9 w-9 rounded-xl flex items-center justify-center font-bold text-xs text-white border select-none ${
-                        targetUser.role === 'SUPER_ADMIN' ? 'bg-amber-600/10 border-amber-500/25 text-amber-300' :
-                        targetUser.role === 'ADMIN' ? 'bg-purple-600/10 border-purple-500/25 text-purple-300' :
-                        targetUser.role === 'PROJECT_MANAGER' ? 'bg-blue-600/10 border-blue-500/25 text-blue-300' :
-                        'bg-slate-800/20 border-slate-700/25 text-slate-300'
+                    <td 
+                      onClick={() => setSelectedUserDetails(targetUser)}
+                      className="p-4 flex items-center space-x-3 cursor-pointer group/user select-none"
+                      title="View User Details"
+                    >
+                      <div className={`h-9 w-9 rounded-xl flex items-center justify-center font-bold text-xs border group-hover/user:scale-105 transition-transform ${
+                        targetUser.role === 'SUPER_ADMIN' ? 'avatar-initials-amber' :
+                        targetUser.role === 'ADMIN' ? 'avatar-initials-purple' :
+                        targetUser.role === 'PROJECT_MANAGER' ? 'avatar-initials-blue' :
+                        'avatar-initials-violet'
                       }`}>
                         {targetUser.name?.split(' ').map(n => n[0]).join('') || 'U'}
                       </div>
                       <div>
-                        <div className="font-bold text-sm text-slate-200">{targetUser.name}</div>
+                        <div className="font-bold text-sm text-slate-200 group-hover/user:text-violet-400 group-hover/user:underline">{targetUser.name}</div>
                         <div className="text-xs text-slate-450 font-mono mt-0.5">{targetUser.email}</div>
                       </div>
                     </td>
@@ -370,44 +388,46 @@ export default function Users() {
                     </td>
 
                     {/* Action buttons */}
-                    <td className="p-4 text-right">
-                      <div className="flex items-center justify-end space-x-2.5">
-                        <button
-                          onClick={() => openRoleModal(targetUser)}
-                          className="p-1.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
-                          title="Change User Role"
-                        >
-                          <Edit3 className="h-3.5 w-3.5" />
-                        </button>
-                        {targetUser.role !== 'SUPER_ADMIN' && (
+                    {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end space-x-2.5">
                           <button
-                            onClick={() => handleToggleStatus(targetUser)}
-                            disabled={targetUser.id === user.id}
-                            className={`p-1.5 rounded border transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
-                              targetUser.isActive
-                                ? 'bg-slate-900 border-slate-800 text-slate-400 hover:text-rose-400 hover:border-rose-900/40 hover:bg-rose-950/20'
-                                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-emerald-400 hover:border-emerald-900/40 hover:bg-emerald-950/20'
-                            }`}
-                            title={targetUser.isActive ? 'Deactivate User' : 'Activate User'}
+                            onClick={() => openRoleModal(targetUser)}
+                            className="p-1.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                            title="Change User Role"
                           >
-                            {targetUser.isActive ? (
-                              <UserX className="h-3.5 w-3.5" />
-                            ) : (
-                              <UserCheck className="h-3.5 w-3.5" />
-                            )}
+                            <Edit3 className="h-3.5 w-3.5" />
                           </button>
-                        )}
-                        {user?.role === 'SUPER_ADMIN' && targetUser.role !== 'SUPER_ADMIN' && (
-                          <button
-                            onClick={() => handleDeleteUser(targetUser)}
-                            className="p-1.5 rounded bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-500 hover:border-rose-900/40 hover:bg-rose-950/20 transition-colors cursor-pointer"
-                            title="Delete User"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                          {targetUser.role !== 'SUPER_ADMIN' && (
+                            <button
+                              onClick={() => handleToggleStatus(targetUser)}
+                              disabled={targetUser.id === user.id}
+                              className={`p-1.5 rounded border transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
+                                targetUser.isActive
+                                  ? 'bg-slate-900 border-slate-800 text-slate-400 hover:text-rose-450 hover:border-rose-900/40 hover:bg-rose-950/20'
+                                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-emerald-400 hover:border-emerald-900/40 hover:bg-emerald-950/20'
+                              }`}
+                              title={targetUser.isActive ? 'Deactivate User' : 'Activate User'}
+                            >
+                              {targetUser.isActive ? (
+                                <UserX className="h-3.5 w-3.5" />
+                              ) : (
+                                <UserCheck className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          )}
+                          {user?.role === 'SUPER_ADMIN' && targetUser.role !== 'SUPER_ADMIN' && (
+                            <button
+                              onClick={() => handleDeleteUser(targetUser)}
+                              className="p-1.5 rounded bg-slate-900 border border-slate-800 text-slate-400 hover:text-rose-500 hover:border-rose-900/40 hover:bg-rose-950/20 transition-colors cursor-pointer"
+                              title="Delete User"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -535,6 +555,91 @@ export default function Users() {
           </div>
         </div>
       )}
+
+      {/* User Details Modal */}
+      {selectedUserDetails && (
+        <UserDetailsModal 
+          targetUser={selectedUserDetails} 
+          onClose={() => setSelectedUserDetails(null)} 
+        />
+      )}
+    </div>
+  );
+}
+
+// --- USER DETAILS OVERLAY MODAL ---
+function UserDetailsModal({ targetUser, onClose }) {
+  const initials = targetUser.name?.split(' ').map(n => n[0]).join('') || 'U';
+  
+  const getRoleBadgeStyle = (role) => {
+    switch (role) {
+      case 'SUPER_ADMIN':
+        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'ADMIN':
+        return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
+      case 'PROJECT_MANAGER':
+        return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+      default:
+        return 'bg-slate-500/10 text-slate-400 border-slate-600/20';
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+      <div className="fixed inset-0 bg-transparent" onClick={onClose}></div>
+      <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 z-10 animate-in fade-in zoom-in-95 duration-150">
+        
+        {/* Close Button */}
+        <button onClick={onClose} className="absolute top-4 right-4 p-1 rounded-lg text-slate-400 hover:text-slate-650 hover:bg-slate-100 cursor-pointer">
+          <X className="h-5 w-5" />
+        </button>
+
+        <div className="flex flex-col items-center text-center space-y-4 pt-4">
+          {/* Avatar */}
+          <div className={`h-20 w-20 rounded-full flex items-center justify-center font-bold text-2xl border select-none ${
+            targetUser.role === 'SUPER_ADMIN' ? 'avatar-initials-amber' :
+            targetUser.role === 'ADMIN' ? 'avatar-initials-purple' :
+            targetUser.role === 'PROJECT_MANAGER' ? 'avatar-initials-blue' :
+            'avatar-initials-violet'
+          }`}>
+            {initials}
+          </div>
+
+          <div>
+            <h2 className="text-xl font-extrabold text-slate-850">{targetUser.name}</h2>
+            <p className="text-sm font-mono text-slate-400 mt-1">{targetUser.email}</p>
+          </div>
+
+          <div className="flex items-center space-x-2 pt-1">
+            <span className={`px-2.5 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wider ${getRoleBadgeStyle(targetUser.role)}`}>
+              {targetUser.role?.replace('_', ' ')}
+            </span>
+            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+              targetUser.isActive
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                : 'bg-red-50 text-red-700 border-red-100'
+            }`}>
+              {targetUser.isActive ? 'ACTIVE' : 'INACTIVE'}
+            </span>
+          </div>
+        </div>
+
+        {/* Detailed Info Section */}
+        <div className="mt-6 border-t border-slate-100 pt-5 space-y-4 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-400 font-bold uppercase tracking-wider">Account ID</span>
+            <span className="font-mono text-slate-750">{targetUser.id}</span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-slate-400 font-bold uppercase tracking-wider">Date Registered</span>
+            <span className="text-slate-750 font-semibold">
+              {targetUser.createdAt ? new Date(targetUser.createdAt).toLocaleDateString() : 'N/A'}
+            </span>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }

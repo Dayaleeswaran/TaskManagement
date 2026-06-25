@@ -27,7 +27,7 @@ export default function NotificationItem({ notification, onClick }) {
                 !isRead ? 'text-slate-300 font-semibold' : 'text-slate-500 font-normal'
               }`}
             >
-              {message}
+              {message ? message.split(' | ')[0] : ''}
             </p>
             <p className="text-xs text-slate-450 mt-1 font-medium">
               {formatTimeAgo(createdAt)}

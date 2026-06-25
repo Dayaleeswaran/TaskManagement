@@ -162,6 +162,37 @@ const markAllAsRead = async (userId) => {
   });
 };
 
+/**
+ * Marks a single notification as unread (Restore).
+ * @param {string} notificationId - The notification's ID.
+ * @param {string} userId - The requesting user's ID.
+ * @returns {Promise<object>} The updated notification.
+ */
+const markAsUnread = async (notificationId, userId) => {
+  const notification = await prisma.notification.findUnique({
+    where: { id: notificationId },
+  });
+
+  if (!notification) {
+    const error = new Error("Notification not found.");
+    error.statusCode = 404;
+    error.errorCode = "NOTIFICATION_NOT_FOUND";
+    throw error;
+  }
+
+  if (notification.userId !== userId) {
+    const error = new Error("You are not authorized to update this notification.");
+    error.statusCode = 403;
+    error.errorCode = "FORBIDDEN";
+    throw error;
+  }
+
+  return prisma.notification.update({
+    where: { id: notificationId },
+    data: { isRead: false },
+  });
+};
+
 module.exports = {
   NotificationType,
   createNotification,
@@ -169,4 +200,5 @@ module.exports = {
   getNotificationsForUser,
   markAsRead,
   markAllAsRead,
+  markAsUnread,
 };

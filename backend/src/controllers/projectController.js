@@ -29,7 +29,16 @@ const getProjects = async (req, res, next) => {
         },
         _count: {
           select: {
-            tasks: { where: { deletedAt: null } },
+            tasks: {
+              where: {
+                deletedAt: null,
+                ...(role === "COLLABORATOR" ? {
+                  assignments: {
+                    some: { userId }
+                  }
+                } : {})
+              }
+            },
           },
         },
       },
@@ -53,7 +62,7 @@ const createProject = async (req, res, next) => {
       });
     }
 
-    const { name, description, memberUserIds } = req.body;
+    const { name, description, memberUserIds, ownerId } = req.body;
 
     if (!name) {
       return res.status(400).json({
@@ -62,23 +71,54 @@ const createProject = async (req, res, next) => {
       });
     }
 
+    let targetOwnerId;
+
+    if (req.user.role === "ADMIN" || req.user.role === "SUPER_ADMIN") {
+      if (!ownerId) {
+        return res.status(400).json({
+          errorCode: "BAD_REQUEST",
+          message: "Project owner is required.",
+        });
+      }
+      const ownerUser = await prisma.user.findUnique({
+        where: { id: ownerId },
+      });
+      if (!ownerUser || !ownerUser.isActive) {
+        return res.status(400).json({
+          errorCode: "BAD_REQUEST",
+          message: "An active Project Manager must be selected as the project owner.",
+        });
+      }
+      if (ownerUser.role !== "PROJECT_MANAGER") {
+        return res.status(400).json({
+          errorCode: "BAD_REQUEST",
+          message: "Only Project Managers can be assigned as project owners.",
+        });
+      }
+      targetOwnerId = ownerId;
+    } else {
+      // Creator is PROJECT_MANAGER
+      targetOwnerId = req.user.id;
+    }
+
     // Process and filter memberUserIds to prevent duplicate memberships
     const uniqueMemberUserIds = Array.from(new Set(memberUserIds || []));
     // Filter out owner to prevent trying to insert them twice (owner is automatically added)
-    const otherMembers = uniqueMemberUserIds.filter(userId => userId !== req.user.id);
+    const otherMembers = uniqueMemberUserIds.filter(userId => userId !== targetOwnerId);
 
-    // Validate that all user IDs in otherMembers are active users
+    // Validate that all user IDs in otherMembers are active Collaborators
     if (otherMembers.length > 0) {
-      const activeUsersCount = await prisma.user.count({
+      const collaboratorsCount = await prisma.user.count({
         where: {
           id: { in: otherMembers },
           isActive: true,
+          role: "COLLABORATOR",
         },
       });
-      if (activeUsersCount !== otherMembers.length) {
+      if (collaboratorsCount !== otherMembers.length) {
         return res.status(400).json({
           errorCode: "BAD_REQUEST",
-          message: "One or more selected members are not active users.",
+          message: "Only Collaborators can be assigned as project members.",
         });
       }
     }
@@ -87,7 +127,7 @@ const createProject = async (req, res, next) => {
       data: {
         name,
         description: description || "",
-        ownerId: req.user.id,
+        ownerId: targetOwnerId,
       },
     });
 
@@ -95,7 +135,7 @@ const createProject = async (req, res, next) => {
     await prisma.projectMember.create({
       data: {
         projectId: project.id,
-        userId: req.user.id,
+        userId: targetOwnerId,
       },
     });
 
@@ -134,7 +174,7 @@ const createProject = async (req, res, next) => {
       await notificationService.createBulkNotifications(
         otherMembers,
         "PROJECT_MEMBER_ADDED",
-        `You have been added to project: ${project.name}`
+        `You have been added to project: ${project.name} | project:${project.id}`
       );
     }
 
@@ -162,7 +202,7 @@ const updateProject = async (req, res, next) => {
     }
 
     const { id } = req.params;
-    const { name, description } = req.body;
+    const { name, description, ownerId } = req.body;
 
     const existingProject = await prisma.project.findUnique({
       where: { id },
@@ -183,13 +223,88 @@ const updateProject = async (req, res, next) => {
       });
     }
 
+    let targetOwnerId = existingProject.ownerId;
+    let ownershipTransferred = false;
+    let newOwner = null;
+
+    if (ownerId !== undefined && ownerId !== existingProject.ownerId) {
+      // Only admins can transfer ownership
+      if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN") {
+        return res.status(403).json({
+          errorCode: "FORBIDDEN",
+          message: "Only Administrators can change project ownership.",
+        });
+      }
+
+      // Validate new owner
+      newOwner = await prisma.user.findUnique({
+        where: { id: ownerId },
+      });
+      if (!newOwner) {
+        return res.status(400).json({
+          errorCode: "BAD_REQUEST",
+          message: "The selected new owner does not exist.",
+        });
+      }
+      if (!newOwner.isActive) {
+        return res.status(400).json({
+          errorCode: "BAD_REQUEST",
+          message: "The selected new owner is inactive.",
+        });
+      }
+      if (newOwner.role !== "PROJECT_MANAGER") {
+        return res.status(400).json({
+          errorCode: "BAD_REQUEST",
+          message: "Only Project Managers can be assigned as project owners.",
+        });
+      }
+
+      targetOwnerId = ownerId;
+      ownershipTransferred = true;
+    }
+
     const project = await prisma.project.update({
       where: { id },
       data: {
         name: name !== undefined ? name : existingProject.name,
         description: description !== undefined ? description : existingProject.description,
+        ownerId: targetOwnerId,
       },
     });
+
+    if (ownershipTransferred) {
+      // Ensure new owner is in ProjectMember
+      const isMember = await prisma.projectMember.findUnique({
+        where: {
+          projectId_userId: {
+            projectId: id,
+            userId: targetOwnerId,
+          },
+        },
+      });
+      if (!isMember) {
+        await prisma.projectMember.create({
+          data: {
+            projectId: id,
+            userId: targetOwnerId,
+          },
+        });
+      }
+
+      // Log activity
+      await activityService.createActivity(
+        id,
+        req.user.id,
+        `${req.user.name} transferred project ownership to ${newOwner.name}.`
+      );
+
+      // Create notification
+      await notificationService.createBulkNotifications(
+        [targetOwnerId],
+        "ADMIN_UPDATE",
+        `You have been assigned as the owner of project: ${project.name}`
+      );
+    }
 
     return res.status(200).json(project);
   } catch (err) {
@@ -403,6 +518,14 @@ const addProjectMember = async (req, res, next) => {
       });
     }
 
+    // Only Collaborators can be assigned as project members
+    if (targetUser.role !== "COLLABORATOR") {
+      return res.status(400).json({
+        errorCode: "BAD_REQUEST",
+        message: "Only Collaborators can be assigned as project members.",
+      });
+    }
+
     // Check if already member
     const existingMembership = await prisma.projectMember.findUnique({
       where: {
@@ -442,7 +565,7 @@ const addProjectMember = async (req, res, next) => {
     await notificationService.createNotification(
       userId,
       "PROJECT_MEMBER_ADDED",
-      `You have been added to project: ${project.name}`
+      `You have been added to project: ${project.name} | project:${project.id}`
     );
 
     return res.status(201).json(membership.user);

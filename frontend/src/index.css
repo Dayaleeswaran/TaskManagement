@@ -1,51 +1,52 @@
 @import "tailwindcss";
 
 @theme {
-  /* Redefine base slate colors for white/light minimalistic look */
-  --color-slate-950: #f8fafc;
-  --color-slate-900: #ffffff;
-  --color-slate-905: #f1f5f9;
-  --color-slate-850: #e2e8f0;
-  --color-slate-800: #cbd5e1;
-  --color-slate-700: #94a3b8;
-  --color-slate-600: #475569;
-  --color-slate-550: #334155;
-  --color-slate-500: #334155;
-  --color-slate-450: #1e293b;
-  --color-slate-400: #1e293b;
-  --color-slate-350: #0f172a;
-  --color-slate-300: #0f172a;
-  --color-slate-200: #0f172a;
-  --color-slate-100: #0f172a;
+  /* Redefine base slate colors for Asana Dark Mode theme */
+  --color-slate-50: #1a1a1b;
+  --color-slate-100: #222223;
+  --color-slate-200: #2d2e30;
+  --color-slate-300: #3d3e40;
+  --color-slate-400: #8e8e8e;
+  --color-slate-450: #9a9a9c;
+  --color-slate-500: #a2a0a2;
+  --color-slate-550: #b5b5b5;
+  --color-slate-600: #cccccc;
+  --color-slate-650: #d1d5db;
+  --color-slate-700: #e2e8f0;
+  --color-slate-800: #ffffff;
+  --color-slate-850: #2d2e30;
+  --color-slate-900: #151515;
+  --color-slate-905: #2c2c2c;
+  --color-slate-950: #1e1e1f;
   
-  /* Primary neutral colors for buttons, links, accents */
-  --color-violet-950: #fafafa;
-  --color-violet-900: #f5f5f5;
-  --color-violet-650: #171717;
-  --color-violet-600: #262626;
-  --color-violet-500: #404040;
-  --color-violet-400: #525252;
-  --color-violet-300: #737373;
-  --color-violet-200: #a3a3a3;
+  /* Primary accents and buttons */
+  --color-violet-950: #151515;
+  --color-violet-900: #1e1e1f;
+  --color-violet-650: #2c2c2c;
+  --color-violet-600: #4a4a4a;
+  --color-violet-500: #6f6f6f;
+  --color-violet-400: #a2a0a2;
+  --color-violet-300: #d1d5db;
+  --color-violet-200: #ffffff;
   
-  --color-fuchsia-600: #262626;
-  --color-fuchsia-500: #404040;
-  --color-fuchsia-400: #525252;
+  --color-fuchsia-600: #4a4a4a;
+  --color-fuchsia-500: #6f6f6f;
+  --color-fuchsia-400: #a2a0a2;
   
-  --color-indigo-500: #404040;
-  --color-indigo-400: #525252;
-  --color-indigo-600: #262626;
+  --color-indigo-500: #6f6f6f;
+  --color-indigo-400: #a2a0a2;
+  --color-indigo-600: #4a4a4a;
 }
 
-/* ===== Global Element Overrides ===== */
+/* ===== Global Element Overrides for Dark Mode ===== */
 html, body {
-  background-color: #f8fafc !important;
-  color: #0f172a !important;
+  background-color: #1e1e1f !important;
+  color: #ffffff !important;
 }
 
-/* Force headings to render in dark slate rather than gradient/white text styles */
+/* Headings in Dark Mode */
 h1, h2, h3, h4, h5, h6 {
-  color: #0f172a !important;
+  color: #ffffff !important;
   background-image: none !important;
   -webkit-text-fill-color: initial !important;
   background-clip: border-box !important;
@@ -56,112 +57,151 @@ h1, h2, h3, h4, h5, h6 {
   -webkit-text-fill-color: initial !important;
 }
 
-/* Ensure table headers and cells are dark/readable */
+/* th/td elements */
 th {
-  color: #475569 !important;
+  color: #8e8e8e !important;
 }
 td {
-  color: #1e293b !important;
+  color: #e2e8f0 !important;
 }
-
-/* ===== Component Overrides ===== */
 
 /* Card panels */
 .bg-slate-950\/40,
 .bg-slate-900\/40,
-.bg-slate-900\/30 {
-  background-color: #ffffff !important;
-  border-color: #e2e8f0 !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
+.bg-slate-900\/30,
+.bg-white {
+  background-color: #252526 !important;
+  border-color: #2d2e30 !important;
+  color: #ffffff !important;
 }
 
 /* Sidebar & headers background overrides */
 aside,
 .bg-slate-950 {
-  background-color: #ffffff !important;
-  border-color: #e2e8f0 !important;
+  background-color: #151515 !important;
+  border-color: #2d2e30 !important;
 }
 
 header,
 .bg-slate-950\/80 {
-  background-color: rgba(255, 255, 255, 0.8) !important;
-  border-color: #e2e8f0 !important;
+  background-color: rgba(21, 21, 21, 0.8) !important;
+  border-color: #2d2e30 !important;
 }
 
 /* Kanban board column backgrounds */
 .bg-slate-950\/30 {
-  background-color: #f1f5f9 !important;
-  border-color: #e2e8f0 !important;
+  background-color: #252526 !important;
+  border-color: #2d2e30 !important;
 }
 
 /* Border overrides */
+.border-slate-200,
+.border-slate-100,
 .border-slate-900,
 .border-slate-850,
 .border-slate-800 {
-  border-color: #cbd5e1 !important;
+  border-color: #2d2e30 !important;
 }
 
 .border-slate-900\/40,
 .border-slate-800\/80,
 .border-slate-800\/60,
 .border-slate-850\/30 {
-  border-color: #e2e8f0 !important;
+  border-color: #2d2e30 !important;
 }
 
 .divide-slate-850,
-.divide-slate-800 {
-  border-color: #cbd5e1 !important;
+.divide-slate-800,
+.divide-slate-100 {
+  border-color: #2d2e30 !important;
 }
 
-/* Welcome banner sleek neutral styling */
-.bg-gradient-to-r.from-slate-900\/60.to-purple-950\/20 {
-  background-image: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
-  border-color: #e2e8f0 !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
+.divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #2d2e30 !important;
 }
 
-.bg-gradient-to-r.from-slate-900\/60.to-purple-950\/20 h1,
-.bg-gradient-to-r.from-slate-900\/60.to-purple-950\/20 p {
-  color: #0f172a !important;
+/* Alternative slate-50 backgrounds to match panels */
+.bg-slate-50 {
+  background-color: #1a1a1b !important;
+  color: #ffffff !important;
 }
 
-/* Background blur decorative circles */
-.bg-purple-600\/10,
-.bg-fuchsia-600\/10 {
-  background-color: rgba(241, 245, 249, 0.5) !important;
+/* Specific overrides for opacity background variables in table headers & footers */
+.bg-slate-50\/50 {
+  background-color: #252526 !important;
+}
+
+.bg-slate-50\/50,
+.bg-slate-50\/50 div,
+.bg-slate-50\/50 span {
+  color: #ffffff !important;
+}
+
+/* Table row hover and text contrast adjustments */
+tr.hover\:bg-slate-50\/50:hover,
+.hover\:bg-slate-50\/50:hover {
+  background-color: #2c2c2d !important;
+}
+tr.hover\:bg-slate-50\/50:hover td,
+tr.hover\:bg-slate-50\/50:hover td svg,
+tr.hover\:bg-slate-50\/50:hover td div span {
+  color: #ffffff !important;
+}
+
+/* Hover list items in project details & dialog list containers */
+.hover\:bg-slate-50:hover {
+  background-color: #2c2c2d !important;
+}
+.hover\:bg-slate-50:hover * {
+  color: #ffffff !important;
 }
 
 /* Active Nav sidebar links */
 .bg-gradient-to-r.from-violet-600\/20.to-fuchsia-600\/10 {
   background-image: none !important;
-  background-color: #f1f5f9 !important;
-  border-left-color: #171717 !important;
-  color: #0f172a !important;
+  background-color: #2c2c2c !important;
+  border-left-color: #ffffff !important;
+  color: #ffffff !important;
 }
 
-.text-violet-400 {
-  color: #475569 !important;
+/* Text color helper overrides to ensure visibility in dark mode */
+.text-slate-900,
+.text-slate-850,
+.text-slate-800 {
+  color: #ffffff !important;
+}
+
+.text-slate-650,
+.text-slate-600,
+.text-slate-550,
+.text-slate-500 {
+  color: #a2a0a2 !important;
+}
+
+.text-slate-450,
+.text-slate-400 {
+  color: #8e8e8e !important;
 }
 
 /* Inputs, textareas, selects */
 input,
 textarea,
 select {
-  background-color: #ffffff !important;
-  border-color: #cbd5e1 !important;
-  color: #0f172a !important;
+  background-color: #252526 !important;
+  border-color: #2d2e30 !important;
+  color: #ffffff !important;
 }
 
 input:focus,
 textarea:focus,
 select:focus {
-  border-color: #171717 !important;
-  box-shadow: 0 0 0 2px rgba(23, 23, 23, 0.1) !important;
+  border-color: #8e8e8e !important;
+  box-shadow: 0 0 0 2px rgba(142, 142, 142, 0.2) !important;
 }
 
 .bg-slate-905,
 .bg-slate-900 {
-  background-color: #f8fafc !important;
+  background-color: #1e1e1f !important;
 }
 
 /* Buttons Solid Neutral transitions */
@@ -169,14 +209,15 @@ select:focus {
 .bg-gradient-to-r.from-violet-600.to-fuchsia-500,
 .bg-gradient-to-r.from-violet-600.to-purple-600 {
   background-image: none !important;
-  background-color: #171717 !important;
+  background-color: #2c2c2c !important;
   color: #ffffff !important;
+  border: 1px solid #4a4a4a !important;
   transition: all 0.2s ease-in-out !important;
 }
 
 .bg-gradient-to-r.from-violet-600.to-fuchsia-600:hover,
 .bg-gradient-to-r.from-violet-600.to-fuchsia-500:hover {
-  background-color: #262626 !important;
+  background-color: #3c3c3d !important;
   transform: translateY(-1px) !important;
 }
 
@@ -187,109 +228,109 @@ select:focus {
 
 /* Modal Backdrops */
 .fixed.inset-0.bg-black\/60 {
-  background-color: rgba(15, 23, 42, 0.45) !important;
+  background-color: rgba(0, 0, 0, 0.65) !important;
 }
 
-/* ===== Toast and Badge Colors ===== */
+/* ===== Toast and Badge Colors in Dark Mode ===== */
 
 .text-purple-400 {
-  color: #7c3aed !important;
+  color: #c084fc !important;
 }
 .bg-purple-500\/10 {
-  background-color: #f5f3ff !important;
+  background-color: rgba(192, 132, 252, 0.1) !important;
 }
 .border-purple-500\/20,
 .border-purple-500\/30 {
-  border-color: #ddd6fe !important;
+  border-color: rgba(192, 132, 252, 0.2) !important;
 }
 
 .text-blue-400 {
-  color: #2563eb !important;
+  color: #60a5fa !important;
 }
 .bg-blue-500\/10 {
-  background-color: #eff6ff !important;
+  background-color: rgba(96, 165, 250, 0.1) !important;
 }
 .border-blue-500\/20,
 .border-blue-500\/30 {
-  border-color: #bfdbfe !important;
+  border-color: rgba(96, 165, 250, 0.2) !important;
 }
 
 .text-slate-400 {
-  color: #475569 !important;
+  color: #8e8e8e !important;
 }
 .bg-slate-500\/10 {
-  background-color: #f1f5f9 !important;
+  background-color: rgba(142, 142, 142, 0.1) !important;
 }
 .border-slate-600\/20,
 .border-slate-650\/30,
 .border-slate-800\/80 {
-  border-color: #cbd5e1 !important;
+  border-color: #2d2e30 !important;
 }
 
 /* Success / Alert / Priority Badge overrides */
 .text-emerald-450,
 .text-emerald-400 {
-  color: #047857 !important;
+  color: #34d399 !important;
 }
 .bg-emerald-500\/10,
 .bg-emerald-500\/15 {
-  background-color: #ecfdf5 !important;
+  background-color: rgba(52, 211, 153, 0.1) !important;
 }
 .border-emerald-500\/20,
 .border-emerald-500\/25 {
-  border-color: #a7f3d0 !important;
+  border-color: rgba(52, 211, 153, 0.2) !important;
 }
 
 .text-rose-450,
 .text-rose-400 {
-  color: #b91c1c !important;
+  color: #f87171 !important;
 }
 .bg-rose-500\/10,
 .bg-rose-500\/15 {
-  background-color: #fff1f2 !important;
+  background-color: rgba(248, 113, 113, 0.1) !important;
 }
 .border-rose-500\/20,
 .border-rose-550,
 .border-rose-500\/25 {
-  border-color: #fecdd3 !important;
+  border-color: rgba(248, 113, 113, 0.2) !important;
 }
 
 .text-amber-450,
 .text-amber-400 {
-  color: #b45309 !important;
+  color: #fbbf24 !important;
 }
 .bg-amber-500\/10,
 .bg-amber-500\/15 {
-  background-color: #fef3c7 !important;
+  background-color: rgba(251, 191, 36, 0.1) !important;
 }
 .border-amber-500\/20 {
-  border-color: #fde68a !important;
+  border-color: rgba(251, 191, 36, 0.2) !important;
 }
 
 /* Demo Credentials Box on Login Page */
 .text-violet-300 {
-  color: #374151 !important;
+  color: #a2a0a2 !important;
 }
 .bg-slate-900\/60 {
-  background-color: #ffffff !important;
-  border-color: #cbd5e1 !important;
+  background-color: #252526 !important;
+  border-color: #2d2e30 !important;
+}
+.bg-violet-650 {
+  background-color: #2c2c2c !important;
+  color: #ffffff !important;
 }
 .bg-violet-600\/10 {
-  background-color: #f5f5f5 !important;
-  border-color: #d4d4d4 !important;
+  background-color: #252526 !important;
+  border-color: #2d2e30 !important;
 }
 .bg-gradient-to-r.from-violet-600.via-fuchsia-600.to-violet-600 {
   background-image: none !important;
-  background-color: #171717 !important;
+  background-color: #2c2c2c !important;
 }
 
 /* Reset / Active filter button */
 .text-violet-400 {
-  color: #475569 !important;
-}
-.bg-violet-650 {
-  background-color: #171717 !important;
-  color: #ffffff !important;
+  color: #a2a0a2 !important;
 }
 
 /* ===== Mobile Sidebar Animations ===== */
@@ -358,9 +399,9 @@ select:focus {
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
-    rgba(148, 163, 184, 0.1) 25%,
-    rgba(148, 163, 184, 0.2) 50%,
-    rgba(148, 163, 184, 0.1) 75%
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.05) 75%
   );
   background-size: 800px 100%;
   animation: shimmer 1.8s ease-in-out infinite;
@@ -413,7 +454,7 @@ select:focus {
 /* ===== Kanban Horizontal Scroll (mobile) ===== */
 .kanban-scroll-container {
   scrollbar-width: thin;
-  scrollbar-color: rgba(37, 99, 235, 0.3) transparent !important;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent !important;
 }
 
 .kanban-scroll-container::-webkit-scrollbar {
@@ -426,12 +467,12 @@ select:focus {
 }
 
 .kanban-scroll-container::-webkit-scrollbar-thumb {
-  background: rgba(37, 99, 235, 0.3) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
   border-radius: 8px;
 }
 
 .kanban-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(37, 99, 235, 0.5) !important;
+  background: rgba(255, 255, 255, 0.2) !important;
 }
 
 /* ===== Body scroll lock for mobile sidebar ===== */
@@ -440,26 +481,55 @@ body.sidebar-open {
 }
 
 /* Toast Overrides for Minimalistic Design */
-.bg-emerald-950\/90 {
-  background-color: #ffffff !important;
-  border-color: #a7f3d0 !important;
-}
-.bg-red-950\/90 {
-  background-color: #ffffff !important;
-  border-color: #fecdd3 !important;
-}
-.bg-amber-950\/90 {
-  background-color: #ffffff !important;
-  border-color: #fde68a !important;
-}
+.bg-emerald-950\/90,
+.bg-red-950\/90,
+.bg-amber-950\/90,
 .bg-blue-950\/90 {
-  background-color: #ffffff !important;
-  border-color: #bfdbfe !important;
+  background-color: #252526 !important;
+  border-width: 1px !important;
 }
 
-.text-emerald-100,
-.text-red-100,
-.text-amber-100,
-.text-blue-100 {
-  color: #1e293b !important;
+.text-emerald-100 {
+  color: #34d399 !important;
 }
+.text-red-100 {
+  color: #f87171 !important;
+}
+.text-amber-100 {
+  color: #fbbf24 !important;
+}
+.text-blue-100 {
+  color: #60a5fa !important;
+}
+
+/* ===== High Contrast Avatar Initials in Dark Mode ===== */
+.avatar-initials-amber {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+.avatar-initials-purple {
+  background-color: rgba(168, 85, 247, 0.15) !important;
+  color: #c084fc !important;
+  border-color: rgba(168, 85, 247, 0.3) !important;
+}
+
+.avatar-initials-blue {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+  color: #60a5fa !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+.avatar-initials-violet {
+  background-color: rgba(139, 92, 246, 0.15) !important;
+  color: #a78bfa !important;
+  border-color: rgba(139, 92, 246, 0.3) !important;
+}
+
+.avatar-initials-default {
+  background-color: rgba(139, 92, 246, 0.15) !important;
+  color: #a78bfa !important;
+  border-color: rgba(139, 92, 246, 0.3) !important;
+}
+

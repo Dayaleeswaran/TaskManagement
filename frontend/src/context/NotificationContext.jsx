@@ -9,8 +9,9 @@ const NotificationContext = createContext(null);
 export const NotificationProvider = ({ children }) => {
   const { token, user } = useAuth();
   const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   // Hook into live Socket.io notifications
   const { notifications: liveNotifications, setNotifications: setLiveNotifications } = useSocket();
@@ -19,7 +20,6 @@ export const NotificationProvider = ({ children }) => {
   const fetchNotifications = useCallback(async () => {
     if (!token || !user) {
       setNotifications([]);
-      setUnreadCount(0);
       return;
     }
     setLoading(true);
@@ -27,7 +27,6 @@ export const NotificationProvider = ({ children }) => {
       const response = await api.get('/api/v1/notifications');
       const data = response.data.notifications || response.data || [];
       setNotifications(data);
-      setUnreadCount(data.filter((n) => !n.isRead).length);
     } catch (err) {
       console.error('[NotificationContext] Failed to fetch notifications:', err);
     } finally {
@@ -51,9 +50,6 @@ export const NotificationProvider = ({ children }) => {
           if (exists) {
             return prev;
           }
-          if (!latestNotif.isRead) {
-            setUnreadCount((count) => count + 1);
-          }
           return [latestNotif, ...prev];
         });
       });
@@ -69,7 +65,6 @@ export const NotificationProvider = ({ children }) => {
       setNotifications((prev) =>
         prev.map((n) => {
           if (n.id === id && !n.isRead) {
-            setUnreadCount((count) => Math.max(0, count - 1));
             return { ...n, isRead: true };
           }
           return n;
@@ -87,9 +82,25 @@ export const NotificationProvider = ({ children }) => {
       setNotifications((prev) =>
         prev.map((n) => ({ ...n, isRead: true }))
       );
-      setUnreadCount(0);
     } catch (err) {
       console.error('[NotificationContext] Failed to mark all notifications as read:', err);
+    }
+  };
+
+  // Mark single notification as unread (Restore)
+  const markAsUnread = async (id) => {
+    try {
+      await api.patch(`/api/v1/notifications/${id}/unread`);
+      setNotifications((prev) =>
+        prev.map((n) => {
+          if (n.id === id && n.isRead) {
+            return { ...n, isRead: false };
+          }
+          return n;
+        })
+      );
+    } catch (err) {
+      console.error(`[NotificationContext] Failed to mark notification ${id} as unread:`, err);
     }
   };
 
@@ -102,6 +113,7 @@ export const NotificationProvider = ({ children }) => {
         fetchNotifications,
         markAsRead,
         markAllAsRead,
+        markAsUnread,
         setNotifications,
       }}
     >

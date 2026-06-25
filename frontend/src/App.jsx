@@ -40,7 +40,7 @@ function AppContent() {
             >
               <div className="flex items-center space-x-2">
                 <span className="font-semibold px-2 py-0.5 rounded bg-violet-500/20 text-violet-300 text-xs">System Alert</span>
-                <span>{notif.message}</span>
+                <span>{notif.message ? notif.message.split(' | ')[0] : ''}</span>
                 {notif.link && (
                   <Link
                     to={notif.link}
@@ -115,7 +115,7 @@ function AppContent() {
             <Route
               path="/users"
               element={
-                <ProtectedRoute role="ADMIN">
+                <ProtectedRoute role={['ADMIN', 'PROJECT_MANAGER']}>
                   <Users />
                 </ProtectedRoute>
               }
@@ -142,7 +142,7 @@ function AppContent() {
             <Route
               path="/projects"
               element={
-                <ProtectedRoute role={['ADMIN', 'PROJECT_MANAGER']}>
+                <ProtectedRoute role={['ADMIN', 'PROJECT_MANAGER', 'COLLABORATOR']}>
                   <Projects />
                 </ProtectedRoute>
               }

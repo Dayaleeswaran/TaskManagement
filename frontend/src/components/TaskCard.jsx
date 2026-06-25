@@ -152,7 +152,12 @@ export default function TaskCard({ task, onClick }) {
                 return (
                   <div
                     key={idx}
-                    className="h-6 w-6 rounded-full bg-violet-600 border border-slate-900 flex items-center justify-center text-[10px] font-bold text-white shadow-sm"
+                    className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm border ${
+                      userObj.role === 'SUPER_ADMIN' ? 'avatar-initials-amber' :
+                      userObj.role === 'ADMIN' ? 'avatar-initials-purple' :
+                      userObj.role === 'PROJECT_MANAGER' ? 'avatar-initials-blue' :
+                      'avatar-initials-violet'
+                    }`}
                     title={userObj.name}
                   >
                     {getAssigneeInitials(assignment)}

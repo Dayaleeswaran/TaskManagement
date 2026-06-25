@@ -69,6 +69,22 @@ export default function useSocket() {
       }, 0);
     });
 
+    // Listen for forced logout event (role changes/deactivation)
+    socket.on('force_logout', (data) => {
+      console.log('[Socket.io] force_logout received:', data);
+      if (data && data.reason === 'role_changed') {
+        socket.disconnect();
+        socketRef.current = null;
+        setIsConnected(false);
+
+        sessionStorage.removeItem('taskflow_token');
+        sessionStorage.removeItem('taskflow_user');
+
+        const message = 'Your account permissions have changed. Please login again.';
+        window.location.href = `/login?message=${encodeURIComponent(message)}`;
+      }
+    });
+
     // Clean up connection on unmount or when token changes
     return () => {
       if (socket) {
@@ -76,6 +92,7 @@ export default function useSocket() {
         socket.off('disconnect');
         socket.off('connect_error');
         socket.off('notification');
+        socket.off('force_logout');
         socket.disconnect();
         socketRef.current = null;
         setIsConnected(false);

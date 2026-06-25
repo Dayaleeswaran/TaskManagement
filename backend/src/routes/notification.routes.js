@@ -4,6 +4,7 @@ const {
   getNotificationsController,
   markAsReadController,
   markAllAsReadController,
+  markAsUnreadController,
 } = require("../controllers/notificationController");
 
 const router = express.Router();
@@ -85,5 +86,6 @@ router.patch("/notifications/read-all", markAllAsReadController);
  *         description: Server error
  */
 router.patch("/notifications/:id/read", markAsReadController);
+router.patch("/notifications/:id/unread", markAsUnreadController);
 
 module.exports = router;

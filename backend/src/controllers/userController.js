@@ -1,6 +1,27 @@
 const userService = require("../services/userService");
 const prisma = require("../prisma");
 const auditService = require("../services/auditService");
+const { getIO } = require("../socket");
+const notificationService = require("../services/notificationService");
+
+/**
+ * Creates an admin update notification and emits a force_logout socket event to the affected user.
+ */
+const handleForceLogout = async (userId) => {
+  try {
+    await notificationService.createNotification(
+      userId,
+      notificationService.NotificationType.ADMIN_UPDATE,
+      "Your account permissions have changed. Please login again."
+    );
+
+    const io = getIO();
+    io.to(userId).emit("force_logout", { reason: "role_changed" });
+    console.log(`[Socket.io] Emitted force_logout to User ${userId}`);
+  } catch (err) {
+    console.warn(`[Socket.io/Notification] Failed to force logout user ${userId}:`, err.message);
+  }
+};
 
 /**
  * Controller to create a new user.
@@ -69,8 +90,8 @@ const getUserByIdController = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // Authorization: Only admin/super-admin can view other users' profiles
-    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && req.user.id !== id) {
+    // Authorization: Admin, Super Admin and Project Manager can view other users' profiles
+    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && req.user.role !== "PROJECT_MANAGER" && req.user.id !== id) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "You are not authorized to view this user profile.",
@@ -166,7 +187,12 @@ const updateUserController = async (req, res, next) => {
       delete updateData.isActive;
     }
 
+    const isDeactivated = targetUser.isActive && updateData.isActive === false;
+
     const user = await userService.updateUser(id, updateData);
+    
+    const roleChanged = targetUser.role !== user.role;
+
     if (req.user.role === "ADMIN" || req.user.role === "SUPER_ADMIN") {
       if (updateData.isActive === true) {
         await auditService.log(
@@ -184,6 +210,11 @@ const updateUserController = async (req, res, next) => {
         );
       }
     }
+
+    if (isDeactivated || roleChanged) {
+      await handleForceLogout(id);
+    }
+
     return res.status(200).json({
       message: "User profile updated successfully",
       user,
@@ -245,6 +276,7 @@ const deactivateUserController = async (req, res, next) => {
       user.id,
       { name: user.name, email: user.email, role: user.role }
     );
+    await handleForceLogout(id);
     return res.status(200).json({
       message: "User account deactivated successfully",
       user,
@@ -320,6 +352,8 @@ const assignRoleController = async (req, res, next) => {
       }
     }
 
+    const roleChanged = targetUser.role !== role;
+
     const user = await userService.assignRole(id, role);
     await auditService.log(
       "USER_ROLE_ASSIGN",
@@ -327,6 +361,11 @@ const assignRoleController = async (req, res, next) => {
       user.id,
       { name: user.name, email: user.email, role }
     );
+
+    if (roleChanged) {
+      await handleForceLogout(id);
+    }
+
     return res.status(200).json({
       message: "User role assigned successfully",
       user,

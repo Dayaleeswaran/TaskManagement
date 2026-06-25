@@ -1,160 +1,490 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Bell, Check, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  SlidersHorizontal, 
+  ArrowUpDown, 
+  Calendar, 
+  MessageSquare, 
+  CheckCircle,
+  Archive,
+  RefreshCw,
+  ExternalLink,
+  Shield,
+  UserCheck,
+  UserX
+} from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
-import NotificationItem from '../components/NotificationItem';
-import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { formatTimeAgo } from '../utils/dateUtils';
+import TaskDetailModal from '../components/TaskDetailModal';
 
 export default function Notifications() {
-  const [localNotifications, setLocalNotifications] = useState([]);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [filter, setFilter] = useState('all'); // 'all', 'read', 'unread'
-  const [loadingPage, setLoadingPage] = useState(false);
+  const { notifications, loading, markAsRead, markAsUnread, markAllAsRead, unreadCount } = useNotifications();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
-  const { markAsRead, markAllAsRead, unreadCount } = useNotifications();
+  const [activeTab, setActiveTab] = useState('Activity'); // 'Activity', 'Archive'
+  const [selectedNotifId, setSelectedNotifId] = useState(null);
+  const [sortOrder, setSortOrder] = useState('Newest'); // 'Newest', 'Oldest'
+  const [typeFilter, setTypeFilter] = useState('ALL'); // 'ALL', 'TASK_ASSIGNED', 'TASK_COMPLETED', 'COMMENT_ADDED', 'PROJECT_MEMBER_ADDED', 'ROLE_CHANGED', 'ACCOUNT_DEACTIVATED'
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [activeTaskDetailsId, setActiveTaskDetailsId] = useState(null);
 
-  // Fetch paginated notifications page
-  const fetchPage = useCallback(async (pageNum, activeFilter, append = false) => {
-    setLoadingPage(true);
-    try {
-      const response = await api.get('/api/v1/notifications', {
-        params: {
-          page: pageNum,
-          limit: 10,
-          filter: activeFilter === 'all' ? undefined : activeFilter,
-        },
-      });
-      const data = response.data.notifications || [];
-      const pagination = response.data.pagination || { totalPages: 1 };
+  // Clear selected notification when switching tabs
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setSelectedNotifId(null);
+  };
 
-      setLocalNotifications((prev) => (append ? [...prev, ...data] : data));
-      setTotalPages(pagination.totalPages);
-    } catch (err) {
-      console.error('[NotificationsPage] Failed to fetch paginated notifications:', err);
-    } finally {
-      setLoadingPage(false);
+  // Filter notifications by tab (Activity show unread, Archive show read)
+  const tabNotifications = notifications.filter(notif => {
+    if (activeTab === 'Activity') return !notif.isRead;
+    return notif.isRead;
+  });
+
+  // Apply Type Filter
+  const filteredNotifications = tabNotifications.filter(notif => {
+    if (typeFilter === 'ALL') return true;
+    return notif.type === typeFilter;
+  });
+
+  // Apply Sort
+  const sortedNotifications = [...filteredNotifications].sort((a, b) => {
+    const dateA = new Date(a.createdAt);
+    const dateB = new Date(b.createdAt);
+    return sortOrder === 'Newest' ? dateB - dateA : dateA - dateB;
+  });
+
+  // Determine active selected notification ID (auto-select the first one if none selected)
+  const activeSelectedNotifId = selectedNotifId || sortedNotifications[0]?.id;
+
+  // Find selected notification
+  const selectedNotif = notifications.find(n => n.id === activeSelectedNotifId);
+
+  // Helper: format notification type label
+  const getNotificationTypeLabel = (type) => {
+    switch (type) {
+      case 'TASK_ASSIGNED':
+        return 'Task Assigned';
+      case 'TASK_COMPLETED':
+        return 'Task Completed';
+      case 'COMMENT_ADDED':
+        return 'Comment Added';
+      case 'PROJECT_MEMBER_ADDED':
+        return 'Project Member Added';
+      case 'ROLE_CHANGED':
+        return 'Role Changed';
+      case 'ACCOUNT_DEACTIVATED':
+        return 'Account Deactivated';
+      default:
+        return 'System Alert';
     }
-  }, []);
-
-  // Fetch when page or filter changes
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchPage(page, filter, page > 1);
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [page, filter, fetchPage]);
-
-  // Handle filter changes
-  const handleFilterChange = (newFilter) => {
-    setFilter(newFilter);
-    setPage(1);
   };
 
-  // Handle load more trigger
-  const handleLoadMore = () => {
-    if (page < totalPages) {
-      setPage((prev) => prev + 1);
+  // Helper: map notification type to icon
+  const getNotificationTypeIcon = (type) => {
+    switch (type) {
+      case 'TASK_ASSIGNED':
+        return Calendar;
+      case 'TASK_COMPLETED':
+        return CheckCircle;
+      case 'COMMENT_ADDED':
+        return MessageSquare;
+      case 'PROJECT_MEMBER_ADDED':
+        return UserCheck;
+      case 'ROLE_CHANGED':
+        return Shield;
+      case 'ACCOUNT_DEACTIVATED':
+        return UserX;
+      default:
+        return MessageSquare;
     }
   };
 
-  // Handle marking single notification as read
-  const handleMarkItemRead = async (id) => {
-    await markAsRead(id);
-    // Update local state to reflect read status
-    setLocalNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
+  // Helper: Parse description, project, task, actor from message string
+  const parseNotificationDetails = (notif) => {
+    if (!notif) return { actor: 'System', task: 'N/A', project: 'N/A', actionType: 'system', taskId: null, projectId: null };
+    const rawMsg = notif.message || '';
+    
+    // Extract taskId or projectId suffix (format: " | task:<UUID>")
+    const idMatch = rawMsg.match(/\s*\|\s*(task|project):([0-9a-fA-F-]+)/);
+    let taskId = null;
+    let projectId = null;
+    if (idMatch) {
+      if (idMatch[1] === 'task') {
+        taskId = idMatch[2];
+      } else if (idMatch[1] === 'project') {
+        projectId = idMatch[2];
+      }
+    }
+    
+    const msg = rawMsg.split(' | ')[0]; // clean display message
+    const type = notif.type;
+    
+    let actor = 'System';
+    let task = 'N/A';
+    let project = 'N/A';
+    let actionType = 'system';
+    
+    // 1. COMMENT_ADDED: "${author.name} commented on task: ${task.title}"
+    if (type === 'COMMENT_ADDED' || msg.includes('commented on task:')) {
+      const commentMatch = msg.match(/^(.+?)\s+commented on task:\s*(.+)$/i);
+      if (commentMatch) {
+        actor = commentMatch[1];
+        task = commentMatch[2];
+        actionType = 'task';
+      }
+    }
+    // 2. TASK_ASSIGNED: "You have been assigned to task: ${task.title}"
+    else if (type === 'TASK_ASSIGNED' || msg.includes('assigned to task:')) {
+      const assignMatch = msg.match(/assigned to task:\s*(.+)$/i);
+      if (assignMatch) {
+        actor = 'Project Manager';
+        task = assignMatch[1];
+        actionType = 'task';
+      }
+    }
+    // 3. TASK_COMPLETED: "Task completed: ${task.title}"
+    else if (type === 'TASK_COMPLETED' || msg.includes('Task completed:')) {
+      const completeMatch = msg.match(/Task completed:\s*(.+)$/i);
+      if (completeMatch) {
+        actor = 'System';
+        task = completeMatch[1];
+        actionType = 'task';
+      }
+    }
+    // 4. PROJECT_MEMBER_ADDED: "You have been added to project: ${project.name}"
+    else if (type === 'PROJECT_MEMBER_ADDED' || msg.includes('added to project:')) {
+      const projectMatch = msg.match(/added to project:\s*(.+)$/i);
+      if (projectMatch) {
+        actor = 'Project Owner';
+        project = projectMatch[1];
+        actionType = 'project';
+      }
+    }
+    // 5. ROLE_CHANGED: "Your role has been changed..."
+    else if (type === 'ROLE_CHANGED' || msg.includes('role')) {
+      actor = 'Administrator';
+      actionType = 'system';
+    }
+    // 6. ACCOUNT_DEACTIVATED
+    else if (type === 'ACCOUNT_DEACTIVATED' || msg.includes('deactivated')) {
+      actor = 'Administrator';
+      actionType = 'system';
+    }
+    // 7. Fallback matches
+    else if (msg.includes('owner of project:')) {
+      const ownerMatch = msg.match(/owner of project:\s*(.+)$/i);
+      if (ownerMatch) {
+        actor = 'Administrator';
+        project = ownerMatch[1];
+        actionType = 'project';
+      }
+    }
+
+    return { actor, task, project, actionType, taskId, projectId };
   };
 
-  // Handle marking all notifications as read
-  const handleMarkAllRead = async () => {
-    await markAllAsRead();
-    // Update local state to reflect read status for all
-    setLocalNotifications((prev) =>
-      prev.map((n) => ({ ...n, isRead: true }))
-    );
+  // Helper: Group notifications by Date (Today, Yesterday, Earlier)
+  const groupNotificationsByDate = (notifs) => {
+    const todayGroup = [];
+    const yesterdayGroup = [];
+    const earlierGroup = [];
+
+    const isSameDay = (d1, d2) => 
+      d1.getFullYear() === d2.getFullYear() &&
+      d1.getMonth() === d2.getMonth() &&
+      d1.getDate() === d2.getDate();
+
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    notifs.forEach(notif => {
+      const notifDate = new Date(notif.createdAt);
+      if (isSameDay(today, notifDate)) {
+        todayGroup.push(notif);
+      } else if (isSameDay(yesterday, notifDate)) {
+        yesterdayGroup.push(notif);
+      } else {
+        earlierGroup.push(notif);
+      }
+    });
+
+    return [
+      { label: 'Today', items: todayGroup },
+      { label: 'Yesterday', items: yesterdayGroup },
+      { label: 'Earlier', items: earlierGroup }
+    ];
+  };
+
+  const groupedNotifications = groupNotificationsByDate(sortedNotifications);
+
+  const selectedDetails = parseNotificationDetails(selectedNotif);
+
+  const handleOpenItem = () => {
+    if (!selectedNotif) return;
+    if (selectedDetails.actionType === 'task') {
+      if (selectedDetails.taskId) {
+        setActiveTaskDetailsId(selectedDetails.taskId);
+      } else {
+        navigate(user?.role === 'COLLABORATOR' ? '/my-tasks' : '/tasks');
+      }
+    } else if (selectedDetails.actionType === 'project') {
+      navigate('/projects');
+    }
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Notifications</h1>
-          <p className="text-slate-500 text-sm mt-1">Review, manage and filter your real-time notification events.</p>
-        </div>
-
-        {unreadCount > 0 && (
-          <button
-            onClick={handleMarkAllRead}
-            className="self-start sm:self-center inline-flex items-center space-x-2 text-xs font-semibold text-blue-600 hover:text-blue-750 transition-colors border border-blue-200 px-3.5 py-2 rounded-xl bg-blue-50/50 hover:bg-blue-50 cursor-pointer"
-          >
-            <Check className="h-4 w-4" />
-            <span>Mark All As Read</span>
-          </button>
-        )}
+    <div className="space-y-6 select-none max-w-7xl mx-auto h-[calc(100vh-140px)] flex flex-col">
+      {/* Header bar */}
+      <div className="flex items-center justify-between flex-shrink-0">
+        <h1 className="text-3xl font-bold text-white">Inbox</h1>
+        <button 
+          onClick={markAllAsRead}
+          className="px-4 py-1.5 bg-[#252526] hover:bg-[#2c2c2d] border border-slate-850 text-xs font-semibold text-white rounded-xl transition-all duration-150 cursor-pointer"
+        >
+          Manage notifications
+        </button>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex border-b border-slate-200 gap-6">
-        {['all', 'unread', 'read'].map((tab) => (
+      {/* Tabs Menu */}
+      <div className="flex border-b border-slate-850 gap-6 flex-shrink-0">
+        {['Activity', 'Archive'].map((tab) => (
           <button
             key={tab}
-            onClick={() => handleFilterChange(tab)}
-            className={`pb-3 text-sm font-semibold capitalize relative transition-colors cursor-pointer ${
-              filter === tab ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-slate-700'
+            onClick={() => handleTabChange(tab)}
+            className={`pb-3 text-sm font-semibold relative transition-colors cursor-pointer ${
+              activeTab === tab ? 'text-white' : 'text-slate-500 hover:text-slate-350'
             }`}
           >
-            {tab}
-            {tab === 'unread' && unreadCount > 0 && (
-              <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-blue-50 text-blue-600 border border-blue-100">
+            <span>{tab}</span>
+            {tab === 'Activity' && unreadCount > 0 && (
+              <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-blue-600/15 text-blue-400 border border-blue-500/20">
                 {unreadCount}
               </span>
             )}
-            {filter === tab && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />
+            {activeTab === tab && (
+              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-white rounded-full" />
             )}
           </button>
         ))}
       </div>
 
-      {/* Notifications List container */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-        {localNotifications.length > 0 ? (
-          <div className="divide-y divide-slate-100">
-            {localNotifications.map((notif) => (
-              <NotificationItem
-                key={notif.id}
-                notification={notif}
-                onClick={() => handleMarkItemRead(notif.id)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="py-16 px-4 text-center flex flex-col items-center justify-center space-y-3 bg-white">
-            <div className="p-4 rounded-full bg-slate-50 text-slate-400">
-              <Bell className="h-8 w-8" />
-            </div>
-            <h3 className="text-sm font-semibold text-slate-800">No notifications found</h3>
-            <p className="text-xs text-slate-450 max-w-xs mx-auto">
-              There are no notifications matching your '{filter}' filter choice.
-            </p>
-          </div>
-        )}
-      </div>
+      {/* Toolbar filters */}
+      <div className="flex items-center justify-between py-2 border-b border-slate-850 text-xs text-slate-500 flex-shrink-0 relative">
+        <div className="flex items-center space-x-4">
+          {/* Type Filter Dropdown Trigger */}
+          <div className="relative">
+            <button 
+              onClick={() => setShowFilterMenu(!showFilterMenu)}
+              className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-905/60 transition-colors cursor-pointer text-slate-500 hover:text-white"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              <span>Filter: {typeFilter === 'ALL' ? 'All Activity' : getNotificationTypeLabel(typeFilter)}</span>
+            </button>
 
-      {/* Pagination Load More */}
-      {page < totalPages && (
-        <div className="flex justify-center pt-4">
-          <button
-            onClick={handleLoadMore}
-            disabled={loadingPage}
-            className="inline-flex items-center space-x-2 text-xs font-semibold text-slate-700 hover:text-slate-900 border border-slate-200 px-5 py-2.5 rounded-xl bg-white hover:bg-slate-50/80 shadow-sm disabled:opacity-50 transition-all cursor-pointer"
+            {showFilterMenu && (
+              <div className="absolute top-full left-0 mt-2 bg-[#252526] border border-slate-850 rounded-xl shadow-xl w-56 z-50 p-1 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                {['ALL', 'TASK_ASSIGNED', 'TASK_COMPLETED', 'COMMENT_ADDED', 'PROJECT_MEMBER_ADDED', 'ROLE_CHANGED', 'ACCOUNT_DEACTIVATED'].map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => {
+                      setTypeFilter(t);
+                      setShowFilterMenu(false);
+                      setSelectedNotifId(null);
+                    }}
+                    className={`w-full text-left px-3 py-1.5 rounded-lg transition-colors text-[11px] font-semibold cursor-pointer ${
+                      typeFilter === t ? 'bg-slate-905 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-905/40'
+                    }`}
+                  >
+                    {t === 'ALL' ? 'All Activity' : getNotificationTypeLabel(t)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          {/* Sort order toggle */}
+          <button 
+            onClick={() => {
+              setSortOrder(prev => prev === 'Newest' ? 'Oldest' : 'Newest');
+              setSelectedNotifId(null);
+            }}
+            className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-905/60 transition-colors cursor-pointer text-slate-500 hover:text-white"
           >
-            {loadingPage && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            <span>Load More Notifications</span>
+            <ArrowUpDown className="h-3.5 w-3.5" />
+            <span>Sort: {sortOrder}</span>
           </button>
         </div>
+      </div>
+
+      {/* Main Left/Right Workspace Panel */}
+      <div className="flex-1 flex overflow-hidden gap-6">
+        {/* Left Panel: List of notifications grouped by Date (2/5 width) */}
+        <div className="w-[40%] flex flex-col overflow-y-auto border-r border-slate-850 pr-4 space-y-6">
+          {loading && sortedNotifications.length === 0 ? (
+            <div className="py-20 text-center text-slate-550 text-xs animate-pulse">Loading updates...</div>
+          ) : sortedNotifications.length === 0 ? (
+            <div className="py-20 text-center text-slate-500 text-xs italic">
+              No notifications matching current filters.
+            </div>
+          ) : (
+            groupedNotifications.map((group) => {
+              if (group.items.length === 0) return null;
+              return (
+                <div key={group.label} className="space-y-2">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-2">
+                    {group.label}
+                  </div>
+                  <div className="space-y-1.5">
+                    {group.items.map((notif) => {
+                      const Icon = getNotificationTypeIcon(notif.type);
+                      const isSelected = notif.id === activeSelectedNotifId;
+                      return (
+                        <div
+                          key={notif.id}
+                          onClick={() => setSelectedNotifId(notif.id)}
+                          className={`p-4 rounded-xl border flex flex-col justify-between transition-all duration-150 cursor-pointer select-none relative ${
+                            isSelected 
+                              ? 'bg-slate-905 border-slate-800 shadow-md' 
+                              : 'bg-[#252526] border-slate-850 hover:bg-[#2c2c2d]'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center space-x-2 min-w-0">
+                              <div className={`h-6.5 w-6.5 rounded-lg flex items-center justify-center shrink-0 ${
+                                isSelected ? 'bg-slate-950 text-white' : 'bg-slate-905 text-slate-400'
+                              }`}>
+                                <Icon className="h-3.5 w-3.5" />
+                              </div>
+                              <span className="text-xs font-bold text-white truncate">
+                                {getNotificationTypeLabel(notif.type)}
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center space-x-2">
+                              <span className="text-[9px] text-slate-500 font-semibold shrink-0">
+                                {formatTimeAgo(notif.createdAt)}
+                              </span>
+                              {!notif.isRead && activeTab === 'Activity' && (
+                                <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0"></span>
+                              )}
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-slate-400 mt-2 line-clamp-1 leading-relaxed">
+                            {notif.message ? notif.message.split(' | ')[0] : ''}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Right Panel: Detail info card (3/5 width) */}
+        <div className="w-[60%] flex flex-col bg-[#252526] border border-slate-850 rounded-2xl overflow-hidden p-6 relative justify-between">
+          {!selectedNotif ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3">
+              <Archive className="h-10 w-10 text-slate-700 animate-bounce" />
+              <p className="text-xs text-slate-550 font-semibold italic">Select a notification to view full details</p>
+            </div>
+          ) : (
+            <div className="flex flex-col h-full justify-between">
+              {/* Top content area */}
+              <div className="space-y-6">
+                {/* Panel Action Header */}
+                <div className="flex items-center justify-between border-b border-slate-850 pb-4">
+                  <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-blue-600/10 text-blue-400 border border-blue-500/20 uppercase tracking-wide">
+                    {getNotificationTypeLabel(selectedNotif.type)}
+                  </span>
+                  
+                  {activeTab === 'Activity' ? (
+                    <button
+                      onClick={async () => {
+                        await markAsRead(selectedNotif.id);
+                        setSelectedNotifId(null);
+                      }}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-905 hover:bg-slate-950 text-slate-400 hover:text-white border border-slate-800 text-[10px] font-bold transition-colors cursor-pointer"
+                    >
+                      <Archive className="h-3 w-3" />
+                      <span>Archive</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        await markAsUnread(selectedNotif.id);
+                        setSelectedNotifId(null);
+                      }}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-905 hover:bg-slate-950 text-slate-400 hover:text-white border border-slate-800 text-[10px] font-bold transition-colors cursor-pointer"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      <span>Restore</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Details Section */}
+                <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-xs border-b border-slate-850 pb-5">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Performer / Actor</span>
+                    <p className="font-semibold text-white">{selectedDetails.actor}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Timestamp</span>
+                    <p className="font-semibold text-white">{new Date(selectedNotif.createdAt).toLocaleString()}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Related Project</span>
+                    <p className="font-semibold text-white truncate" title={selectedDetails.project}>
+                      {selectedDetails.project}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Related Task</span>
+                    <p className="font-semibold text-white truncate" title={selectedDetails.task}>
+                      {selectedDetails.task}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Message Body */}
+                <div className="space-y-2">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Full Message</span>
+                  <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-xl">
+                    <p className="text-sm text-slate-200 leading-relaxed font-medium">
+                      {selectedNotif.message ? selectedNotif.message.split(' | ')[0] : ''}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom redirection actions */}
+              {selectedDetails.actionType !== 'system' && (
+                <div className="pt-4 border-t border-slate-850 flex justify-end">
+                  <button
+                    onClick={handleOpenItem}
+                    className="flex items-center space-x-1.5 px-4 py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold rounded-xl text-xs transition-all shadow-md cursor-pointer"
+                  >
+                    <span>Open Related {selectedDetails.actionType === 'task' ? 'Task' : 'Project'}</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      {activeTaskDetailsId && (
+        <TaskDetailModal
+          task={{ id: activeTaskDetailsId }}
+          onClose={() => setActiveTaskDetailsId(null)}
+          onTaskUpdated={() => {}}
+        />
       )}
     </div>
   );

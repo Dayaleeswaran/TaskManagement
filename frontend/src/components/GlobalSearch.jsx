@@ -183,7 +183,12 @@ export default function GlobalSearch() {
                         onClick={handleUserClick}
                         className="w-full text-left px-3 py-2 hover:bg-slate-50 rounded-xl transition-colors flex items-center space-x-2.5 cursor-pointer"
                       >
-                        <div className="h-6 w-6 rounded-full bg-violet-100 flex items-center justify-center font-bold text-[10px] text-violet-700">
+                        <div className={`h-6 w-6 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 border ${
+                          u.role === 'SUPER_ADMIN' ? 'avatar-initials-amber' :
+                          u.role === 'ADMIN' ? 'avatar-initials-purple' :
+                          u.role === 'PROJECT_MANAGER' ? 'avatar-initials-blue' :
+                          'avatar-initials-violet'
+                        }`}>
                           {u.name.split(' ').map(n => n[0]).join('')}
                         </div>
                         <div className="flex flex-col">
