@@ -7,12 +7,51 @@ const { getIO } = require("../socket");
  */
 const NotificationType = {
   TASK_ASSIGNED: "TASK_ASSIGNED",
+  TASK_COMPLETED: "TASK_COMPLETED",
   STATUS_CHANGED: "STATUS_CHANGED",
   COMMENT_ADDED: "COMMENT_ADDED",
   DEADLINE_APPROACHING: "DEADLINE_APPROACHING",
   ADMIN_UPDATE: "ADMIN_UPDATE",
+  PROJECT_UPDATE: "PROJECT_UPDATE",
+  ACCOUNT_CREATED: "ACCOUNT_CREATED",
 };
 
+/**
+ * Maps notification types to the corresponding NotificationSettings field.
+ * Types not listed here are always sent (e.g. ADMIN_UPDATE, ACCOUNT_CREATED).
+ */
+const PREF_KEY_MAP = {
+  TASK_ASSIGNED: "taskAssigned",
+  STATUS_CHANGED: "taskCompleted",
+  TASK_COMPLETED: "taskCompleted",
+  COMMENT_ADDED: "taskCommented",
+  PROJECT_UPDATE: "projectUpdates",
+};
+
+/**
+ * Filters a list of userIds down to only those who have the relevant
+ * notification preference enabled (or have no settings row yet, which
+ * defaults to all-enabled).
+ * @param {string[]} userIds
+ * @param {string} type - A NotificationType value.
+ * @returns {Promise<string[]>} Filtered list of userIds.
+ */
+const filterByPreference = async (userIds, type) => {
+  const prefKey = PREF_KEY_MAP[type];
+  // If this type has no preference gate, send to everyone
+  if (!prefKey || !userIds || userIds.length === 0) return userIds || [];
+
+  const settings = await prisma.notificationSettings.findMany({
+    where: { userId: { in: userIds } },
+    select: { userId: true, [prefKey]: true },
+  });
+
+  const settingsMap = {};
+  settings.forEach((s) => { settingsMap[s.userId] = s[prefKey]; });
+
+  // Users with no settings row default to true (enabled)
+  return userIds.filter((id) => settingsMap[id] !== false);
+};
 
 /**
  * Emit a notification to a connected user via Socket.io.
@@ -37,18 +76,16 @@ const emitNotification = (userId, notificationPayload) => {
  * @returns {Promise<object>} The created notification.
  */
 const createNotification = async (userId, type, message) => {
+  // Check user's preference before creating
+  const allowed = await filterByPreference([userId], type);
+  if (allowed.length === 0) return null;
+
   const notification = await prisma.notification.create({
-    data: {
-      userId,
-      type,
-      message,
-      isRead: false,
-    },
+    data: { userId, type, message, isRead: false },
   });
 
   // Emit to user's socket room for real-time delivery
   emitNotification(userId, notification);
-
   return notification;
 };
 
@@ -62,9 +99,13 @@ const createNotification = async (userId, type, message) => {
 const createBulkNotifications = async (userIds, type, message) => {
   if (!userIds || userIds.length === 0) return [];
 
+  // Filter by user preferences
+  const allowedIds = await filterByPreference(userIds, type);
+  if (allowedIds.length === 0) return [];
+
   // Bulk insert via createManyAndReturn (supported in Postgres)
   const notifications = await prisma.notification.createManyAndReturn({
-    data: userIds.map((userId) => ({
+    data: allowedIds.map((userId) => ({
       userId,
       type,
       message,
@@ -216,8 +257,26 @@ const getAdminAndSuperAdminIds = async () => {
 const createCustomBulkNotifications = async (notificationsArray) => {
   if (!notificationsArray || notificationsArray.length === 0) return [];
 
+  // Group by type, filter each group by preferences
+  const typeGroups = {};
+  notificationsArray.forEach((n) => {
+    if (!typeGroups[n.type]) typeGroups[n.type] = [];
+    typeGroups[n.type].push(n);
+  });
+
+  const filtered = [];
+  for (const [type, items] of Object.entries(typeGroups)) {
+    const allowedIds = await filterByPreference(items.map((i) => i.userId), type);
+    const allowedSet = new Set(allowedIds);
+    items.forEach((item) => {
+      if (allowedSet.has(item.userId)) filtered.push(item);
+    });
+  }
+
+  if (filtered.length === 0) return [];
+
   const notifications = await prisma.notification.createManyAndReturn({
-    data: notificationsArray.map((notif) => ({
+    data: filtered.map((notif) => ({
       userId: notif.userId,
       type: notif.type,
       message: notif.message,

@@ -27,6 +27,7 @@ export default function Projects() {
   
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
   
   // Modals/Forms State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -46,11 +47,14 @@ export default function Projects() {
 
   const fetchProjects = useCallback(async () => {
     try {
-      setLoading(false);
+      setLoading(true);
+      setFetchError(null);
       const response = await api.get('/api/v1/projects');
+      console.log('[Projects] API response:', response.status, response.data);
       setProjects(response.data || []);
     } catch (err) {
-      console.error('Failed to load projects:', err);
+      console.error('[Projects] Failed to load projects:', err.response?.status, err.response?.data, err);
+      setFetchError(err.response?.data?.message || 'Failed to retrieve projects.');
       addToast('Failed to retrieve projects.', 'error');
     } finally {
       setLoading(false);
@@ -200,10 +204,23 @@ export default function Projects() {
 
       {loading ? (
         <div className="py-12 text-center text-slate-550 text-sm animate-pulse">Loading active projects...</div>
+      ) : fetchError ? (
+        <div className="py-16 text-center bg-red-950/20 border border-red-800/40 border-dashed rounded-3xl">
+          <FolderKanban className="h-10 w-10 text-red-400 mx-auto mb-3" />
+          <p className="text-sm font-semibold text-red-400 mb-1">Could not load projects</p>
+          <p className="text-xs text-slate-500 mb-4">{fetchError}</p>
+          <button
+            onClick={fetchProjects}
+            className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
       ) : projects.length === 0 ? (
         <div className="py-16 text-center bg-slate-950/20 border border-slate-900 border-dashed rounded-3xl">
           <FolderKanban className="h-10 w-10 text-slate-705 mx-auto mb-3" />
           <p className="text-sm font-semibold text-slate-500">No active projects found.</p>
+          <p className="text-xs text-slate-600 mt-1">Projects you own or are a member of will appear here.</p>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -492,16 +509,27 @@ function ProjectDetailsModal({ project, onClose }) {
   const fetchMembersAndTimeline = useCallback(async () => {
     setLoadingDetails(true);
     try {
-      const [membersRes, timelineRes, tasksRes] = await Promise.all([
-        api.get(`/api/v1/projects/${project.id}/members`),
-        api.get(`/api/v1/projects/${project.id}/activities`),
-        api.get(`/api/v1/tasks?projectId=${project.id}&limit=100`)
-      ]);
+      // Run sequentially to avoid overwhelming the connection pool
+      const membersRes = await api.get(`/api/v1/projects/${project.id}/members`).catch(e => {
+        console.error('[ProjectModal] members fetch failed:', e.response?.status, e.response?.data?.message);
+        return { data: [] };
+      });
+
+      const timelineRes = await api.get(`/api/v1/projects/${project.id}/activities`).catch(e => {
+        console.error('[ProjectModal] activities fetch failed:', e.response?.status, e.response?.data?.message);
+        return { data: [] };
+      });
+
+      const tasksRes = await api.get(`/api/v1/tasks?projectId=${project.id}&limit=100`).catch(e => {
+        console.error('[ProjectModal] tasks fetch failed:', e.response?.status, e.response?.data?.message);
+        return { data: [] };
+      });
+
       setMembers(membersRes.data || []);
       setActivities(timelineRes.data || []);
-      setProjectTasks(tasksRes.data.tasks || tasksRes.data || []);
+      setProjectTasks(tasksRes.data?.tasks || tasksRes.data || []);
     } catch (err) {
-      console.error(err);
+      console.error('[ProjectModal] Unexpected error:', err);
       addToast('Failed to load project details.', 'error');
     } finally {
       setLoadingDetails(false);

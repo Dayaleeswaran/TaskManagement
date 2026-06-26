@@ -88,7 +88,7 @@ export default function Notifications() {
 
   const lastSelectedIdRef = useRef(null);
 
-  // Auto-mark selected notification as read when it becomes active (runs on selection change)
+  // Auto-mark as read when a notification is tapped/selected
   useEffect(() => {
     if (selectedNotifId && selectedNotifId !== lastSelectedIdRef.current) {
       lastSelectedIdRef.current = selectedNotifId;
@@ -97,9 +97,8 @@ export default function Notifications() {
         markAsRead(selectedNotifId);
       }
     }
-  }, [selectedNotifId, notifications, markAsRead]);
+  }, [selectedNotifId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Helper: format notification type label
   const getNotificationTypeLabel = (type) => {
     switch (type) {
       case 'TASK_ASSIGNED':
@@ -525,7 +524,8 @@ export default function Notifications() {
                       <span>{selectedNotif.isStarred ? 'Starred' : 'Star'}</span>
                     </button>
 
-                    {selectedNotif.isRead ? (
+                    {/* Only show Mark as unread — tapping auto-marks as read */}
+                    {selectedNotif.isRead && (
                       <button
                         onClick={async () => {
                           await markAsUnread(selectedNotif.id);
@@ -534,16 +534,6 @@ export default function Notifications() {
                       >
                         <RefreshCw className="h-3 w-3" />
                         <span>Mark as unread</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={async () => {
-                          await markAsRead(selectedNotif.id);
-                        }}
-                        className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-905 hover:bg-slate-950 text-slate-400 hover:text-white border border-slate-800 text-[10px] font-bold transition-colors cursor-pointer"
-                      >
-                        <CheckCircle className="h-3 w-3" />
-                        <span>Mark as read</span>
                       </button>
                     )}
 

@@ -58,95 +58,103 @@ export const NotificationProvider = ({ children }) => {
     }
   }, [liveNotifications, setLiveNotifications]);
 
-  // Mark single notification as read
-  const markAsRead = async (id) => {
+  // Mark single notification as read — optimistic update then API confirm
+  const markAsRead = useCallback(async (id) => {
+    // Optimistic update
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+    );
     try {
       await api.patch(`/api/v1/notifications/${id}/read`);
-      setNotifications((prev) =>
-        prev.map((n) => {
-          if (n.id === id && !n.isRead) {
-            return { ...n, isRead: true };
-          }
-          return n;
-        })
-      );
     } catch (err) {
+      // Rollback on failure
       console.error(`[NotificationContext] Failed to mark notification ${id} as read:`, err);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: false } : n))
+      );
     }
-  };
+  }, []);
 
   // Mark all notifications as read
-  const markAllAsRead = async () => {
+  const markAllAsRead = useCallback(async () => {
+    // Optimistic update
+    const prev = notifications;
+    setNotifications((p) => p.map((n) => ({ ...n, isRead: true })));
     try {
       await api.patch('/api/v1/notifications/read-all');
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, isRead: true }))
-      );
     } catch (err) {
+      // Rollback
       console.error('[NotificationContext] Failed to mark all notifications as read:', err);
+      setNotifications(prev);
     }
-  };
+  }, [notifications]);
 
-  // Mark single notification as unread (Restore)
-  const markAsUnread = async (id) => {
+  // Mark single notification as unread — optimistic update
+  const markAsUnread = useCallback(async (id) => {
+    // Optimistic update
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: false } : n))
+    );
     try {
       await api.patch(`/api/v1/notifications/${id}/unread`);
-      setNotifications((prev) =>
-        prev.map((n) => {
-          if (n.id === id && n.isRead) {
-            return { ...n, isRead: false };
-          }
-          return n;
-        })
-      );
     } catch (err) {
+      // Rollback
       console.error(`[NotificationContext] Failed to mark notification ${id} as unread:`, err);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+      );
     }
-  };
+  }, []);
 
-  // Mark single notification as starred
-  const markAsStarred = async (id) => {
+  // Mark single notification as starred — optimistic update
+  const markAsStarred = useCallback(async (id) => {
+    // Optimistic update
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isStarred: true } : n))
+    );
     try {
       await api.patch(`/api/v1/notifications/${id}/star`);
-      setNotifications((prev) =>
-        prev.map((n) => {
-          if (n.id === id) {
-            return { ...n, isStarred: true };
-          }
-          return n;
-        })
-      );
     } catch (err) {
+      // Rollback
       console.error(`[NotificationContext] Failed to mark notification ${id} as starred:`, err);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isStarred: false } : n))
+      );
     }
-  };
+  }, []);
 
-  // Mark single notification as unstarred
-  const markAsUnstarred = async (id) => {
+  // Mark single notification as unstarred — optimistic update
+  const markAsUnstarred = useCallback(async (id) => {
+    // Optimistic update
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isStarred: false } : n))
+    );
     try {
       await api.patch(`/api/v1/notifications/${id}/unstar`);
-      setNotifications((prev) =>
-        prev.map((n) => {
-          if (n.id === id) {
-            return { ...n, isStarred: false };
-          }
-          return n;
-        })
-      );
     } catch (err) {
+      // Rollback
       console.error(`[NotificationContext] Failed to mark notification ${id} as unstarred:`, err);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isStarred: true } : n))
+      );
     }
-  };
+  }, []);
 
-  // Delete single notification completely
-  const deleteNotification = async (id) => {
+  // Delete single notification completely — optimistic update
+  const deleteNotification = useCallback(async (id) => {
+    const snapshot = notifications.find((n) => n.id === id);
+    // Optimistic removal
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
     try {
       await api.delete(`/api/v1/notifications/${id}`);
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
     } catch (err) {
+      // Rollback
       console.error(`[NotificationContext] Failed to delete notification ${id}:`, err);
+      if (snapshot) {
+        setNotifications((prev) => [snapshot, ...prev]);
+      }
     }
-  };
+  }, [notifications]);
 
   return (
     <NotificationContext.Provider

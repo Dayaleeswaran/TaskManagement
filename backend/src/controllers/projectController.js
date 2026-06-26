@@ -173,7 +173,7 @@ const createProject = async (req, res, next) => {
       // Create notifications & emit Socket.io notifications
       await notificationService.createBulkNotifications(
         otherMembers,
-        "PROJECT_MEMBER_ADDED",
+        "PROJECT_UPDATE",
         `You have been added to project: ${project.name} | project:${project.id}`
       );
     }
@@ -564,7 +564,7 @@ const addProjectMember = async (req, res, next) => {
     // Automatically create notification when project member added
     await notificationService.createNotification(
       userId,
-      "PROJECT_MEMBER_ADDED",
+      "PROJECT_UPDATE",
       `You have been added to project: ${project.name} | project:${project.id}`
     );
 
