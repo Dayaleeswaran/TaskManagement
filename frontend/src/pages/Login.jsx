@@ -115,7 +115,14 @@ export default function Login() {
       // Success: Navigate to redirected route
       navigate(targetPath, { replace: true });
     } catch (err) {
-      const errorMsg = err.message || 'Incorrect email or password. Please try again.';
+      let errorMsg = 'Incorrect email or password. Please try again.';
+      if (err.response && err.response.status === 401) {
+        errorMsg = 'Invalid username or password';
+      } else if (err.response?.data?.message) {
+        errorMsg = err.response.data.message;
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
       setError(errorMsg);
       addToast(errorMsg, 'error');
     } finally {
