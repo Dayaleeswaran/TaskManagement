@@ -96,7 +96,7 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
     } finally {
       setIsLoadingAttachments(false);
     }
-  }, [task?.id]);
+  }, [task.id]);
 
   // Fetch full details of the task
   const fetchFullTaskDetails = useCallback(async () => {
@@ -475,7 +475,6 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
 
     setIsUploading(true);
     let successCount = 0;
-    let failCount = 0;
 
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
@@ -504,7 +503,6 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
       } catch (err) {
         console.error(`Upload failed for file "${file.name}":`, err);
         addToast(`Failed to upload "${file.name}": ${err.response?.data?.message || 'Server error'}`, 'error');
-        failCount++;
       }
     }
 
