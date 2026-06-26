@@ -46,10 +46,12 @@ docker-compose up --build
 
 ## DevOps & CI/CD Strategy
 
-For detailed instructions and strategies regarding the system's CI/CD pipeline, branching strategies, security scanning, container validation, and environment variables, refer to the [DevOps & CI/CD Strategy Documentation](file:///c:/Users/amadi/TaskManagement/docs/devops-ci-cd-strategy.md).
+For detailed instructions and strategies regarding the system's CI/CD pipeline, branching strategies, security scanning, container validation, and environment variables, refer to the [DevOps & CI/CD Strategy Documentation](./docs/devops-ci-cd-strategy.md).
+
+For complete system documentation (including source code tree, API endpoints, database schema, ER diagrams, class diagrams, and deployment diagrams), refer to the [System Documentation](./docs/system_documentation.md).
 
 ### Continuous Integration (CI) Actions
-A GitHub Actions workflow is defined in [.github/workflows/ci.yml](file:///c:/Users/amadi/TaskManagement/.github/workflows/ci.yml) which performs:
+A GitHub Actions workflow is defined in [.github/workflows/ci.yml](./.github/workflows/ci.yml) which performs:
 - **Build Checks**: Installs dependencies and compiles both the backend and frontend.
 - **Docker Validation**: Lints Dockerfiles via Hadolint.
 - **Security Scanning**: Audits dependencies for vulnerability warnings and runs Trivy on container images.
