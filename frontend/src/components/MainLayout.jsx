@@ -101,7 +101,7 @@ export default function MainLayout() {
   const renderSidebarContent = (onClickCallback) => {
     return (
       <div className="h-full flex flex-col justify-between bg-slate-900 border-r border-slate-850 w-64 select-none">
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden custom-sidebar-scroll">
           {/* Logo / Header */}
           <div className="p-4 flex items-center justify-between border-b border-slate-850">
             <Link to="/dashboard" onClick={onClickCallback} className="flex items-center">
