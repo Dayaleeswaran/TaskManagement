@@ -119,6 +119,17 @@ jobs:
           key: ${{ secrets.AZURE_VM_SSH_KEY }}
           command_timeout: 30m
           script: |
+            # Enable 2GB swap space if not already enabled to prevent OOM freezes during build on low-resource VMs
+            if [ ! -f /swapfile ]; then
+              echo "Configuring 2GB swapfile..."
+              sudo fallocate -l 2G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=2048
+              sudo chmod 600 /swapfile
+              sudo mkswap /swapfile
+              sudo swapon /swapfile
+              echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+              echo "Swapfile successfully enabled."
+            fi
+
             cd /home/azureuser/TaskManagement
             git pull origin main
             # Inject production environment files from secrets
@@ -126,7 +137,10 @@ jobs:
             echo "${{ secrets.FRONTEND_ENV }}" > frontend/.env
             # Rebuild and restart containers
             docker compose -f docker-compose.prod.yml down
-            docker compose -f docker-compose.prod.yml up -d --build
+            # Build sequentially to avoid concurrent CPU/RAM thrashing
+            docker compose -f docker-compose.prod.yml build backend
+            docker compose -f docker-compose.prod.yml build frontend
+            docker compose -f docker-compose.prod.yml up -d
             # Run database migrations
             docker exec tms_backend_prod npx prisma migrate deploy
 
