@@ -3,8 +3,7 @@ name: Continuous Deployment (Azure)
 on:
   push:
     branches:
-      - main  # Deploy on merge/push to main branch (Production)
-      # - dev   # Uncomment if you want automatic deployment for staging too
+      - dev  # Deploy on merge/push to dev branch (Production)
 
 permissions:
   id-token: write
