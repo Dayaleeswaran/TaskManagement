@@ -1,16 +1,29 @@
 const { createClient } = require("@supabase/supabase-js");
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+let supabaseClient = null;
 
-if (!supabaseUrl || !supabaseKey) {
-  console.warn("WARNING: Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables!");
-}
+const getClient = () => {
+  if (!supabaseClient) {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabase = createClient(supabaseUrl || "", supabaseKey || "", {
-  auth: {
-    persistSession: false,
-  },
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error("Supabase credentials are not configured. Please set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables.");
+    }
+    supabaseClient = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: false,
+      },
+    });
+  }
+  return supabaseClient;
+};
+
+// Use a Proxy so we don't have to change other files importing 'supabase'
+const supabase = new Proxy({}, {
+  get: (target, prop) => {
+    return getClient()[prop];
+  }
 });
 
 module.exports = { supabase };
