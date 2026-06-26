@@ -396,10 +396,15 @@ export default function Dashboard() {
             ) : (
               <div className="space-y-3.5">
                 {projects.map(proj => (
-                  <div key={proj.id} className="p-4 bg-slate-50 border border-slate-200/60 rounded-xl">
-                    <h4 className="font-bold text-sm text-slate-800">{proj.name}</h4>
+                  <Link
+                    key={proj.id}
+                    to="/projects"
+                    state={{ selectProjectId: proj.id }}
+                    className="block p-4 bg-slate-50 border border-slate-200/60 rounded-xl hover:shadow-sm hover:border-violet-300 transition-all duration-150 group cursor-pointer"
+                  >
+                    <h4 className="font-bold text-sm text-slate-800 group-hover:text-violet-600 transition-colors">{proj.name}</h4>
                     <p className="text-xs text-slate-400 mt-1 line-clamp-2">{proj.description}</p>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}

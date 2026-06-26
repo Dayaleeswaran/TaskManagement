@@ -275,6 +275,7 @@ export default function MainLayout() {
                       <Link
                         key={proj.id}
                         to="/projects"
+                        state={{ selectProjectId: proj.id }}
                         onClick={onClickCallback}
                         className="flex items-center space-x-3 px-3 py-2 rounded-xl text-sm font-medium text-slate-500 hover:text-slate-100 hover:bg-slate-905/40 transition-all duration-150"
                       >
