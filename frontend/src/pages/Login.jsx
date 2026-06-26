@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import WorkNestLogo from '../components/WorkNestLogo';
 import ShapeGrid from '../components/ShapeGrid';
 
@@ -17,6 +17,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
 
   // Get redirection path or default to dashboard
   const from = location.state?.from?.pathname || '/dashboard';
@@ -202,10 +203,10 @@ export default function Login() {
               </div>
               <input
                 id="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={handlePasswordChange}
-                className={`block w-full pl-11 pr-4 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 font-sans ${
+                className={`block w-full pl-11 pr-11 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 font-sans ${
                   fieldErrors.password
                     ? 'border-red-500 focus:ring-red-500/50'
                     : 'border-slate-850 focus:ring-slate-400'
@@ -213,6 +214,14 @@ export default function Login() {
                 placeholder="••••••••"
                 disabled={loading}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-350 cursor-pointer z-10"
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
             </div>
             {fieldErrors.password && (
               <p className="mt-1.5 text-xs font-medium text-red-400 flex items-center gap-1">

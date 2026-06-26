@@ -138,12 +138,12 @@ TaskManagement/
 
 ## 2. API Documentation
 
-> **Live Swagger UI**: `https://task-management-backend-lt0f.onrender.com/api/docs`
+> **Live Swagger UI**: `https://<your-azure-backend-domain>/api/docs`
 
 ### Base URL
 ```
 Development:  http://localhost:3000/api/v1
-Production:   https://task-management-backend-lt0f.onrender.com/api/v1
+Production (Azure Container App / VM): https://<your-azure-backend-domain>/api/v1
 ```
 
 ### Authentication
@@ -878,35 +878,70 @@ graph TB
 
 ### 6.2 Production Environment
 
+The system supports two production options in Azure:
+1. **Option A (Azure VM + Docker Compose)**: An Azure Virtual Machine running Nginx as a reverse proxy, serving the compiled React static app, and routing backend requests to a Dockerized Node.js API container.
+2. **Option B (Azure Managed Services - Serverless)**: Frontend deployed to Azure Static Web Apps (ASWA), backend containers hosted on Azure Container Apps (ACA), and database hosted on Azure Database for PostgreSQL (Flexible Server).
+
+#### Option A: Azure VM (IaaS) Deployment Architecture
 ```mermaid
 graph TB
     subgraph CLIENT["🌍 Client Side"]
         USER["👤 End User Browser"]
     end
 
-    subgraph VERCEL["▲ Vercel (Frontend Hosting)"]
-        FE_PROD["🖥 React SPA\nhttps://task-management-virid-xi.vercel.app\n\n• Serves static assets\n• Directs API calls to Render\n• Directs Socket connections to Render"]
+    subgraph AZURE_VM["💻 Azure VM VM (Standard_B1s / Ubuntu)"]
+        NGINX["🖥 Nginx Proxy / Web Server\n\n• Listens on :80 / :443 (SSL via Let's Encrypt)\n• Serves compiled React production build\n• Proxies API & WebSocket calls to backend"]
+        BE_DOCKER["⚙️ Backend Docker Container\n\n• Express REST API (:3000)\n• Socket.io WebSockets\n• Prisma ORM client"]
+        PG_DOCKER["🗄 PostgreSQL Container\n\n• Local Docker DB storage"]
     end
 
-    subgraph RENDER["⚙️ Render.com (Backend Web Service)"]
-        BE_PROD["⚙️ Express API & WebSockets\nhttps://task-management-backend-lt0f.onrender.com\n\n• Express REST API\n• Socket.io WebSocket\n• JWT authorization\n• Prisma ORM client\n• Helmet security headers\n• Lazy Supabase connection"]
+    subgraph EXT["☁️ External Services"]
+        SUPABASE["📦 Supabase Storage\n(File Attachments)"]
     end
 
-    subgraph SUPABASE["☁️ Supabase Cloud (Data & Storage)"]
-        SB_DB["🔵 PostgreSQL Database\naws-1-ap-southeast-2.pooler.supabase.com:6543\n(Prisma Transaction Pooler)"]
+    USER -->|"HTTPS / WSS"| NGINX
+    NGINX -->|"Local Proxy"| BE_DOCKER
+    BE_DOCKER -->|"Local Network"| PG_DOCKER
+    BE_DOCKER -->|"S3 API"| SUPABASE
+
+    style CLIENT fill:#1e293b,stroke:#475569,color:#fff
+    style AZURE_VM fill:#0f172a,stroke:#334155,color:#fff
+    style EXT fill:#172554,stroke:#1e40af,color:#fff
+```
+
+#### Option B: Azure Managed Services (PaaS) Deployment Architecture
+```mermaid
+graph TB
+    subgraph CLIENT["🌍 Client Side"]
+        USER["👤 End User Browser"]
+    end
+
+    subgraph ASWA["▲ Azure Static Web Apps"]
+        FE_PROD["🖥 React SPA\nhttps://tms-frontend.azurestaticapps.net\n\n• Serves static assets globally via CDN\n• Free managed SSL certificate\n• API requests routed to ACA"]
+    end
+
+    subgraph ACA["⚙️ Azure Container Apps"]
+        BE_PROD["⚙️ Express API & WebSockets\nhttps://tms-backend.azurecontainerapps.io\n\n• Managed serverless containers\n• Sticky Sessions enabled for WebSockets\n• Auto-scaling based on CPU/Memory"]
+    end
+
+    subgraph AZURE_DB["🗄 Azure Database for PostgreSQL"]
+        DB_PROD["🔵 PostgreSQL Flexible Server\n\n• Fully managed DB instance\n• Automated backups & patching"]
+    end
+
+    subgraph SUPABASE["☁️ External Storage"]
         SB_FILES["📦 Supabase Storage\n'Attachment' Bucket\n(Signed URLs / S3 API)"]
     end
 
-    USER -->|"HTTPS :443"| FE_PROD
+    USER -->|"HTTPS"| FE_PROD
     USER -->|"HTTPS / REST / JSON"| BE_PROD
     USER -->|"WSS / WebSocket Upgrade"| BE_PROD
-    BE_PROD -->|"Prisma ORM (Port 6543)"| SB_DB
+    BE_PROD -->|"Prisma TCP Connection"| DB_PROD
     BE_PROD -->|"S3 / Storage Client API"| SB_FILES
 
     style CLIENT fill:#1e293b,stroke:#475569,color:#fff
-    style VERCEL fill:#0f172a,stroke:#334155,color:#fff
-    style RENDER fill:#070f2b,stroke:#1b1a55,color:#fff
-    style SUPABASE fill:#172554,stroke:#1e40af,color:#fff
+    style ASWA fill:#0f172a,stroke:#334155,color:#fff
+    style ACA fill:#070f2b,stroke:#1b1a55,color:#fff
+    style AZURE_DB fill:#172554,stroke:#1e40af,color:#fff
 ```
 
 ### 6.3 Request Flow Diagram
@@ -914,37 +949,37 @@ graph TB
 ```mermaid
 sequenceDiagram
     participant B as Browser
-    participant V as Vercel
-    participant API as Render Express API
-    participant DB as Supabase PostgreSQL
+    participant SWA as Azure Static Web Apps
+    participant ACA as Azure Container App Backend
+    participant DB as Azure PostgreSQL DB
     participant S3 as Supabase Storage
-    participant WS as Render Socket.io
+    participant WS as Socket.io (ACA instance)
 
-    B->>V: GET / (Request SPA)
-    V-->>B: index.html + JS Bundles
+    B->>SWA: GET / (Request SPA)
+    SWA-->>B: index.html + JS Bundles
 
-    B->>API: POST /api/v1/auth/login
-    API->>DB: find user, verify password
-    DB-->>API: user row
-    API-->>B: {token, user} (JWT access token)
+    B->>ACA: POST /api/v1/auth/login
+    ACA->>DB: find user, verify password
+    DB-->>ACA: user row
+    ACA-->>B: {token, user} (JWT access token)
 
     B->>WS: Connect (auth: token)
-    WS->>API: verify JWT
-    API-->>WS: join room = userId
+    WS->>ACA: verify JWT
+    ACA-->>WS: join room = userId
 
-    B->>API: POST /api/v1/tasks (Bearer token)
-    API->>DB: create task + assignments
-    DB-->>API: task object
-    API->>WS: emit notification to assignees
+    B->>ACA: POST /api/v1/tasks (Bearer token)
+    ACA->>DB: create task + assignments
+    DB-->>ACA: task object
+    ACA->>WS: emit notification to assignees
     WS-->>B: real-time notification push
-    API-->>B: 201 Created task object
+    ACA-->>B: 201 Created task object
 
-    B->>API: POST /api/v1/tasks/:id/attachments
-    API->>S3: upload file to Supabase bucket
-    S3-->>API: bucketPath
-    API->>DB: save Attachment record
-    DB-->>API: attachment object
-    API-->>B: {attachment, signedUrl}
+    B->>ACA: POST /api/v1/tasks/:id/attachments
+    ACA->>S3: upload file to Supabase bucket
+    S3-->>ACA: bucketPath
+    ACA->>DB: save Attachment record
+    DB-->>ACA: attachment object
+    ACA-->>B: {attachment, signedUrl}
 ```
 
 ### 6.4 Notification Preference Flow

@@ -327,7 +327,7 @@ export default function MainLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="h-screen bg-slate-950 text-slate-100 flex flex-col font-sans overflow-hidden">
       {/* Mobile Top Header (Visible only on mobile screen widths) */}
       <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-850 px-4 py-3 flex md:hidden items-center justify-between">
         <button

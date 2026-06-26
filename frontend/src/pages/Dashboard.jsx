@@ -726,12 +726,6 @@ export default function Dashboard() {
 
         {/* Right side pills */}
         <div className="flex flex-wrap items-center gap-3 text-xs">
-          {/* Dropdown: My week */}
-          <div className="flex items-center space-x-1 px-3 py-1.5 bg-[#252526] hover:bg-[#2c2c2d] border border-slate-850 rounded-xl font-medium text-white transition-all cursor-pointer">
-            <span>My week</span>
-            <span className="text-[9px] text-slate-500">▼</span>
-          </div>
-
           {/* Unified status pill */}
           <div className="flex items-center space-x-3 px-3.5 py-1.5 bg-[#252526] border border-slate-850 rounded-xl font-medium text-slate-400">
             <div className="flex items-center space-x-1">

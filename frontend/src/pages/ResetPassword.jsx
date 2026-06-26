@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { CheckCircle2, AlertCircle, Loader2, Lock, ArrowLeft, Check, X } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2, Lock, ArrowLeft, Check, X, Eye, EyeOff } from 'lucide-react';
 
 export default function ResetPassword() {
   const { resetPassword } = useAuth();
@@ -19,6 +19,8 @@ export default function ResetPassword() {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({ password: '', confirmPassword: '' });
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Redirect to login after 3 seconds on success
   useEffect(() => {
@@ -156,11 +158,11 @@ export default function ResetPassword() {
                   <input
                     id="password"
                     name="password"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     autoComplete="new-password"
                     value={password}
                     onChange={handlePasswordChange}
-                    className={`block w-full pl-11 pr-4 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-550 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 font-sans ${
+                    className={`block w-full pl-11 pr-11 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-550 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 font-sans ${
                       fieldErrors.password
                         ? 'border-red-500 focus:ring-red-500/50'
                         : 'border-slate-800 focus:ring-violet-500'
@@ -169,6 +171,14 @@ export default function ResetPassword() {
                     disabled={loading}
                     autoFocus
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-350 cursor-pointer z-10"
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
                 </div>
                 {fieldErrors.password && (
                   <p className="mt-1.5 text-xs font-medium text-red-400 leading-normal flex items-start gap-1">
@@ -208,11 +218,11 @@ export default function ResetPassword() {
                   <input
                     id="confirmPassword"
                     name="confirmPassword"
-                    type="password"
+                    type={showConfirmPassword ? 'text' : 'password'}
                     autoComplete="new-password"
                     value={confirmPassword}
                     onChange={handleConfirmPasswordChange}
-                    className={`block w-full pl-11 pr-4 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-550 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 font-sans ${
+                    className={`block w-full pl-11 pr-11 py-3 bg-slate-900 border rounded-xl text-slate-100 placeholder-slate-550 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 font-sans ${
                       fieldErrors.confirmPassword
                         ? 'border-red-500 focus:ring-red-500/50'
                         : 'border-slate-800 focus:ring-violet-500'
@@ -220,6 +230,14 @@ export default function ResetPassword() {
                     placeholder="Repeat password"
                     disabled={loading}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-350 cursor-pointer z-10"
+                    title={showConfirmPassword ? "Hide password" : "Show password"}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
                 </div>
                 {fieldErrors.confirmPassword && (
                   <p className="mt-1.5 text-xs font-medium text-red-400 flex items-center gap-1">

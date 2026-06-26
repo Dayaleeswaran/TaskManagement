@@ -700,5 +700,41 @@ body.sidebar-open {
   transform-origin: center;
 }
 
+/* Hide default/native browser password reveal eye icon and caps lock indicators */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none !important;
+  width: 0;
+  height: 0;
+}
 
-
+/* Prevent global text color overrides from breaking status/priority badges */
+span.bg-rose-50,
+span.text-rose-500 {
+  color: #f43f5e !important; /* red-500 */
+}
+span.bg-amber-50,
+span.text-amber-500 {
+  color: #f59e0b !important; /* amber-500 */
+}
+span.bg-emerald-50,
+span.text-emerald-500 {
+  color: #10b981 !important; /* emerald-500 */
+}
+span.text-emerald-700 {
+  color: #047857 !important; /* emerald-700 */
+}
+span.bg-blue-50,
+span.bg-blue-55,
+span.text-blue-500,
+span.text-blue-700 {
+  color: #3b82f6 !important; /* blue-500/700 */
+}
+span.bg-slate-100,
+span.text-slate-500,
+span.text-slate-600 {
+  color: #a2a0a2 !important; /* slate-500/600 text color for dark mode */
+}
+span.border-slate-200 {
+  border-color: #2d2e30 !important;
+}

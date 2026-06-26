@@ -117,6 +117,7 @@ jobs:
           host: ${{ secrets.AZURE_VM_HOST }}
           username: azureuser
           key: ${{ secrets.AZURE_VM_SSH_KEY }}
+          command_timeout: 30m
           script: |
             cd /home/azureuser/TaskManagement
             git pull origin main
