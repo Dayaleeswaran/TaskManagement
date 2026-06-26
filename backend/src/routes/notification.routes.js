@@ -7,6 +7,7 @@ const {
   markAsUnreadController,
   markAsStarredController,
   markAsUnstarredController,
+  deleteNotificationController,
 } = require("../controllers/notificationController");
 
 const router = express.Router();
@@ -26,5 +27,8 @@ router.patch("/notifications/:id/read", markAsReadController);
 router.patch("/notifications/:id/unread", markAsUnreadController);
 router.patch("/notifications/:id/star", markAsStarredController);
 router.patch("/notifications/:id/unstar", markAsUnstarredController);
+
+// DELETE single notification
+router.delete("/notifications/:id", deleteNotificationController);
 
 module.exports = router;

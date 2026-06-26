@@ -1,5 +1,5 @@
 const express = require("express");
-const { register, login, logout, forgotPassword, verifyResetCode, resetPassword, changePassword } = require("../controllers/authController");
+const { register, login, logout, forgotPassword, verifyResetCode, resetPassword, changePassword, refresh } = require("../controllers/authController");
 const { validate } = require("../middleware/validateMiddleware");
 const { registerSchema, loginSchema, forgotPasswordSchema, verifyResetCodeSchema, resetPasswordSchema } = require("../validators/authSchemas");
 const { verifyToken } = require("../middleware/authMiddleware");
@@ -116,5 +116,28 @@ router.post("/forgot-password", validate(forgotPasswordSchema), forgotPassword);
 router.post("/verify-reset-code", validate(verifyResetCodeSchema), verifyResetCode);
 router.post("/reset-password", validate(resetPasswordSchema), resetPassword);
 router.post("/change-password", verifyToken, changePassword);
+
+/**
+ * @swagger
+ * /api/v1/auth/refresh:
+ *   post:
+ *     summary: Refresh access token
+ *     description: Rotate the long-lived refresh token in HttpOnly cookie and return a new short-lived access token.
+ *     responses:
+ *       200:
+ *         description: Token refreshed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *       401:
+ *         description: Refresh token invalid, expired, or revoked
+ *       500:
+ *         description: Server error
+ */
+router.post("/refresh", refresh);
 
 module.exports = router;

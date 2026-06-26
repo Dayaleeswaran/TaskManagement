@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const prisma = require("../prisma");
+const crypto = require("crypto");
 const { addToBlacklist } = require("../middleware/tokenBlacklist");
 const { sendPasswordResetCode } = require("../services/emailService");
 
@@ -91,12 +92,37 @@ exports.login = async (req, res, next) => {
       throw error;
     }
 
-    // Sign JWT token
-    const token = jwt.sign({ id: user.id }, JWT_SECRET, {
-      expiresIn: JWT_EXPIRES_IN,
+    // Sign Access Token - Lifetime: 15 minutes (HS256)
+    const accessToken = jwt.sign({ id: user.id }, JWT_SECRET, {
+      expiresIn: "15m",
+      algorithm: "HS256",
     });
 
-    // Don't return the hashed password
+    // Generate Refresh Token - cryptographically strong string
+    const rawRefreshToken = crypto.randomBytes(40).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(rawRefreshToken).digest("hex");
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    // Save refresh token record
+    await prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+        ipAddress: req.ip || req.headers["x-forwarded-for"] || null,
+        userAgent: req.headers["user-agent"] || null,
+      },
+    });
+
+    // Set Refresh Token as HttpOnly Secure cookie
+    res.cookie("refreshToken", rawRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      expires: expiresAt,
+      path: "/",
+    });
+
     const userResponse = {
       id: user.id,
       name: user.name,
@@ -110,7 +136,7 @@ exports.login = async (req, res, next) => {
 
     res.status(200).json({
       message: "Login successful",
-      token,
+      token: accessToken,
       user: userResponse,
     });
   } catch (err) {
@@ -118,13 +144,110 @@ exports.login = async (req, res, next) => {
   }
 };
 
-exports.logout = (req, res, next) => {
+exports.refresh = async (req, res, next) => {
   try {
+    const rawRefreshToken = req.cookies.refreshToken;
+    if (!rawRefreshToken) {
+      return res.status(401).json({
+        errorCode: "REFRESH_TOKEN_MISSING",
+        message: "Refresh token is missing.",
+      });
+    }
+
+    const tokenHash = crypto.createHash("sha256").update(rawRefreshToken).digest("hex");
+
+    const tokenRecord = await prisma.refreshToken.findUnique({
+      where: { tokenHash },
+      include: { user: true },
+    });
+
+    // If token not found, expired, or revoked
+    if (!tokenRecord || tokenRecord.revokedAt || new Date() > tokenRecord.expiresAt) {
+      return res.status(401).json({
+        errorCode: "UNAUTHORIZED",
+        message: "Invalid or expired refresh token.",
+      });
+    }
+
+    if (!tokenRecord.user.isActive) {
+      return res.status(403).json({
+        errorCode: "FORBIDDEN",
+        message: "Your account has been deactivated.",
+      });
+    }
+
+    // Revoke previous token
+    await prisma.refreshToken.update({
+      where: { id: tokenRecord.id },
+      data: { revokedAt: new Date() },
+    });
+
+    // Rotate: Generate new refresh token
+    const newRawRefreshToken = crypto.randomBytes(40).toString("hex");
+    const newHash = crypto.createHash("sha256").update(newRawRefreshToken).digest("hex");
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    await prisma.refreshToken.create({
+      data: {
+        userId: tokenRecord.userId,
+        tokenHash: newHash,
+        expiresAt,
+        ipAddress: req.ip || req.headers["x-forwarded-for"] || null,
+        userAgent: req.headers["user-agent"] || null,
+      },
+    });
+
+    // Generate new Access Token (15m, HS256)
+    const newAccessToken = jwt.sign({ id: tokenRecord.userId }, JWT_SECRET, {
+      expiresIn: "15m",
+      algorithm: "HS256",
+    });
+
+    // Set cookie
+    res.cookie("refreshToken", newRawRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      expires: expiresAt,
+      path: "/",
+    });
+
+    res.status(200).json({
+      token: newAccessToken,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.logout = async (req, res, next) => {
+  try {
+    const rawRefreshToken = req.cookies.refreshToken;
+    if (rawRefreshToken) {
+      const tokenHash = crypto.createHash("sha256").update(rawRefreshToken).digest("hex");
+      
+      // Revoke in DB
+      await prisma.refreshToken.updateMany({
+        where: { tokenHash },
+        data: { revokedAt: new Date() },
+      });
+    }
+
+    // Add access token to blacklist if present
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.split(" ")[1];
       addToBlacklist(token);
     }
+
+    // Clear refresh token cookie
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+    });
+
     res.status(200).json({ message: "Logout successful" });
   } catch (err) {
     next(err);

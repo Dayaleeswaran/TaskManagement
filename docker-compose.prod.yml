@@ -33,6 +33,9 @@ services:
       JWT_SECRET: "production-jwt-super-secret-key-change-me"
       JWT_EXPIRES_IN: "24h"
       CLIENT_ORIGIN: "http://localhost,http://localhost:80"
+      SUPABASE_URL: "https://fyqskrbxrqrxmlwnzxrr.supabase.co"
+      SUPABASE_SERVICE_ROLE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5cXNrcmJ4cnFyeG1sd256eHJyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTE1OTg4OCwiZXhwIjoyMDk2NzM1ODg4fQ.F8ZMhSJBtaTcpX1G9XjmsLHnxIf3z5QtJtUANjeirNI"
+      SUPABASE_BUCKET: "Attachment"
     command: sh -c "npx prisma migrate deploy && npx prisma db seed && npm run start"
     depends_on:
       postgres:

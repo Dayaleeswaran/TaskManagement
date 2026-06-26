@@ -295,6 +295,35 @@ const markAsUnstarred = async (notificationId, userId) => {
   });
 };
 
+/**
+ * Deletes a single notification.
+ * @param {string} notificationId - The notification's ID.
+ * @param {string} userId - The requesting user's ID.
+ */
+const deleteNotification = async (notificationId, userId) => {
+  const notification = await prisma.notification.findUnique({
+    where: { id: notificationId },
+  });
+
+  if (!notification) {
+    const error = new Error("Notification not found.");
+    error.statusCode = 404;
+    error.errorCode = "NOTIFICATION_NOT_FOUND";
+    throw error;
+  }
+
+  if (notification.userId !== userId) {
+    const error = new Error("You are not authorized to delete this notification.");
+    error.statusCode = 403;
+    error.errorCode = "FORBIDDEN";
+    throw error;
+  }
+
+  return prisma.notification.delete({
+    where: { id: notificationId },
+  });
+};
+
 module.exports = {
   NotificationType,
   createNotification,
@@ -306,5 +335,6 @@ module.exports = {
   markAsUnread,
   markAsStarred,
   markAsUnstarred,
+  deleteNotification,
   getAdminAndSuperAdminIds,
 };

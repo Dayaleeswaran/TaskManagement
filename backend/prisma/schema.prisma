@@ -51,6 +51,8 @@ model User {
   activities        Activity[]
   auditLogs         AuditLog[]
   notificationSettings NotificationSettings?
+  refreshTokens     RefreshToken[]
+  uploadedAttachments Attachment[]     @relation("UploadedAttachments")
 
   @@index([email])
   @@index([role])
@@ -113,6 +115,7 @@ model Task {
   
   // Enterprise additions
   labels      Label[]
+  attachments Attachment[]
 
   @@index([projectId])
   @@index([createdById])
@@ -204,4 +207,37 @@ model NotificationSettings {
   taskCompleted   Boolean @default(true)
   taskCommented   Boolean @default(true)
   projectUpdates  Boolean @default(true)
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  userId     String
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+  ipAddress  String?
+  userAgent  String?
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model Attachment {
+  id          String   @id @default(uuid())
+  fileName    String
+  bucketPath  String   @unique
+  mimeType    String
+  size        Int
+  taskId      String
+  uploadedBy  String
+  createdAt   DateTime @default(now())
+
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploader    User     @relation("UploadedAttachments", fields: [uploadedBy], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([uploadedBy])
 }

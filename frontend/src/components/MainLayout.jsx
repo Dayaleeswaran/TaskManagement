@@ -339,13 +339,18 @@ export default function MainLayout() {
         <Link to="/dashboard" className="flex items-center">
           <WorkNestLogo size={32} showText={true} lightText={true} />
         </Link>
-        {unreadCount > 0 ? (
-          <span className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-blue-600 text-white">
-            {unreadCount}
-          </span>
-        ) : (
-          <div className="w-7"></div>
-        )}
+        <Link
+          to="/notifications"
+          className="relative p-2 rounded-lg text-slate-500 hover:text-slate-100 hover:bg-slate-950 transition-colors cursor-pointer flex items-center justify-center"
+          aria-label="Notifications"
+        >
+          <Bell className="h-5 w-5" />
+          {unreadCount > 0 && (
+            <span className="absolute top-0.5 right-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-blue-600 text-[8px] font-bold text-white ring-2 ring-slate-900 shadow-sm">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </Link>
       </header>
 
       {/* Main Layout Area */}
@@ -369,7 +374,7 @@ export default function MainLayout() {
         )}
 
         {/* Main Content Area */}
-        <main className="flex-1 p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
+        <main className="flex-1 min-w-0 p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
           <Outlet />
         </main>
       </div>

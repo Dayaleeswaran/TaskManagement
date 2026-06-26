@@ -18,6 +18,7 @@ const healthRoutes = require("./routes/healthRoutes");
 const analyticsRoutes = require("./routes/analyticsRoutes");
 const searchRoutes = require("./routes/searchRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
+const attachmentRoutes = require("./routes/attachment.routes");
 const { seedDefaultLabels } = require("./services/labelSeeder");
 const { seedSuperAdmin } = require("./services/superAdminSeeder");
 const { errorHandler } = require("./middleware/errorHandler");
@@ -76,7 +77,8 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-      imgSrc: ["'self'", "data:", "https://validator.swagger.io"],
+      imgSrc: ["'self'", "data:", "https://validator.swagger.io", "https://*.supabase.co"],
+      frameSrc: ["'self'", "https://*.supabase.co"],
       connectSrc: ["'self'", "*", "wss://*", "ws://*"],
     },
   },
@@ -93,6 +95,8 @@ app.use(helmet({
   hidePoweredBy: true,
 }));
 
+const cookieParser = require("cookie-parser");
+app.use(cookieParser());
 app.use(express.json());
 app.use(sanitizeInput);
 
@@ -172,6 +176,7 @@ app.use("/api/v1/search", searchRoutes);
 app.use("/api/v1/settings", settingsRoutes);
 app.use("/api/v1", commentRoutes);
 app.use("/api/v1", notificationRoutes);
+app.use("/api/v1", attachmentRoutes);
 app.use("/api/health", healthRoutes);
 app.use("/api/v1/health", healthRoutes);
 

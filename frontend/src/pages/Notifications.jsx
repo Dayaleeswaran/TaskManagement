@@ -11,7 +11,9 @@ import {
   Shield,
   UserCheck,
   UserX,
-  Star
+  Star,
+  Trash2,
+  ArrowLeft
 } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
@@ -21,18 +23,28 @@ import { formatTimeAgo } from '../utils/dateUtils';
 import TaskDetailModal from '../components/TaskDetailModal';
 
 export default function Notifications() {
-  const { notifications, loading, markAsRead, markAsUnread, unreadCount, markAsStarred, markAsUnstarred } = useNotifications();
+  const { notifications, loading, markAsRead, markAsUnread, unreadCount, markAsStarred, markAsUnstarred, deleteNotification } = useNotifications();
   const { user } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
   const starredCount = notifications.filter(n => n.isStarred).length;
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [activeTab, setActiveTab] = useState('Activity'); // 'Activity', 'Starred', 'Unread'
   const [selectedNotifId, setSelectedNotifId] = useState(null);
   const [sortOrder, setSortOrder] = useState('Newest'); // 'Newest', 'Oldest'
   const [typeFilter, setTypeFilter] = useState('ALL'); // 'ALL', 'TASK_ASSIGNED', 'TASK_COMPLETED', 'COMMENT_ADDED', 'PROJECT_MEMBER_ADDED', 'ROLE_CHANGED', 'ACCOUNT_DEACTIVATED'
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [activeTaskDetailsId, setActiveTaskDetailsId] = useState(null);
+
+  // Screen resize listener for mobile viewports
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Clear selected notification when switching tabs
   const handleTabChange = (tab) => {
@@ -60,19 +72,19 @@ export default function Notifications() {
     return sortOrder === 'Newest' ? dateB - dateA : dateA - dateB;
   });
 
-  // Determine active selected notification ID (auto-select the first one if none selected)
-  const activeSelectedNotifId = selectedNotifId || sortedNotifications[0]?.id;
+  // Determine active selected notification ID (auto-select the first one if none selected - desktop only)
+  const activeSelectedNotifId = selectedNotifId || (!isMobile ? sortedNotifications[0]?.id : null);
 
   // Find selected notification
-  const selectedNotif = notifications.find(n => n.id === activeSelectedNotifId);
+  const selectedNotif = activeSelectedNotifId ? notifications.find(n => n.id === activeSelectedNotifId) : null;
 
-  // Auto-select first notification on load if none selected
+  // Auto-select first notification on load if none selected (desktop only)
   useEffect(() => {
-    if (!selectedNotifId && sortedNotifications.length > 0) {
+    if (!isMobile && !selectedNotifId && sortedNotifications.length > 0) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedNotifId(sortedNotifications[0].id);
     }
-  }, [sortedNotifications, selectedNotifId]);
+  }, [sortedNotifications, selectedNotifId, isMobile]);
 
   const lastSelectedIdRef = useRef(null);
 
@@ -277,7 +289,7 @@ export default function Notifications() {
   };
 
   return (
-    <div className="space-y-6 select-none max-w-7xl mx-auto h-[calc(100vh-140px)] flex flex-col">
+    <div className="space-y-6 select-none max-w-7xl mx-auto h-[calc(100vh-120px)] md:h-[calc(100vh-140px)] flex flex-col">
       {/* Header bar */}
       <div className="flex items-center justify-between flex-shrink-0">
         <h1 className="text-3xl font-bold text-white">Inbox</h1>
@@ -361,86 +373,104 @@ export default function Notifications() {
 
       {/* Main Left/Right Workspace Panel */}
       <div className="flex-1 flex overflow-hidden gap-6">
-        {/* Left Panel: List of notifications grouped by Date (2/5 width) */}
-        <div className="w-[40%] flex flex-col overflow-y-auto border-r border-slate-850 pr-4 space-y-6">
-          {loading && sortedNotifications.length === 0 ? (
-            <div className="py-20 text-center text-slate-550 text-xs animate-pulse">Loading updates...</div>
-          ) : sortedNotifications.length === 0 ? (
-            <div className="py-20 text-center text-slate-500 text-xs italic">
-              No notifications matching current filters.
-            </div>
-          ) : (
-            groupedNotifications.map((group) => {
-              if (group.items.length === 0) return null;
-              return (
-                <div key={group.label} className="space-y-2">
-                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-2">
-                    {group.label}
-                  </div>
-                  <div className="space-y-1.5">
-                    {group.items.map((notif) => {
-                      const Icon = getNotificationTypeIcon(notif.type);
-                      const isSelected = notif.id === activeSelectedNotifId;
-                      return (
-                        <div
-                          key={notif.id}
-                          onClick={() => setSelectedNotifId(notif.id)}
-                          className={`p-4 rounded-xl border flex flex-col justify-between transition-all duration-150 cursor-pointer select-none relative ${
-                            isSelected 
-                              ? 'bg-slate-905 border-slate-800 shadow-md' 
-                              : 'bg-[#252526] border-slate-850 hover:bg-[#2c2c2d]'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center space-x-2 min-w-0">
-                              <div className={`h-6.5 w-6.5 rounded-lg flex items-center justify-center shrink-0 ${
-                                isSelected ? 'bg-slate-950 text-white' : 'bg-slate-905 text-slate-400'
-                              }`}>
-                                <Icon className="h-3.5 w-3.5" />
+        {/* Left Panel: List of notifications grouped by Date (2/5 width on desktop, full-width on mobile when list is shown) */}
+        {(!isMobile || !selectedNotifId) && (
+          <div className="w-full md:w-[40%] flex flex-col overflow-y-auto md:border-r border-slate-850 md:pr-4 space-y-6">
+            {loading && sortedNotifications.length === 0 ? (
+              <div className="py-20 text-center text-slate-550 text-xs animate-pulse">Loading updates...</div>
+            ) : sortedNotifications.length === 0 ? (
+              <div className="py-20 text-center text-slate-500 text-xs italic">
+                No notifications matching current filters.
+              </div>
+            ) : (
+              groupedNotifications.map((group) => {
+                if (group.items.length === 0) return null;
+                return (
+                  <div key={group.label} className="space-y-2">
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-2">
+                      {group.label}
+                    </div>
+                    <div className="space-y-1.5">
+                      {group.items.map((notif) => {
+                        const Icon = getNotificationTypeIcon(notif.type);
+                        const isSelected = notif.id === activeSelectedNotifId;
+                        return (
+                          <div
+                            key={notif.id}
+                            onClick={() => setSelectedNotifId(notif.id)}
+                            className={`p-4 rounded-xl border flex flex-col justify-between transition-all duration-150 cursor-pointer select-none relative ${
+                              isSelected 
+                                ? 'bg-slate-905 border-slate-800 shadow-md' 
+                                : 'bg-[#252526] border-slate-850 hover:bg-[#2c2c2d]'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-center space-x-2 min-w-0">
+                                <div className={`h-6.5 w-6.5 rounded-lg flex items-center justify-center shrink-0 ${
+                                  isSelected ? 'bg-slate-950 text-white' : 'bg-slate-905 text-slate-400'
+                                }`}>
+                                  <Icon className="h-3.5 w-3.5" />
+                                </div>
+                                <span className="text-xs font-bold text-white truncate">
+                                  {getNotificationTypeLabel(notif.type)}
+                                </span>
                               </div>
-                              <span className="text-xs font-bold text-white truncate">
-                                {getNotificationTypeLabel(notif.type)}
-                              </span>
+                              
+                              <div className="flex items-center space-x-1.5 shrink-0">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (notif.isStarred) {
+                                      markAsUnstarred(notif.id);
+                                    } else {
+                                      markAsStarred(notif.id);
+                                    }
+                                  }}
+                                  className="p-1 rounded hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                                >
+                                  <Star className={`h-3.5 w-3.5 ${notif.isStarred ? 'fill-amber-400 text-amber-400' : 'text-slate-500 hover:text-slate-350'}`} />
+                                </button>
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm('Delete this notification permanently?')) {
+                                      await deleteNotification(notif.id);
+                                      if (activeSelectedNotifId === notif.id) {
+                                        setSelectedNotifId(null);
+                                      }
+                                    }
+                                  }}
+                                  className="p-1 rounded hover:bg-slate-800 text-slate-500 hover:text-rose-450 transition-colors cursor-pointer shrink-0"
+                                  title="Delete notification"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                                <span className="text-[9px] text-slate-500 font-semibold shrink-0">
+                                  {formatTimeAgo(notif.createdAt)}
+                                </span>
+                                {!notif.isRead && (
+                                  <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0"></span>
+                                )}
+                              </div>
                             </div>
-                            
-                            <div className="flex items-center space-x-1.5 shrink-0">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (notif.isStarred) {
-                                    markAsUnstarred(notif.id);
-                                  } else {
-                                    markAsStarred(notif.id);
-                                  }
-                                }}
-                                className="p-1 rounded hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-                              >
-                                <Star className={`h-3.5 w-3.5 ${notif.isStarred ? 'fill-amber-400 text-amber-400' : 'text-slate-500 hover:text-slate-350'}`} />
-                              </button>
-                              <span className="text-[9px] text-slate-500 font-semibold shrink-0">
-                                {formatTimeAgo(notif.createdAt)}
-                              </span>
-                              {!notif.isRead && (
-                                <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0"></span>
-                              )}
-                            </div>
+  
+                            <p className="text-xs text-slate-400 mt-2 line-clamp-1 leading-relaxed">
+                              {notif.message ? notif.message.split(' | ')[0] : ''}
+                            </p>
                           </div>
-
-                          <p className="text-xs text-slate-400 mt-2 line-clamp-1 leading-relaxed">
-                            {notif.message ? notif.message.split(' | ')[0] : ''}
-                          </p>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+                );
+              })
+            )}
+          </div>
+        )}
 
-        {/* Right Panel: Detail info card (3/5 width) */}
-        <div className="w-[60%] flex flex-col bg-[#252526] border border-slate-850 rounded-2xl overflow-hidden p-6 relative justify-between">
+        {/* Right Panel: Detail info card (3/5 width on desktop, full-width on mobile when selected) */}
+        {(!isMobile || selectedNotifId) && (
+          <div className="w-full md:w-[60%] flex flex-col bg-[#252526] border border-slate-850 rounded-2xl overflow-hidden p-4 sm:p-6 relative justify-between">
           {!selectedNotif ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3">
               <MessageSquare className="h-10 w-10 text-slate-700 animate-bounce" />
@@ -451,12 +481,23 @@ export default function Notifications() {
               {/* Top content area */}
               <div className="space-y-6">
                 {/* Panel Action Header */}
-                <div className="flex items-center justify-between border-b border-slate-850 pb-4">
-                  <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-blue-600/10 text-blue-400 border border-blue-500/20 uppercase tracking-wide">
-                    {getNotificationTypeLabel(selectedNotif.type)}
-                  </span>
-                  
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-850 pb-4">
                   <div className="flex items-center space-x-2">
+                    {isMobile && (
+                      <button
+                        onClick={() => setSelectedNotifId(null)}
+                        className="mr-1 p-1.5 rounded-lg bg-slate-905 hover:bg-slate-950 text-slate-400 hover:text-white border border-slate-800 transition-colors cursor-pointer flex items-center justify-center"
+                        title="Back to inbox list"
+                      >
+                        <ArrowLeft className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-blue-600/10 text-blue-400 border border-blue-500/20 uppercase tracking-wide">
+                      {getNotificationTypeLabel(selectedNotif.type)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       onClick={async () => {
                         if (selectedNotif.isStarred) {
@@ -492,11 +533,25 @@ export default function Notifications() {
                         <span>Mark as read</span>
                       </button>
                     )}
+
+                    <button
+                      onClick={async () => {
+                        if (window.confirm('Delete this notification permanently?')) {
+                          await deleteNotification(selectedNotif.id);
+                          setSelectedNotifId(null);
+                        }
+                      }}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-905 hover:bg-rose-950/30 hover:border-rose-900 text-slate-400 hover:text-rose-400 border border-slate-800 text-[10px] font-bold transition-colors cursor-pointer"
+                      title="Delete notification permanently"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      <span>Delete</span>
+                    </button>
                   </div>
                 </div>
 
                 {/* Details Section */}
-                <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-xs border-b border-slate-850 pb-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 text-xs border-b border-slate-850 pb-5">
                   <div className="space-y-1">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Performer / Actor</span>
                     <p className="font-semibold text-white">{selectedDetails.actor}</p>
@@ -545,6 +600,7 @@ export default function Notifications() {
             </div>
           )}
         </div>
+        )}
       </div>
       {activeTaskDetailsId && (
         <TaskDetailModal

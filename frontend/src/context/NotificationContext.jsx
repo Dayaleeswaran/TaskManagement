@@ -138,6 +138,16 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
+  // Delete single notification completely
+  const deleteNotification = async (id) => {
+    try {
+      await api.delete(`/api/v1/notifications/${id}`);
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+    } catch (err) {
+      console.error(`[NotificationContext] Failed to delete notification ${id}:`, err);
+    }
+  };
+
   return (
     <NotificationContext.Provider
       value={{
@@ -150,6 +160,7 @@ export const NotificationProvider = ({ children }) => {
         markAsUnread,
         markAsStarred,
         markAsUnstarred,
+        deleteNotification,
         setNotifications,
         getSocket,
       }}

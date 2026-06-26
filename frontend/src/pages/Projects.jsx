@@ -211,11 +211,11 @@ export default function Projects() {
             <div
               key={project.id}
               onClick={() => setSelectedProjectDetails(project)}
-              className="p-6 rounded-2xl bg-white border border-slate-200 hover:border-violet-300 hover:shadow-md transition-all duration-200 flex flex-col justify-between h-[190px] relative group cursor-pointer"
+              className="p-6 rounded-2xl bg-white border border-slate-200 hover:border-violet-300 hover:shadow-md transition-all duration-200 flex flex-col justify-between min-h-[190px] h-auto relative group cursor-pointer"
             >
               {/* Top Section */}
               <div className="flex items-start justify-between">
-                <div className="h-10 w-10 rounded-xl bg-violet-50 border border-violet-100 flex items-center justify-center text-violet-600">
+                <div className="h-10 w-10 rounded-xl bg-violet-600/15 border border-violet-500/20 flex items-center justify-center text-violet-400">
                   <FolderKanban className="h-5 w-5" />
                 </div>
                 
@@ -254,9 +254,9 @@ export default function Projects() {
               </div>
 
               {/* Footer */}
-              <div className="mt-4 flex items-center justify-between text-[11px] text-slate-400 font-bold border-t border-slate-100 pt-3 uppercase tracking-wider">
-                <span>Owner: {project.owner?.name || 'Unknown'}</span>
-                <span>
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[10px] sm:text-[11px] text-slate-400 font-bold border-t border-slate-850 pt-3 uppercase tracking-wider">
+                <span className="truncate">Owner: {project.owner?.name || 'Unknown'}</span>
+                <span className="shrink-0">
                   {project._count?.tasks || 0} {user?.role === 'COLLABORATOR' ? 'Assigned Tasks' : 'Tasks'}
                 </span>
               </div>

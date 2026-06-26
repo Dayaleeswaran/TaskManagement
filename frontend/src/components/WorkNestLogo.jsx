@@ -127,7 +127,7 @@ export default function WorkNestLogo({ size = 48, showText = false, lightText = 
           <span className={`text-xl font-extrabold tracking-tight font-outfit ${lightText ? 'text-white' : 'text-slate-900'}`}>
             Work<span className="brand-gradient-text">Nest</span>
           </span>
-          <span className="text-[8px] font-bold text-slate-400 tracking-[0.18em] mt-1 uppercase whitespace-nowrap font-outfit opacity-80">
+          <span className="hidden sm:inline-block text-[8px] font-bold text-slate-400 tracking-[0.18em] mt-1 uppercase whitespace-nowrap font-outfit opacity-80">
             Manage Tasks. Grow Together.
           </span>
         </div>

@@ -123,6 +123,23 @@ const markAsUnstarredController = async (req, res, next) => {
   }
 };
 
+/**
+ * Controller to delete a single notification.
+ */
+const deleteNotificationController = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    await notificationService.deleteNotification(id, userId);
+    return res.status(200).json({
+      message: "Notification deleted successfully.",
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getNotificationsController,
   markAsReadController,
@@ -130,4 +147,5 @@ module.exports = {
   markAsUnreadController,
   markAsStarredController,
   markAsUnstarredController,
+  deleteNotificationController,
 };
