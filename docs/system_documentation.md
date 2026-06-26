@@ -138,12 +138,12 @@ TaskManagement/
 
 ## 2. API Documentation
 
-> **Live Swagger UI**: `http://localhost:3000/api/docs`
+> **Live Swagger UI**: `https://task-management-backend-lt0f.onrender.com/api/docs`
 
 ### Base URL
 ```
 Development:  http://localhost:3000/api/v1
-Production:   https://<your-domain>/api/v1
+Production:   https://task-management-backend-lt0f.onrender.com/api/v1
 ```
 
 ### Authentication
@@ -635,6 +635,29 @@ erDiagram
     User ||--o{ Attachment : "uploads"
 ```
 
+### Entity Relationships & Cardinalities Detailed Mapping
+
+1. **User $\leftrightarrow$ Project (Ownership)**: `1:N` relationship. A `User` can own many `Project` records. (Foreign Key: `Project.ownerId` $\rightarrow$ `User.id`).
+2. **User $\leftrightarrow$ Project (Membership)**: `M:N` relationship, bridged via the `ProjectMember` join table. A `User` can be a member of many `Project`s, and a `Project` can have many member `User`s.
+   - `ProjectMember.userId` $\rightarrow$ `User.id`
+   - `ProjectMember.projectId` $\rightarrow$ `Project.id`
+3. **Project $\leftrightarrow$ Task**: `1:N` relationship. A `Project` contains many `Task`s. If a project is deleted, its tasks are cascadingly deleted. (Foreign Key: `Task.projectId` $\rightarrow$ `Project.id`).
+4. **User $\leftrightarrow$ Task (Creator)**: `1:N` relationship. A `User` can create many `Task`s. (Foreign Key: `Task.createdById` $\rightarrow$ `User.id`).
+5. **User $\leftrightarrow$ Task (Assignment)**: `M:N` relationship, bridged via the `TaskAssignment` join table. A `User` can be assigned to multiple `Task`s, and a `Task` can have multiple assigned `User`s.
+   - `TaskAssignment.userId` $\rightarrow$ `User.id`
+   - `TaskAssignment.taskId` $\rightarrow$ `Task.id`
+6. **Task $\leftrightarrow$ Comment**: `1:N` relationship. A `Task` can have multiple `Comment`s. (Foreign Key: `Comment.taskId` $\rightarrow$ `Task.id`).
+7. **User $\leftrightarrow$ Comment (Author)**: `1:N` relationship. A `User` can author many `Comment`s. (Foreign Key: `Comment.authorId` $\rightarrow$ `User.id`).
+8. **Task $\leftrightarrow$ Attachment**: `1:N` relationship. A `Task` can have many file `Attachment`s. (Foreign Key: `Attachment.taskId` $\rightarrow$ `Task.id`).
+9. **User $\leftrightarrow$ Attachment (Uploader)**: `1:N` relationship. A `User` uploads many `Attachment`s. (Foreign Key: `Attachment.uploadedById` $\rightarrow$ `User.id`).
+10. **Task $\leftrightarrow$ Label**: `M:N` implicit relation in Prisma. A `Task` can have many `Label`s, and a `Label` can be applied to many `Task`s.
+11. **User $\leftrightarrow$ Notification**: `1:N` relationship. A `User` receives many `Notification`s. (Foreign Key: `Notification.userId` $\rightarrow$ `User.id`).
+12. **User $\leftrightarrow$ NotificationSettings**: `1:1` relationship. A `User` has exactly one `NotificationSettings` record that defines opt-in/opt-out configuration. (Foreign Key: `NotificationSettings.userId` $\rightarrow$ `User.id` as PK).
+13. **User $\leftrightarrow$ RefreshToken**: `1:N` relationship. A `User` can have multiple active `RefreshToken` sessions (multi-device support). (Foreign Key: `RefreshToken.userId` $\rightarrow$ `User.id`).
+14. **Project $\leftrightarrow$ Activity**: `1:N` relationship. A `Project` logs many project-scoped `Activity` feed items. (Foreign Key: `Activity.projectId` $\rightarrow$ `Project.id`).
+15. **User $\leftrightarrow$ Activity**: `1:N` relationship. A `User` performs many `Activity` actions. (Foreign Key: `Activity.userId` $\rightarrow$ `User.id`).
+16. **User $\leftrightarrow$ AuditLog**: `1:N` relationship. An `AuditLog` captures security-relevant administrative actions performed by a specific `User`. (Foreign Key: `AuditLog.performedBy` $\rightarrow$ `User.id`).
+
 ---
 
 ## 5. Class Diagrams
@@ -853,37 +876,33 @@ graph TB
 
 ```mermaid
 graph TB
-    subgraph INTERNET["🌍 Internet"]
+    subgraph CLIENT["🌍 Client Side"]
         USER["👤 End User Browser"]
     end
 
-    subgraph HOST["🖥 Production Host / VPS"]
-        subgraph DC_PROD["Docker Compose Production"]
-            NGINX["🔀 Nginx Container\ntms_frontend_prod\n:80\n\n• Serves React SPA static files\n• Reverse proxy /api/* → backend\n• Reverse proxy /socket.io/* → backend\n• Gzip compression\n• Security headers\n• Static asset caching"]
-
-            BE_PROD["⚙️ Backend Container\ntms_backend_prod\nNode.js :3000\n\n• Express REST API\n• Socket.io WebSocket\n• JWT auth\n• Prisma ORM\n• Rate limiting\n• Helmet security"]
-
-            PG_PROD["🗄 Postgres Container\ntms_postgres_prod\n:5432\n\n• PostgreSQL 15 Alpine\n• Persistent volume\n• Health checked"]
-        end
+    subgraph VERCEL["▲ Vercel (Frontend Hosting)"]
+        FE_PROD["🖥 React SPA\nhttps://task-management-virid-xi.vercel.app\n\n• Serves static assets\n• Directs API calls to Render\n• Directs Socket connections to Render"]
     end
 
-    subgraph CLOUD_PROD["☁️ External Cloud Services"]
-        SB_AUTH["🔵 Supabase\nPostgreSQL\n(optional hosted DB)"]
-        SB_FILES["📦 Supabase Storage\nFile Attachments\nS3-compatible API"]
-        SMTP["📧 SMTP Provider\nPassword Reset Emails"]
+    subgraph RENDER["⚙️ Render.com (Backend Web Service)"]
+        BE_PROD["⚙️ Express API & WebSockets\nhttps://task-management-backend-lt0f.onrender.com\n\n• Express REST API\n• Socket.io WebSocket\n• JWT authorization\n• Prisma ORM client\n• Helmet security headers\n• Lazy Supabase connection"]
     end
 
-    USER -->|"HTTPS :443 / HTTP :80"| NGINX
-    NGINX -->|"Static files"| NGINX
-    NGINX -->|"Proxy /api/*"| BE_PROD
-    NGINX -->|"Proxy /socket.io/*\nWebSocket Upgrade"| BE_PROD
-    BE_PROD -->|"Prisma"| PG_PROD
-    BE_PROD -->|"File Upload API"| SB_FILES
-    BE_PROD -->|"SMTP"| SMTP
+    subgraph SUPABASE["☁️ Supabase Cloud (Data & Storage)"]
+        SB_DB["🔵 PostgreSQL Database\naws-1-ap-southeast-2.pooler.supabase.com:6543\n(Prisma Transaction Pooler)"]
+        SB_FILES["📦 Supabase Storage\n'Attachment' Bucket\n(Signed URLs / S3 API)"]
+    end
 
-    style INTERNET fill:#1e293b,stroke:#475569,color:#fff
-    style HOST fill:#0f172a,stroke:#334155,color:#fff
-    style CLOUD_PROD fill:#172554,stroke:#1e40af,color:#fff
+    USER -->|"HTTPS :443"| FE_PROD
+    USER -->|"HTTPS / REST / JSON"| BE_PROD
+    USER -->|"WSS / WebSocket Upgrade"| BE_PROD
+    BE_PROD -->|"Prisma ORM (Port 6543)"| SB_DB
+    BE_PROD -->|"S3 / Storage Client API"| SB_FILES
+
+    style CLIENT fill:#1e293b,stroke:#475569,color:#fff
+    style VERCEL fill:#0f172a,stroke:#334155,color:#fff
+    style RENDER fill:#070f2b,stroke:#1b1a55,color:#fff
+    style SUPABASE fill:#172554,stroke:#1e40af,color:#fff
 ```
 
 ### 6.3 Request Flow Diagram
@@ -891,37 +910,32 @@ graph TB
 ```mermaid
 sequenceDiagram
     participant B as Browser
-    participant N as Nginx
-    participant API as Express API
-    participant DB as PostgreSQL
+    participant V as Vercel
+    participant API as Render Express API
+    participant DB as Supabase PostgreSQL
     participant S3 as Supabase Storage
-    participant WS as Socket.io
+    participant WS as Render Socket.io
 
-    B->>N: GET / (SPA)
-    N-->>B: index.html + JS bundles
+    B->>V: GET / (Request SPA)
+    V-->>B: index.html + JS Bundles
 
-    B->>N: POST /api/v1/auth/login
-    N->>API: proxy request
+    B->>API: POST /api/v1/auth/login
     API->>DB: find user, verify password
     DB-->>API: user row
-    API-->>N: {token, user}
-    N-->>B: JWT access token
+    API-->>B: {token, user} (JWT access token)
 
     B->>WS: Connect (auth: token)
     WS->>API: verify JWT
     API-->>WS: join room = userId
 
-    B->>N: POST /api/v1/tasks (Bearer token)
-    N->>API: proxy + auth middleware
+    B->>API: POST /api/v1/tasks (Bearer token)
     API->>DB: create task + assignments
     DB-->>API: task object
     API->>WS: emit notification to assignees
     WS-->>B: real-time notification push
-    API-->>N: 201 task object
-    N-->>B: response
+    API-->>B: 201 Created task object
 
-    B->>N: POST /api/v1/tasks/:id/attachments
-    N->>API: proxy multipart upload
+    B->>API: POST /api/v1/tasks/:id/attachments
     API->>S3: upload file to Supabase bucket
     S3-->>API: bucketPath
     API->>DB: save Attachment record
