@@ -215,7 +215,7 @@ const updateUserController = async (req, res, next) => {
     if (isDeactivated || isActivated) {
       const adminIds = await notificationService.getAdminAndSuperAdminIds();
       const actionLabel = isActivated ? "activated" : "deactivated";
-      const message = `User "${user.name}" (${user.email}) has been ${actionLabel} by ${req.user.name} | user:${user.id}`;
+      const message = `User ${user.name} has been ${actionLabel} by ${req.user.name}`;
       const recipientIds = adminIds.filter((adminId) => adminId !== req.user.id);
       
       if (recipientIds.length > 0) {
@@ -292,6 +292,18 @@ const deactivateUserController = async (req, res, next) => {
       user.id,
       { name: user.name, email: user.email, role: user.role }
     );
+
+    // Notify other Admins & Super Admins
+    const adminIds = await notificationService.getAdminAndSuperAdminIds();
+    const recipientIds = adminIds.filter((adminId) => adminId !== req.user.id);
+    if (recipientIds.length > 0) {
+      await notificationService.createBulkNotifications(
+        recipientIds,
+        notificationService.NotificationType.ADMIN_UPDATE,
+        `User ${user.name} has been deactivated by ${req.user.name}`
+      );
+    }
+
     await handleForceLogout(id);
     return res.status(200).json({
       message: "User account deactivated successfully",

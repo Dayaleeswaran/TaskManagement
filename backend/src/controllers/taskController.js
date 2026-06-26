@@ -538,7 +538,6 @@ const updateTask = async (req, res, next) => {
     // Record Activity and Notifications for status change or general update
     const statusChanged = status !== undefined && status !== existingTask.status;
     if (statusChanged) {
-      const statusLabel = status.replace("_", " ").toLowerCase();
       const activityMsg = status === "COMPLETED"
         ? `${req.user.name} completed this task | task:${id}`
         : `${req.user.name} changed status to ${status} | task:${id}`;
@@ -581,7 +580,7 @@ const updateTask = async (req, res, next) => {
           await notificationService.createBulkNotifications(
             Array.from(recipients),
             "STATUS_CHANGED",
-            `Task "${existingTask.title}" status has been changed to ${statusLabel} by ${req.user.name} | task:${id}`
+            `Task ${existingTask.title} status has been changed to ${status} by ${req.user.name} | task:${id}`
           );
         }
       }
@@ -803,8 +802,6 @@ const updateTaskStatus = async (req, res, next) => {
       data: updateData,
     });
 
-    const statusLabel = status.replace("_", " ").toLowerCase();
-
     // Record Activity with suffix
     const activityMsg =
       status === "COMPLETED"
@@ -813,59 +810,38 @@ const updateTaskStatus = async (req, res, next) => {
         
     await activityService.createActivity(task.projectId, req.user.id, activityMsg);
 
-    if (status === "COMPLETED") {
-      // Notify PM (ownerId) and Creator (createdById), excluding the actor
-      const recipients = new Set();
-      if (task.createdById !== req.user.id) {
-        recipients.add(task.createdById);
+    const recipients = new Set();
+    if (task.createdById !== req.user.id) {
+      recipients.add(task.createdById);
+    }
+    if (task.project.ownerId !== req.user.id) {
+      recipients.add(task.project.ownerId);
+    }
+    task.assignments.forEach((a) => {
+      if (a.userId !== req.user.id) {
+        recipients.add(a.userId);
       }
-      if (task.project.ownerId !== req.user.id) {
-        recipients.add(task.project.ownerId);
+    });
+
+    const adminIds = await notificationService.getAdminAndSuperAdminIds();
+    adminIds.forEach((adminId) => {
+      if (adminId !== req.user.id) {
+        recipients.add(adminId);
       }
+    });
 
-      // Add Admins and Super Admins
-      const adminIds = await notificationService.getAdminAndSuperAdminIds();
-      adminIds.forEach((adminId) => {
-        if (adminId !== req.user.id) {
-          recipients.add(adminId);
-        }
-      });
-
-      if (recipients.size > 0) {
+    if (recipients.size > 0) {
+      if (status === "COMPLETED") {
         await notificationService.createBulkNotifications(
           Array.from(recipients),
           "TASK_COMPLETED",
           `Task completed: ${task.title} | task:${task.id}`
         );
-      }
-    } else {
-      // General status change notifications to creator, project owner, and assignees
-      const recipients = new Set();
-      if (task.createdById !== req.user.id) {
-        recipients.add(task.createdById);
-      }
-      if (task.project.ownerId !== req.user.id) {
-        recipients.add(task.project.ownerId);
-      }
-      task.assignments.forEach((a) => {
-        if (a.userId !== req.user.id) {
-          recipients.add(a.userId);
-        }
-      });
-
-      // Add Admins and Super Admins
-      const adminIds = await notificationService.getAdminAndSuperAdminIds();
-      adminIds.forEach((adminId) => {
-        if (adminId !== req.user.id) {
-          recipients.add(adminId);
-        }
-      });
-
-      if (recipients.size > 0) {
+      } else {
         await notificationService.createBulkNotifications(
           Array.from(recipients),
           "STATUS_CHANGED",
-          `Task "${task.title}" status has been changed to ${statusLabel} by ${req.user.name} | task:${task.id}`
+          `Task ${task.title} status has been changed to ${status} by ${req.user.name} | task:${task.id}`
         );
       }
     }

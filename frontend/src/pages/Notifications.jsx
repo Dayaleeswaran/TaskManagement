@@ -23,7 +23,7 @@ import { formatTimeAgo } from '../utils/dateUtils';
 import TaskDetailModal from '../components/TaskDetailModal';
 
 export default function Notifications() {
-  const { notifications, loading, markAsRead, markAsUnread, unreadCount, markAsStarred, markAsUnstarred, deleteNotification } = useNotifications();
+  const { notifications, loading, markAsRead, markAllAsRead, markAsUnread, unreadCount, markAsStarred, markAsUnstarred, deleteNotification } = useNotifications();
   const { user } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
@@ -106,6 +106,8 @@ export default function Notifications() {
         return 'Task Assigned';
       case 'TASK_COMPLETED':
         return 'Task Completed';
+      case 'STATUS_CHANGED':
+        return 'Status Changed';
       case 'COMMENT_ADDED':
         return 'Comment Added';
       case 'PROJECT_MEMBER_ADDED':
@@ -126,6 +128,8 @@ export default function Notifications() {
         return Calendar;
       case 'TASK_COMPLETED':
         return CheckCircle;
+      case 'STATUS_CHANGED':
+        return RefreshCw;
       case 'COMMENT_ADDED':
         return MessageSquare;
       case 'PROJECT_MEMBER_ADDED':
@@ -293,6 +297,15 @@ export default function Notifications() {
       {/* Header bar */}
       <div className="flex items-center justify-between flex-shrink-0">
         <h1 className="text-3xl font-bold text-white">Inbox</h1>
+        {unreadCount > 0 && (
+          <button 
+            onClick={markAllAsRead}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-905 hover:bg-slate-950 text-slate-400 hover:text-white border border-slate-800 text-[10px] font-bold transition-all duration-150 cursor-pointer shadow-sm"
+          >
+            <CheckCircle className="h-3.5 w-3.5" />
+            <span>Mark all as read</span>
+          </button>
+        )}
       </div>
 
       {/* Tabs Menu */}
@@ -338,7 +351,7 @@ export default function Notifications() {
 
             {showFilterMenu && (
               <div className="absolute top-full left-0 mt-2 bg-[#252526] border border-slate-850 rounded-xl shadow-xl w-56 z-50 p-1 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
-                {['ALL', 'TASK_ASSIGNED', 'TASK_COMPLETED', 'COMMENT_ADDED', 'PROJECT_MEMBER_ADDED', 'ROLE_CHANGED', 'ACCOUNT_DEACTIVATED'].map((t) => (
+                {['ALL', 'TASK_ASSIGNED', 'TASK_COMPLETED', 'STATUS_CHANGED', 'COMMENT_ADDED', 'PROJECT_MEMBER_ADDED', 'ROLE_CHANGED', 'ACCOUNT_DEACTIVATED'].map((t) => (
                   <button
                     key={t}
                     onClick={() => {
