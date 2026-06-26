@@ -233,6 +233,10 @@ export default function TaskBoard() {
 
   // Handle Drag End event with reordering persistence
   const handleDragEnd = async (event) => {
+    if (user?.role === 'ADMIN') {
+      addToast('Administrators do not have permission to reorder tasks.', 'error');
+      return;
+    }
     const { active, over } = event;
     if (!over) return;
 
@@ -445,7 +449,7 @@ export default function TaskBoard() {
           )}
 
           {/* Create Task Button */}
-          {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' || user?.role === 'PROJECT_MANAGER') && (
+          {(user?.role === 'SUPER_ADMIN' || user?.role === 'PROJECT_MANAGER') && (
             <button
               onClick={() => setIsCreateOpen(true)}
               className="px-3 py-2 bg-violet-600 hover:bg-violet-650 text-white text-xs font-semibold rounded-xl shadow-sm hover:shadow transition-all duration-200 flex items-center space-x-1.5 cursor-pointer"

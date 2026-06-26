@@ -247,12 +247,10 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
 
   // Permission helpers
   const canEditTask = 
-    user?.role === 'ADMIN' || 
     user?.role === 'SUPER_ADMIN' || 
     (user?.role === 'PROJECT_MANAGER' && localTask.project?.ownerId === user?.id);
 
   const canChangeStatus = 
-    user?.role === 'ADMIN' || 
     user?.role === 'SUPER_ADMIN' || 
     (user?.role === 'PROJECT_MANAGER' && localTask.project?.ownerId === user?.id) ||
     (user?.role === 'COLLABORATOR' && localTask.assignments?.some(a => (a.userId || a.user?.id) === user?.id));
@@ -967,7 +965,7 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
             </div>
 
             {/* Drag and Drop File area / Selected Files Queue Container */}
-            {selectedFiles.length === 0 ? (
+            {user?.role !== 'ADMIN' && (selectedFiles.length === 0 ? (
               <div
                 onDragOver={(e) => { e.preventDefault(); setIsDragActive(true); }}
                 onDragLeave={() => setIsDragActive(false)}
@@ -1099,7 +1097,7 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
                   )}
                 </button>
               </div>
-            )}
+            ))}
 
             {/* Uploading progress bar */}
             {isUploading && uploadingIndex >= 0 && (
@@ -1170,7 +1168,7 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
                           >
                             <Download className="h-3.5 w-3.5" />
                           </button>
-                          {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || att.uploadedBy === user?.id || localTask.project?.ownerId === user?.id) && (
+                          {(user?.role === 'SUPER_ADMIN' || att.uploadedBy === user?.id || localTask.project?.ownerId === user?.id) && (
                             <button
                               onClick={() => handleDeleteAttachment(att.id)}
                               className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-600 border border-rose-500/20 hover:border-rose-600 text-rose-450 hover:text-white cursor-pointer transition-colors"
@@ -1222,27 +1220,29 @@ export default function TaskDetailModal({ task, onClose, onCommentAdded, onTaskU
             </div>
 
             {/* Comment Form input */}
-            <form onSubmit={handleSubmitComment} className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Write a comment..."
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                disabled={isSubmittingComment}
-                className="flex-1 px-4 py-2.5 bg-[#1e1e1f] border border-slate-800 focus:outline-none focus:border-violet-500 rounded-xl text-xs placeholder-slate-500 text-white transition-colors"
-              />
-              <button
-                type="submit"
-                disabled={!newComment.trim() || isSubmittingComment}
-                className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-xs flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              >
-                {isSubmittingComment ? (
-                  <Clock className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Send className="h-3.5 w-3.5" />
-                )}
-              </button>
-            </form>
+            {user?.role !== 'ADMIN' && (
+              <form onSubmit={handleSubmitComment} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Write a comment..."
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  disabled={isSubmittingComment}
+                  className="flex-1 px-4 py-2.5 bg-[#1e1e1f] border border-slate-800 focus:outline-none focus:border-violet-500 rounded-xl text-xs placeholder-slate-500 text-white transition-colors"
+                />
+                <button
+                  type="submit"
+                  disabled={!newComment.trim() || isSubmittingComment}
+                  className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-xs flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {isSubmittingComment ? (
+                    <Clock className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Send className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </form>
+            )}
 
             {/* Scrollable Comments List */}
             <div className="space-y-3 max-h-60 overflow-y-auto pr-1">

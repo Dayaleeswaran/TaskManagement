@@ -150,10 +150,10 @@ const getTaskById = async (req, res, next) => {
 
 const createTask = async (req, res, next) => {
   try {
-    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && req.user.role !== "PROJECT_MANAGER") {
+    if (req.user.role !== "SUPER_ADMIN" && req.user.role !== "PROJECT_MANAGER") {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
-        message: "Only Administrators and Project Managers can create tasks.",
+        message: "Only Super Administrators and Project Managers can create tasks.",
       });
     }
 
@@ -253,7 +253,7 @@ const createTask = async (req, res, next) => {
     }
 
     // Check project membership/ownership
-    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && project.ownerId !== req.user.id) {
+    if (req.user.role !== "SUPER_ADMIN" && project.ownerId !== req.user.id) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "You can only create tasks in projects you own.",
@@ -379,11 +379,11 @@ const updateTask = async (req, res, next) => {
       return res.status(404).json({ errorCode: "TASK_NOT_FOUND", message: "Task not found." });
     }
 
-    // Allow Admin or Project Manager of this project to edit
-    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && existingTask.project.ownerId !== req.user.id) {
+    // Allow Super Admin or Project Manager of this project to edit
+    if (req.user.role !== "SUPER_ADMIN" && existingTask.project.ownerId !== req.user.id) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
-        message: "Only Administrators and the Project Manager can edit tasks.",
+        message: "Only Super Administrators and the Project Manager can edit tasks.",
       });
     }
 
@@ -613,10 +613,10 @@ const deleteTask = async (req, res, next) => {
       return res.status(404).json({ errorCode: "TASK_NOT_FOUND", message: "Task not found." });
     }
 
-    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && existingTask.project.ownerId !== req.user.id) {
+    if (req.user.role !== "SUPER_ADMIN" && existingTask.project.ownerId !== req.user.id) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
-        message: "Only Administrators and Project Managers can delete tasks.",
+        message: "Only Super Administrators and Project Managers can delete tasks.",
       });
     }
 
@@ -652,10 +652,10 @@ const restoreTask = async (req, res, next) => {
       return res.status(404).json({ errorCode: "TASK_NOT_FOUND", message: "Task not found." });
     }
 
-    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && existingTask.project.ownerId !== req.user.id) {
+    if (req.user.role !== "SUPER_ADMIN" && existingTask.project.ownerId !== req.user.id) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
-        message: "Only Administrators and Project Managers can restore tasks.",
+        message: "Only Super Administrators and Project Managers can restore tasks.",
       });
     }
 
@@ -679,10 +679,10 @@ const restoreTask = async (req, res, next) => {
 
 const assignTask = async (req, res, next) => {
   try {
-    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && req.user.role !== "PROJECT_MANAGER") {
+    if (req.user.role !== "SUPER_ADMIN" && req.user.role !== "PROJECT_MANAGER") {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
-        message: "Only Administrators and Project Managers can assign tasks.",
+        message: "Only Super Administrators and Project Managers can assign tasks.",
       });
     }
 
@@ -753,6 +753,13 @@ const assignTask = async (req, res, next) => {
 
 const updateTaskStatus = async (req, res, next) => {
   try {
+    if (req.user.role === "ADMIN") {
+      return res.status(403).json({
+        errorCode: "FORBIDDEN",
+        message: "Administrators do not have permission to update task status.",
+      });
+    }
+
     const { id } = req.params;
     const { status } = req.body;
 
@@ -855,6 +862,13 @@ const updateTaskStatus = async (req, res, next) => {
 
 const reorderTasks = async (req, res, next) => {
   try {
+    if (req.user.role === "ADMIN") {
+      return res.status(403).json({
+        errorCode: "FORBIDDEN",
+        message: "Administrators do not have permission to reorder tasks.",
+      });
+    }
+
     const { status, taskIds } = req.body;
     if (!Array.isArray(taskIds)) {
       return res.status(400).json({

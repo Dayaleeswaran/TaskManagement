@@ -103,6 +103,11 @@ exports.uploadAttachment = async (req, res, next) => {
     }
 
     // Access control
+    if (req.user.role === "ADMIN") {
+      const error = new Error("You do not have permission to upload files to this project.");
+      error.statusCode = 403;
+      throw error;
+    }
     const hasAccess = await verifyProjectAccess(task.projectId, req.user.id, req.user.role);
     if (!hasAccess) {
       const error = new Error("You do not have permission to upload files to this project.");
@@ -272,12 +277,12 @@ exports.deleteAttachment = async (req, res, next) => {
       throw error;
     }
 
-    // Access check: only uploader, project owner, or Admins can delete
+    // Access check: only uploader, project owner, or Super Admins can delete
     const isUploader = attachment.uploadedBy === req.user.id;
     const isProjectOwner = attachment.task.project.ownerId === req.user.id;
-    const isAdmin = req.user.role === "ADMIN" || req.user.role === "SUPER_ADMIN";
+    const isSuperAdmin = req.user.role === "SUPER_ADMIN";
 
-    if (!isUploader && !isProjectOwner && !isAdmin) {
+    if (!isUploader && !isProjectOwner && !isSuperAdmin) {
       const error = new Error("You do not have permission to delete this attachment.");
       error.statusCode = 403;
       throw error;

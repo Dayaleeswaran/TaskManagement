@@ -1,0 +1,161 @@
+// Taskflow - DBML for dbdiagram.io (Corrected to match schema.prisma exactly)
+
+Enum Role {
+  SUPER_ADMIN
+  ADMIN
+  PROJECT_MANAGER
+  COLLABORATOR
+}
+
+Enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+Enum Status {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+}
+
+Table User {
+  id text [pk]
+  name text [not null]
+  email text [not null, unique]
+  role Role [not null]
+  password text [not null]
+  isActive boolean [not null, default: true]
+  mustResetPassword boolean [not null, default: true]
+  resetCode text
+  resetCodeAttempts integer [not null, default: 0]
+  resetCodeExpiry timestamp
+  createdAt timestamp [not null, default: `now()`]
+  updatedAt timestamp [not null]
+}
+
+Table Project {
+  id text [pk]
+  name text [not null]
+  description text [not null]
+  ownerId text [not null, ref: > User.id]
+  deletedAt timestamp
+  createdAt timestamp [not null, default: `now()`]
+}
+
+Table Task {
+  id text [pk]
+  title text [not null]
+  description text [not null]
+  status Status [not null]
+  priority Priority [not null]
+  position integer [not null, default: 0]
+  estimatedHours float
+  startDate timestamp
+  dueDate timestamp [not null]
+  completedAt timestamp
+  deletedAt timestamp
+  projectId text [not null, ref: > Project.id]
+  createdById text [not null, ref: > User.id]
+  createdAt timestamp [not null, default: `now()`]
+  updatedAt timestamp [not null]
+}
+
+Table TaskAssignment {
+  taskId text [not null, ref: > Task.id]
+  userId text [not null, ref: > User.id]
+
+  indexes {
+    (taskId, userId) [pk]
+  }
+}
+
+Table Comment {
+  id text [pk]
+  body text [not null]
+  taskId text [not null, ref: > Task.id]
+  authorId text [not null, ref: > User.id]
+  createdAt timestamp [not null, default: `now()`]
+}
+
+Table Attachment {
+  id text [pk]
+  fileName text [not null]
+  bucketPath text [unique, not null]
+  mimeType text [not null]
+  size integer [not null]
+  taskId text [not null, ref: > Task.id]
+  uploadedBy text [not null, ref: > User.id]
+  createdAt timestamp [not null, default: `now()`]
+}
+
+Table Label {
+  id text [pk]
+  name text [unique, not null]
+  color text [not null, default: 'blue']
+}
+
+Table _LabelToTask {
+  A text [not null, ref: > Label.id]
+  B text [not null, ref: > Task.id]
+
+  indexes {
+    (A, B) [pk]
+  }
+}
+
+Table ProjectMember {
+  projectId text [not null, ref: > Project.id]
+  userId text [not null, ref: > User.id]
+  createdAt timestamp [not null, default: `now()`]
+
+  indexes {
+    (projectId, userId) [pk]
+  }
+}
+
+Table Activity {
+  id text [pk]
+  action text [not null]
+  projectId text [not null, ref: > Project.id]
+  userId text [not null, ref: > User.id]
+  createdAt timestamp [not null, default: `now()`]
+}
+
+Table Notification {
+  id text [pk]
+  message text [not null]
+  type text [not null]
+  isRead boolean [not null, default: false]
+  isStarred boolean [not null, default: false]
+  userId text [not null, ref: > User.id]
+  createdAt timestamp [not null, default: `now()`]
+}
+
+Table NotificationSettings {
+  userId text [pk, ref: - User.id]
+  taskAssigned boolean [not null, default: true]
+  taskCompleted boolean [not null, default: true]
+  taskCommented boolean [not null, default: true]
+  projectUpdates boolean [not null, default: true]
+}
+
+Table RefreshToken {
+  id text [pk]
+  tokenHash text [unique, not null]
+  expiresAt timestamp [not null]
+  revokedAt timestamp
+  ipAddress text
+  userAgent text
+  userId text [not null, ref: > User.id]
+  createdAt timestamp [not null, default: `now()`]
+}
+
+Table AuditLog {
+  id text [pk]
+  action text [not null]
+  targetId text
+  metadata jsonb
+  performedBy text [not null, ref: > User.id]
+  createdAt timestamp [not null, default: `now()`]
+}

@@ -135,7 +135,7 @@ function AppContent() {
             <Route
               path="/audit-logs"
               element={
-                <ProtectedRoute role="ADMIN">
+                <ProtectedRoute role="SUPER_ADMIN">
                   <AuditLogs />
                 </ProtectedRoute>
               }

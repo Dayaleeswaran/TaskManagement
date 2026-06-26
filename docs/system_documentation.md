@@ -658,6 +658,10 @@ erDiagram
 15. **User $\leftrightarrow$ Activity**: `1:N` relationship. A `User` performs many `Activity` actions. (Foreign Key: `Activity.userId` $\rightarrow$ `User.id`).
 16. **User $\leftrightarrow$ AuditLog**: `1:N` relationship. An `AuditLog` captures security-relevant administrative actions performed by a specific `User`. (Foreign Key: `AuditLog.performedBy` $\rightarrow$ `User.id`).
 
+> [!TIP]
+> **Interactive dbdiagram.io Model**:
+> You can find the complete DBML (Database Markup Language) representation for this schema in [docs/schema.dbml](./schema.dbml). You can copy-paste the contents of this file directly into [dbdiagram.io](https://dbdiagram.io) to generate, customize, and export interactive visual diagrams and database SQL creation scripts.
+
 ---
 
 ## 5. Class Diagrams

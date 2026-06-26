@@ -55,10 +55,10 @@ const getProjects = async (req, res, next) => {
 
 const createProject = async (req, res, next) => {
   try {
-    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && req.user.role !== "PROJECT_MANAGER") {
+    if (req.user.role !== "SUPER_ADMIN" && req.user.role !== "PROJECT_MANAGER") {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
-        message: "Only Administrators and Project Managers can create projects.",
+        message: "Only Super Administrators and Project Managers can create projects.",
       });
     }
 
@@ -73,7 +73,7 @@ const createProject = async (req, res, next) => {
 
     let targetOwnerId;
 
-    if (req.user.role === "ADMIN" || req.user.role === "SUPER_ADMIN") {
+    if (req.user.role === "SUPER_ADMIN") {
       if (!ownerId) {
         return res.status(400).json({
           errorCode: "BAD_REQUEST",
@@ -194,10 +194,10 @@ const createProject = async (req, res, next) => {
 
 const updateProject = async (req, res, next) => {
   try {
-    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && req.user.role !== "PROJECT_MANAGER") {
+    if (req.user.role !== "SUPER_ADMIN" && req.user.role !== "PROJECT_MANAGER") {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
-        message: "Only Administrators and Project Managers can edit projects.",
+        message: "Only Super Administrators and Project Managers can edit projects.",
       });
     }
 
@@ -216,7 +216,7 @@ const updateProject = async (req, res, next) => {
     }
 
     // Check ownership if not admin
-    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && existingProject.ownerId !== req.user.id) {
+    if (req.user.role !== "SUPER_ADMIN" && existingProject.ownerId !== req.user.id) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "You can only update projects that you own.",
@@ -229,10 +229,10 @@ const updateProject = async (req, res, next) => {
 
     if (ownerId !== undefined && ownerId !== existingProject.ownerId) {
       // Only admins can transfer ownership
-      if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN") {
+      if (req.user.role !== "SUPER_ADMIN") {
         return res.status(403).json({
           errorCode: "FORBIDDEN",
-          message: "Only Administrators can change project ownership.",
+          message: "Only Super Administrators can change project ownership.",
         });
       }
 
@@ -314,10 +314,10 @@ const updateProject = async (req, res, next) => {
 
 const deleteProject = async (req, res, next) => {
   try {
-    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && req.user.role !== "PROJECT_MANAGER") {
+    if (req.user.role !== "SUPER_ADMIN" && req.user.role !== "PROJECT_MANAGER") {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
-        message: "Only Administrators and Project Managers can archive/delete projects.",
+        message: "Only Super Administrators and Project Managers can archive/delete projects.",
       });
     }
 
@@ -335,7 +335,7 @@ const deleteProject = async (req, res, next) => {
     }
 
     // Check ownership if not admin
-    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && existingProject.ownerId !== req.user.id) {
+    if (req.user.role !== "SUPER_ADMIN" && existingProject.ownerId !== req.user.id) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "You can only delete projects that you own.",
@@ -371,10 +371,10 @@ const deleteProject = async (req, res, next) => {
 
 const restoreProject = async (req, res, next) => {
   try {
-    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && req.user.role !== "PROJECT_MANAGER") {
+    if (req.user.role !== "SUPER_ADMIN" && req.user.role !== "PROJECT_MANAGER") {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
-        message: "Only Administrators and Project Managers can restore projects.",
+        message: "Only Super Administrators and Project Managers can restore projects.",
       });
     }
 
@@ -391,7 +391,7 @@ const restoreProject = async (req, res, next) => {
       });
     }
 
-    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN" && existingProject.ownerId !== req.user.id) {
+    if (req.user.role !== "SUPER_ADMIN" && existingProject.ownerId !== req.user.id) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
         message: "You can only restore projects that you own.",
@@ -499,11 +499,11 @@ const addProjectMember = async (req, res, next) => {
       });
     }
 
-    // Only Owner (Project Manager) or Admin can add members
-    if (role !== "ADMIN" && role !== "SUPER_ADMIN" && project.ownerId !== currentUserId) {
+    // Only Owner (Project Manager) or Super Admin can add members
+    if (role !== "SUPER_ADMIN" && project.ownerId !== currentUserId) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
-        message: "Only the Project Manager or Admin can manage members.",
+        message: "Only the Project Manager or Super Admin can manage members.",
       });
     }
 
@@ -597,11 +597,11 @@ const removeProjectMember = async (req, res, next) => {
       });
     }
 
-    // Only Owner or Admin can remove members
-    if (role !== "ADMIN" && role !== "SUPER_ADMIN" && project.ownerId !== currentUserId) {
+    // Only Owner or Super Admin can remove members
+    if (role !== "SUPER_ADMIN" && project.ownerId !== currentUserId) {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
-        message: "Only the Project Manager or Admin can manage members.",
+        message: "Only the Project Manager or Super Admin can manage members.",
       });
     }
 

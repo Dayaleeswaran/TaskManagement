@@ -11,8 +11,6 @@ services:
       POSTGRES_DB: tms_prod_db
     volumes:
       - pgdata_prod:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d tms_prod_db"]
       interval: 10s

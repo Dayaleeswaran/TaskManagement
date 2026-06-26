@@ -405,10 +405,10 @@ const assignRoleController = async (req, res, next) => {
 
 const getAuditLogsController = async (req, res, next) => {
   try {
-    if (req.user.role !== "ADMIN" && req.user.role !== "SUPER_ADMIN") {
+    if (req.user.role !== "SUPER_ADMIN") {
       return res.status(403).json({
         errorCode: "FORBIDDEN",
-        message: "Only administrators can view audit logs.",
+        message: "Only the Super Administrator can view audit logs.",
       });
     }
 

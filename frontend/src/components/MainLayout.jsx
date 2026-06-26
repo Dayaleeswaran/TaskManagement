@@ -212,7 +212,7 @@ export default function MainLayout() {
                 </Link>
               )}
 
-              {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
+              {user?.role === 'SUPER_ADMIN' && (
                 <Link
                   to="/audit-logs"
                   onClick={onClickCallback}
@@ -252,7 +252,7 @@ export default function MainLayout() {
                 {workExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                 <span>Work</span>
               </div>
-              {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'PROJECT_MANAGER') && (
+              {(user?.role === 'SUPER_ADMIN' || user?.role === 'PROJECT_MANAGER') && (
                 <button
                   onClick={handleNewProjectClick}
                   className="p-0.5 rounded hover:bg-slate-905/60 text-slate-500 hover:text-white cursor-pointer"

@@ -144,7 +144,7 @@ router.get(
 
 router.get(
   "/audit-logs",
-  requireRole(["ADMIN", "SUPER_ADMIN"]),
+  requireRole(["SUPER_ADMIN"]),
   getAuditLogsController
 );
 

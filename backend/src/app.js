@@ -139,7 +139,14 @@ const server = http.createServer(app);
 init(server);
 
 
-// Mount Swagger Documentation Route
+// Expose raw OpenAPI JSON spec BEFORE swagger-ui middleware
+// (swagger-ui's app.use intercepts all /api/docs/* sub-paths)
+app.get("/openapi.json", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  res.send(swaggerSpec);
+});
+
+// Mount Swagger Documentation UI
 app.use(
   "/api/docs",
   swaggerUi.serve,

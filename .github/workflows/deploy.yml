@@ -1,0 +1,173 @@
+name: Continuous Deployment (AWS)
+
+on:
+  push:
+    branches:
+      - main  # Deploy on merge/push to main branch (Production)
+      # - dev   # Uncomment if you want automatic deployment for staging too
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate:
+    name: Run Verification & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Verify Backend Compilation & Lint
+        run: |
+          cd backend
+          npm ci
+          npx prisma generate
+          npm run lint --if-present
+
+      - name: Verify Frontend Compilation
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+  deploy-backend:
+    name: Build & Deploy Backend (AWS ECS Fargate)
+    needs: validate
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: us-east-1                  # Replace with your AWS Region
+      ECR_REPOSITORY: tms-backend            # Replace with your ECR Repository Name
+      ECS_SERVICE: tms-backend-service       # Replace with your ECS Service Name
+      ECS_CLUSTER: tms-cluster               # Replace with your ECS Cluster Name
+      ECS_TASK_DEFINITION: .aws/task-def.json # Path to your ECS task definition JSON
+      CONTAINER_NAME: backend                # Container name inside the task definition
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, Tag, and Push Backend Image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # Build production docker image
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -f backend/Dockerfile.prod backend
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ env.ECS_TASK_DEFINITION }}
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy Amazon ECS task definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+  deploy-frontend:
+    name: Build & Deploy Frontend (AWS S3 + CloudFront)
+    needs: validate
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: us-east-1                  # Replace with your AWS Region
+      S3_BUCKET: tms-frontend-assets         # Replace with your S3 Bucket Name
+      CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DIST_ID }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build Frontend Static Assets
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL_PROD }}        # E.g. https://api.yourdomain.com
+          VITE_SOCKET_URL: ${{ secrets.VITE_SOCKET_URL_PROD }}  # E.g. https://api.yourdomain.com
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Sync Frontend Build to AWS S3
+        run: |
+          aws s3 sync frontend/dist/ s3://${{ env.S3_BUCKET }} --delete
+
+      - name: Invalidate CloudFront Cache
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+
+# ==============================================================================
+# ALTERNATIVE: SIMPLIFIED DOCKER COMPOSE SSH DEPLOYMENT (FOR SINGLE-INSTANCE EC2)
+# ==============================================================================
+# If deploying to a single EC2 instance using docker-compose.prod.yml, disable the
+# ECS and S3 deployment jobs above, and enable the following job:
+#
+#  deploy-ec2:
+#    name: Deploy to AWS EC2 via SSH
+#    needs: validate
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout Code
+#        uses: actions/checkout@v4
+#
+#      - name: Execute Remote SSH Commands to Deploy
+#        uses: appleboy/ssh-action@master
+#        with:
+#          host: ${{ secrets.EC2_HOST }}
+#          username: ubuntu
+#          key: ${{ secrets.EC2_SSH_KEY }}
+#          script: |
+#            cd /home/ubuntu/TaskManagement
+#            git pull origin main
+#            # Inject production environment files from secrets
+#            echo "${{ secrets.BACKEND_ENV }}" > backend/.env
+#            echo "${{ secrets.FRONTEND_ENV }}" > frontend/.env
+#            # Rebuild and restart containers
+#            docker-compose -f docker-compose.prod.yml down
+#            docker-compose -f docker-compose.prod.yml up -d --build
+#            # Run database migrations
+#            docker exec tms_backend_prod npx prisma migrate deploy
+# ==============================================================================

@@ -187,7 +187,7 @@ export default function Projects() {
           </p>
         </div>
         
-        {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || user?.role === 'PROJECT_MANAGER') && (
+        {(user?.role === 'SUPER_ADMIN' || user?.role === 'PROJECT_MANAGER') && (
           <button 
             onClick={() => {
               setName('');
@@ -237,7 +237,7 @@ export default function Projects() {
                 </div>
                 
                 {/* PM / Admin controls */}
-                {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || project.ownerId === user?.id) && (
+                {(user?.role === 'SUPER_ADMIN' || project.ownerId === user?.id) && (
                   <div 
                     className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => e.stopPropagation()}
@@ -317,7 +317,7 @@ export default function Projects() {
                   required
                 />
               </div>
-              {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
+              {user?.role === 'SUPER_ADMIN' && (
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Project Owner</label>
                   {loadingUsers ? (
@@ -445,7 +445,7 @@ export default function Projects() {
                   className="w-full px-3 py-2 bg-white border border-slate-350 focus:outline-none focus:ring-1 focus:ring-violet-650 rounded-xl text-sm text-slate-800 h-24 resize-none"
                 />
               </div>
-              {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
+              {user?.role === 'SUPER_ADMIN' && (
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Project Owner</label>
                   {loadingUsers ? (
@@ -597,7 +597,7 @@ function ProjectDetailsModal({ project, onClose }) {
     }
   };
 
-  const isOwnerOrAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN' || project.ownerId === user?.id;
+  const isOwnerOrAdmin = user?.role === 'SUPER_ADMIN' || project.ownerId === user?.id;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">

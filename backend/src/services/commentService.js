@@ -39,6 +39,13 @@ const createComment = async (taskId, authorId, body) => {
   }
 
   // Enforce task access permission for comment creator
+  if (author.role === "ADMIN") {
+    const error = new Error("Administrators do not have permission to comment on tasks.");
+    error.statusCode = 403;
+    error.errorCode = "FORBIDDEN";
+    throw error;
+  }
+
   if (author.role === "COLLABORATOR") {
     const isAssigned = task.assignments.some((a) => a.userId === authorId);
     const isProjectMember = await prisma.projectMember.findUnique({
@@ -203,8 +210,8 @@ const deleteComment = async (commentId, requestingUserId, requestingUserRole) =>
     throw error;
   }
 
-  // Access Control check: Author or ADMIN/SUPER_ADMIN only
-  if (comment.authorId !== requestingUserId && requestingUserRole !== "ADMIN" && requestingUserRole !== "SUPER_ADMIN") {
+  // Access Control check: Author or SUPER_ADMIN only
+  if (comment.authorId !== requestingUserId && requestingUserRole !== "SUPER_ADMIN") {
     const error = new Error("You are not authorized to delete this comment.");
     error.statusCode = 403;
     error.errorCode = "FORBIDDEN";

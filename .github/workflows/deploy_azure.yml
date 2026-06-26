@@ -1,0 +1,137 @@
+name: Continuous Deployment (Azure)
+
+on:
+  push:
+    branches:
+      - main  # Deploy on merge/push to main branch (Production)
+      # - dev   # Uncomment if you want automatic deployment for staging too
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate:
+    name: Run Verification & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Verify Backend Compilation & Lint
+        run: |
+          cd backend
+          npm ci
+          npx prisma generate
+          npm run lint --if-present
+
+      - name: Verify Frontend Compilation
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+  deploy-backend:
+    name: Build & Deploy Backend (Azure Container Apps)
+    needs: validate
+    runs-on: ubuntu-latest
+    env:
+      AZURE_ACR_NAME: tmsregistry             # Replace with your Azure Container Registry Name
+      AZURE_CONTAINER_APP_NAME: tms-backend   # Replace with your Azure Container App Name
+      AZURE_RESOURCE_GROUP: tms-prod-rg       # Replace with your Resource Group Name
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.AZURE_ACR_NAME }}.azurecr.io
+          username: ${{ secrets.AZURE_ACR_USERNAME }}
+          password: ${{ secrets.AZURE_ACR_PASSWORD }}
+
+      - name: Build and Push Backend Image to ACR
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # Build production docker image
+          docker build -t ${{ env.AZURE_ACR_NAME }}.azurecr.io/${{ env.AZURE_CONTAINER_APP_NAME }}:$IMAGE_TAG -t ${{ env.AZURE_ACR_NAME }}.azurecr.io/${{ env.AZURE_CONTAINER_APP_NAME }}:latest -f backend/Dockerfile.prod backend
+          docker push ${{ env.AZURE_ACR_NAME }}.azurecr.io/${{ env.AZURE_CONTAINER_APP_NAME }}:$IMAGE_TAG
+          docker push ${{ env.AZURE_ACR_NAME }}.azurecr.io/${{ env.AZURE_CONTAINER_APP_NAME }}:latest
+
+      - name: Deploy to Azure Container Apps
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          appSourcePath: ${{ github.workspace }}/backend
+          acrName: ${{ env.AZURE_ACR_NAME }}
+          containerAppName: ${{ env.AZURE_CONTAINER_APP_NAME }}
+          resourceGroup: ${{ env.AZURE_RESOURCE_GROUP }}
+          imageToDeploy: ${{ env.AZURE_ACR_NAME }}.azurecr.io/${{ env.AZURE_CONTAINER_APP_NAME }}:${{ github.sha }}
+
+  deploy-frontend:
+    name: Build & Deploy Frontend (Azure Static Web Apps)
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy Frontend to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          app_location: "/frontend"          # App source code path
+          api_location: ""                    # No API project inside this repo folder
+          output_location: "dist"             # Vite build output directory
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL_PROD }}       # E.g. https://api.yourdomain.com
+          VITE_SOCKET_URL: ${{ secrets.VITE_SOCKET_URL_PROD }} # E.g. https://api.yourdomain.com
+
+# ==============================================================================
+# ALTERNATIVE: SIMPLIFIED DOCKER COMPOSE SSH DEPLOYMENT (FOR SINGLE-INSTANCE AZURE VM)
+# ==============================================================================
+# If deploying to a single Azure Linux VM using docker-compose.prod.yml, disable the
+# Container App and Static Web App jobs above, and enable the following job:
+#
+#  deploy-azure-vm:
+#    name: Deploy to Azure VM via SSH
+#    needs: validate
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout Code
+#        uses: actions/checkout@v4
+#
+#      - name: Execute Remote SSH Commands to Deploy
+#        uses: appleboy/ssh-action@master
+#        with:
+#          host: ${{ secrets.AZURE_VM_HOST }}
+#          username: azureuser
+#          key: ${{ secrets.AZURE_VM_SSH_KEY }}
+#          script: |
+#            cd /home/azureuser/TaskManagement
+#            git pull origin main
+#            # Inject production environment files from secrets
+#            echo "${{ secrets.BACKEND_ENV }}" > backend/.env
+#            echo "${{ secrets.FRONTEND_ENV }}" > frontend/.env
+#            # Rebuild and restart containers
+#            docker compose -f docker-compose.prod.yml down
+#            docker compose -f docker-compose.prod.yml up -d --build
+#            # Run database migrations
+#            docker exec tms_backend_prod npx prisma migrate deploy
+# ==============================================================================
