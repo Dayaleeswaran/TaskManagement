@@ -44,7 +44,7 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     env:
-      AZURE_ACR_NAME: tmsregistry             # Replace with your Azure Container Registry Name
+      AZURE_ACR_NAME: taskmsregistry             # Replace with your Azure Container Registry Name
       AZURE_CONTAINER_APP_NAME: tms-backend   # Replace with your Azure Container App Name
       AZURE_RESOURCE_GROUP: tms-prod-rg       # Replace with your Resource Group Name
     steps:
