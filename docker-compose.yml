@@ -1,23 +1,4 @@
-version: '3.8'
-
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: tms_postgres_db
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password123
-      POSTGRES_DB: tms_dev_db
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d tms_dev_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   backend:
     build: ./backend
     container_name: tms_backend_api
@@ -29,15 +10,11 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      DATABASE_URL: "postgresql://postgres:password123@postgres:5432/tms_dev_db?schema=public"
       PORT: 3000
       SUPABASE_URL: "https://fyqskrbxrqrxmlwnzxrr.supabase.co"
       SUPABASE_SERVICE_ROLE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5cXNrcmJ4cnFyeG1sd256eHJyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTE1OTg4OCwiZXhwIjoyMDk2NzM1ODg4fQ.F8ZMhSJBtaTcpX1G9XjmsLHnxIf3z5QtJtUANjeirNI"
       SUPABASE_BUCKET: "Attachment"
     command: sh -c "npx prisma db push && npx prisma db seed && npm run dev"
-    depends_on:
-      postgres:
-        condition: service_healthy
 
   frontend:
     build: ./frontend
@@ -51,6 +28,3 @@ services:
       - ./frontend/.env
     depends_on:
       - backend
-
-volumes:
-  pgdata:
