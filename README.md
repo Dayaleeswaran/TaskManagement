@@ -1,83 +1,149 @@
-# Task Management System
+# 🪺 WorkNest — Enterprise Task Management System
 
-A multi-containerized task management application designed for seamless team collaboration.
-
-## Team Roles & Responsibilities
-
-- **Member 1 (Lead)** - Repository Architecture & Branch Strategy Setup
-- **Member 2 (Database Designer)** - DB Schema Modeling & Visual Layout Blueprint (ERD)
-- **Member 3 (Frontend Developer)** - React + Vite + Tailwind CSS Client Initialization & Page Scaffolding
-- **Member 4 (Backend Developer)** - Express Server Initialization, Prisma ORM Configuration, & Folder Tree Architecture
-- **Member 5 (DevOps/SRE)** - Container Orchestration, Dockerfile Configuration, & Compose Deployment Environment
+WorkNest is a premium, containerized, real-time Task Management System designed for modern enterprise teams. It features a robust multi-tenant role-based access control (RBAC) architecture, real-time collaboration via WebSockets, an interactive Kanban interface with drag-and-drop mechanics, enterprise-grade audit logging, attachment storage, and automated CI/CD validation.
 
 ---
 
-## Sequential Execution Rules
+## 🚀 Key Features
 
-To ensure a conflict-free and structured codebase integration, the project followed this strict order of execution:
+### 👤 Role-Based Access Control (RBAC)
+WorkNest enforces strict access boundaries across four distinct user roles:
+*   **SUPER_ADMIN:** Holds system-wide authority. Manages user provisioning, role assignments, and tracks system audits via the **Audit Logs** dashboard.
+*   **ADMIN:** Configures enterprise settings, manages projects, provisions tasks, and monitors team KPIs.
+*   **PROJECT_MANAGER:** Drafts project workspaces, plans tasks, assigns collaborators, and updates task definitions.
+*   **COLLABORATOR:** Interacts with assigned tasks. Views personal boards, shifts task status, uploads attachments, and communicates via comments.
 
-1. **Step 1 (Lead):** Initialize the project repository, branch ecosystem (`dev` branch), root `.gitignore`, and the baseline documentation.
-2. **Step 2 (Database Designer):** Model the database schema (User, Task, Comment, Notification entities) and export the visualization blueprint as `docs/erd.png`.
-3. **Step 3 (Backend Developer):** Bootstrap the Node.js + Express backend framework, configure folders (`routes`, `controllers`, `services`, `middleware`), integrate Prisma ORM models, and setup local environment controls.
-4. **Step 4 (Frontend Developer):** Scaffold the React client using Vite, configure Tailwind CSS utilities, clean boilerplate artifacts, and establish layout folders and view routes.
-5. **Step 5 (DevOps/SRE):** Draft individual service Dockerfiles and assemble the master `docker-compose.yml` to orchestrate Postgres, Backend API, and Frontend UI containers.
+### 📋 Interactive Kanban Board & Task Controls
+*   **Drag-and-Drop Kanban:** Fluid task movement between columns (`TODO`, `IN_PROGRESS`, `COMPLETED`) powered by `@dnd-kit`.
+*   **Granular Fields:** Support for task titles, rich descriptions, priority levels (`LOW`, `MEDIUM`, `HIGH`), estimated hours, start dates, and due dates.
+*   **Task Labeling:** Dynamic tags (`Label` model) for advanced indexing.
+*   **File Attachments:** Secure, multi-format attachments saved directly to Supabase storage buckets.
+
+### ⚡ Real-Time Synchronization & Communication
+*   **WebSocket Engine:** Powered by `Socket.io` to sync comments, updates, and assignments across client sessions instantaneously.
+*   **Live Notification Center:** Interactive alerts and custom UI banners for system updates and task assignments.
+
+### 🛡️ Enterprise Security & Auditing
+*   **Comprehensive Audit Logs:** Automated logging of critical operations, state mutations, and user logins.
+*   **Database Level Security:** Prisma ORM constraints mapping out relations and handling soft deletes for `Project` and `Task` entities.
+*   **Secure Auth Flow:** Token-based JWT authentication paired with secure cookie handling, password reset mechanisms, and rate limiters.
 
 ---
 
-## Getting Started
+## 🛠️ Technology Stack
 
-### Prerequisites
+| Component | Technology | Description |
+| :--- | :--- | :--- |
+| **Frontend** | React 19, Vite, Tailwind CSS 4 | Ultra-fast rendering, sleek custom-designed components, responsive utility-first styles |
+| **State & Navigation** | React Router Dom 7, Context API | Declarative routing, centralized authentication and notification contexts |
+| **Interactive UI** | Lucide React, @dnd-kit | Rich icon system and smooth drag-and-drop workspace layout |
+| **Backend API** | Node.js, Express 5, Zod | High-performance server, declarative schema validations, rate limiting, and security headers |
+| **Database & ORM** | PostgreSQL, Prisma Client | Relational schema modeling with migration history |
+| **Real-time Engine** | Socket.io | Bi-directional websocket connection for instant collaboration |
+| **Storage Integration**| Supabase Storage SDK | Cloud-based container bucket storage for project files |
+| **DevOps / CI-CD** | Docker, Nginx, GitHub Actions | HADOLINT, Trivy container security scans, automatic CI pipeline |
 
-- [Docker](https://www.docker.com/) (with Docker Compose) installed on your system.
+---
 
-### Running the Application
+## 📁 Repository Directory Structure
 
-To run the entire system in a multi-container Docker environment, navigate to the root directory and execute:
-
-```bash
-docker-compose up --build
+```text
+TaskManagement/
+├── .github/workflows/          # CI/CD workflows (GitHub Actions)
+├── backend/                    # Express backend architecture
+│   ├── prisma/                 # Database schema definitions & migrations
+│   │   └── schema.prisma       # Master Prisma schema
+│   ├── src/                    # API controllers, models, and routes
+│   │   ├── controllers/        # Core business logic handlers
+│   │   ├── middleware/         # Auth, RBAC, and error validation middleware
+│   │   ├── routes/             # REST endpoints (auth, task, analytics, etc.)
+│   │   ├── services/           # Socket and external SDK wrappers
+│   │   └── app.js              # Server entrypoint
+│   ├── Dockerfile              # Development environment container spec
+│   └── Dockerfile.prod         # Production multi-stage build spec
+├── frontend/                   # React frontend codebase
+│   ├── public/                 # Static assets & routing configurations
+│   ├── src/                    # React application source code
+│   │   ├── components/         # Reusable layouts, buttons, cards, and portals
+│   │   ├── context/            # Auth, toast notification, and global state
+│   │   ├── hooks/              # Custom React hooks (sockets, media queries)
+│   │   ├── pages/              # View pages (Dashboard, Projects, Audit Logs)
+│   │   └── App.jsx             # React routing entrypoint
+│   ├── Dockerfile              # Dev server container configuration
+│   └── nginx.conf              # Reverse proxy server configuration for client routing
+├── docs/                       # Specifications, deployment guides, and DB models
+├── docker-compose.yml          # Container configuration for local development
+└── docker-compose.prod.yml     # Container configuration for production stack
 ```
 
-- **PostgreSQL Database:** Running on port `5432`
-- **Express Backend API:** Running on port `3000`
-- **Vite React UI:** Running on port `5173`
+---
+
+## ⚙️ Getting Started
+
+### Prerequisites
+Make sure you have the following installed on your host machine:
+*   [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker Compose)
+*   [Node.js](https://nodejs.org/) (v20+ recommended for local backend/frontend scripting)
+
+### Quick Start (Docker Environment)
+
+1.  **Clone the Repository:**
+    ```bash
+    git clone https://github.com/your-username/TaskManagement.git
+    cd TaskManagement
+    ```
+
+2.  **Configure Environment Variables:**
+    *   Create a `.env` file in the `backend/` directory by copying `backend/.env.example`.
+    *   Create a `.env` file in the `frontend/` directory by copying `frontend/.env.example`.
+    *   *Note: Ensure Postgres credentials match the config inside `docker-compose.yml`.*
+
+3.  **Spin Up Containers:**
+    Run the dev compose bundle from the root directory:
+    ```bash
+    docker-compose up --build
+    ```
+
+    This command spins up the following services:
+    *   **Postgres DB:** Running on port `5432`
+    *   **Express Backend Server:** Available at `http://localhost:3000`
+    *   **React Frontend (Vite):** Accessible at `http://localhost:5173`
+
+4.  **Seed the Database:**
+    To seed the database with admin roles, PMs, and mock tasks, execute inside the backend container:
+    ```bash
+    docker-compose exec backend npx prisma db seed
+    ```
 
 ---
 
-## DevOps & CI/CD Strategy
+## 📘 API Documentation (Swagger)
 
-For detailed instructions and strategies regarding the system's CI/CD pipeline, branching strategies, security scanning, container validation, and environment variables, refer to the [DevOps & CI/CD Strategy Documentation](./docs/devops-ci-cd-strategy.md).
+The backend server features interactive documentation via Swagger UI.
 
-For complete system documentation (including source code tree, API endpoints, database schema, ER diagrams, class diagrams, and deployment diagrams), refer to the [System Documentation](./docs/system_documentation.md).
+*   **Interactive UI Portal:** [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
+*   **JSON Schema Blueprint:** [http://localhost:3000/api/docs/swagger.json](http://localhost:3000/api/docs/swagger.json)
 
-### Continuous Integration (CI) Actions
-A GitHub Actions workflow is defined in [.github/workflows/ci.yml](./.github/workflows/ci.yml) which performs:
-- **Build Checks**: Installs dependencies and compiles both the backend and frontend.
-- **Docker Validation**: Lints Dockerfiles via Hadolint.
-- **Security Scanning**: Audits dependencies for vulnerability warnings and runs Trivy on container images.
-- **Prisma Schema Verification**: Validates formatting and database integrity mapping.
+### Accessing Authenticated Endpoints in Swagger:
+1. Send a login payload to the `POST /api/v1/auth/login` endpoint to acquire an access token.
+2. Click the green **Authorize** button in the Swagger UI.
+3. Paste the token directly into the input field. (The Swagger UI automatically appends the `Bearer` prefix).
 
 ---
 
-## API Documentation (Swagger)
+## 🚦 Continuous Integration (CI) Checks
 
-The backend server includes complete Swagger API documentation. 
+WorkNest utilizes a strict workflow defined in `.github/workflows/ci.yml` that triggers on pull requests and commits to core branches:
+*   **Hadolint:** Validates and optimizes both frontend and backend Dockerfiles.
+*   **Trivy:** Scans built docker images for dependency and configuration vulnerabilities.
+*   **Prisma Validation:** Verifies structural schema consistency before generating the database client.
+*   **Build Integrity:** Installs local package manifests and compiles packages to guarantee no regressions exist in static code.
 
-- **Documentation UI:** [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
-- **Swagger JSON Payload:** [http://localhost:3000/api/docs/swagger.json](http://localhost:3000/api/docs/swagger.json)
+---
 
-### Authenticating in Swagger UI
+## 🌐 Deployment Instructions
 
-To test protected endpoints directly within Swagger UI:
-
-1. **Get an Access Token:** 
-   Send a login request to the `POST /api/v1/auth/login` endpoint using standard user credentials. Copy the `token` string returned in the response payload.
-2. **Open Swagger Authorization:**
-   Click the green **Authorize** button at the top-right of the Swagger UI dashboard.
-3. **Input the Token:**
-   Enter the token string directly in the value text field. 
-   *Note: Do not prefix the token with `Bearer ` as Swagger UI is configured to apply the bearer scheme automatically.*
-4. **Authorize & Persist:**
-   Click **Authorize** to save the token, then click **Close**. 
-   Thanks to the configured auth persistence, this token will remain authorized across page refreshes.
-
+Detailed step-by-step guides for various hosting environments can be found in the `docs/` folder:
+*   [Vercel Frontend Guide](./docs/vercel-deployment-guide.md)
+*   [Render Backend & Database Guide](./docs/render-deployment-guide.md)
+*   [Azure Deployment Guide](./docs/azure-deployment-guide.md)
