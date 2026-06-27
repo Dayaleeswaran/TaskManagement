@@ -259,32 +259,38 @@ exports.forgotPassword = async (req, res, next) => {
     const { email } = req.body;
     const emailLower = email.toLowerCase();
 
+    // Check if the email exists in the database
     const user = await prisma.user.findUnique({
       where: { email: emailLower },
     });
 
-    if (user) {
-      // Generate a random 6-digit numeric code
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          resetCode: code,
-          resetCodeExpiry: expiry,
-          resetCodeAttempts: 0,
-        },
-      });
-
-      sendPasswordResetCode(user.email, code).catch((err) => {
-        console.error(`[Email Service] Failed to send reset code to ${user.email}:`, err);
+    // Return a clear error if the email is not registered
+    if (!user) {
+      return res.status(404).json({
+        errorCode: "EMAIL_NOT_FOUND",
+        message: "No account found with this email address.",
       });
     }
 
-    // Generic response to prevent email enumeration
+    // Email exists — generate a random 6-digit numeric OTP
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetCode: code,
+        resetCodeExpiry: expiry,
+        resetCodeAttempts: 0,
+      },
+    });
+
+    sendPasswordResetCode(user.email, code).catch((err) => {
+      console.error(`[Email Service] Failed to send reset code to ${user.email}:`, err);
+    });
+
     return res.status(200).json({
-      message: "If an account exists with this email, a verification code has been sent.",
+      message: "Verification code sent successfully. Please check your email.",
     });
   } catch (err) {
     next(err);
